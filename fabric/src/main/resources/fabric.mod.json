@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "cobblemon_jei",
+  "version": "${version}",
+  "name": "Cobblemon JEI Integration",
+  "description": "Intégration client-side de Cobblemon avec Just Enough Items (JEI) : recherche d'espèces et affichage des conditions d'apparition.",
+  "authors": [
+    "Modder"
+  ],
+  "contact": {
+    "sources": "https://github.com/example/Cobblemon_JEI"
+  },
+  "license": "MIT",
+  "icon": "assets/cobblemon_jei/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "jei_mod_plugin": [
+      "com.cobblemon.jei.CobblemonJeiPlugin"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": ">=1.21.1",
+    "java": ">=21",
+    "fabric-language-kotlin": ">=1.12.0",
+    "cobblemon": ">=1.7.0",
+    "jei": ">=19.0.0"
+  }
+}

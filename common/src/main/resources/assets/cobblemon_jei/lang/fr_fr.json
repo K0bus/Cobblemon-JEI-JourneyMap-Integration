@@ -1,0 +1,43 @@
+{
+  "gui.cobblemon_jei.category.pokemon_spawns": "Apparitions de Pokémon",
+  "gui.cobblemon_jei.category.pokemon_spawns.rarity": "Rareté : %s",
+  "gui.cobblemon_jei.category.pokemon_spawns.weight": "Poids : %.1f",
+  "gui.cobblemon_jei.category.pokemon_spawns.level": "Niveaux : %d - %d",
+  "gui.cobblemon_jei.category.pokemon_spawns.time": "Période : %s",
+  "gui.cobblemon_jei.category.pokemon_spawns.weather": "Météo : %s",
+  "gui.cobblemon_jei.category.pokemon_spawns.dimension": "Dimension : %s",
+  "gui.cobblemon_jei.category.pokemon_spawns.context": "Contexte : %s",
+  "gui.cobblemon_jei.category.pokemon_spawns.biomes": "Biomes compatibles :",
+  "gui.cobblemon_jei.category.pokemon_spawns.biomes.more": "+ %d autres... (survoler)",
+  "gui.cobblemon_jei.category.pokemon_spawns.no_spawns.title": "Aucune apparition naturelle connue",
+  "gui.cobblemon_jei.category.pokemon_spawns.no_spawns.desc": "Ce Pokémon ne peut pas être rencontré à l'état sauvage.",
+  "gui.cobblemon_jei.category.pokemon_spawns.no_spawns.how": "Obtention : Évolution, Reproduction, Fossiles ou Événements.",
+
+  "cobblemon_jei.bucket.common": "Commun",
+  "cobblemon_jei.bucket.uncommon": "Peu commun",
+  "cobblemon_jei.bucket.rare": "Rare",
+  "cobblemon_jei.bucket.ultra-rare": "Ultra-Rare",
+
+  "cobblemon_jei.time.day": "Jour",
+  "cobblemon_jei.time.night": "Nuit",
+  "cobblemon_jei.time.dawn": "Aube",
+  "cobblemon_jei.time.dusk": "Crépuscule",
+  "cobblemon_jei.time.any": "Indifférent",
+
+  "cobblemon_jei.weather.clear": "Dégagé",
+  "cobblemon_jei.weather.rain": "Pluvieux",
+  "cobblemon_jei.weather.thundering": "Orageux",
+  "cobblemon_jei.weather.any": "Indifférent",
+
+  "gui.cobblemon_jei.category.pokemon_evolutions": "Évolutions de Pokémon",
+  "gui.cobblemon_jei.category.pokemon_evolutions.condition": "Condition :",
+  "gui.cobblemon_jei.category.pokemon_evolutions.item": "Objet requis :",
+
+  "journeymap.theme.cobblemon.button": "Recherche Pokémon Cobblemon",
+  "gui.cobblemon_jm.search.title": "Recherche de Spawn Pokémon - JourneyMap",
+  "gui.cobblemon_jm.search.hint": "Rechercher par nom ou n° de Pokédex...",
+  "gui.cobblemon_jm.search.show_overlay": "Afficher sur la carte",
+  "gui.cobblemon_jm.search.clear_overlay": "Désactiver le calque",
+  "gui.cobblemon_jm.search.no_spawns": "Aucun spawn naturel dans cette dimension",
+  "gui.cobblemon_jm.search.selected": "Sélection : %s"
+}

@@ -1,0 +1,17 @@
+.gradle/
+build/
+bin/
+out/
+.kotlin/
+*.hprof
+*.log
+.idea/
+*.iml
+.vscode/
+neoforge/build/
+fabric/build/
+common/build/
+run/
+logs/
+*/logs/
+
