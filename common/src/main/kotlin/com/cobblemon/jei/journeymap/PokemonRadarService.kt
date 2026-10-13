@@ -135,11 +135,31 @@ object PokemonRadarService {
             return
         }
 
-        // Nettoyage automatique en cas de changement de dimension ou de monde
+        // Nettoyage automatique et chargement en cas de changement de dimension ou de monde
         val currentDim = level.dimension()
         if (lastDimension != currentDim) {
             clearRadar()
             lastDimension = currentDim
+            try {
+                com.cobblemon.jei.journeymap.structure.StructureOverlayManager.onWorldLoad(currentDim)
+            } catch (_: Throwable) {}
+        }
+
+        // Détection en direct des piédestaux et blocs suspects dans les chunks actifs autour du joueur
+        if (tickCounter % 40 == 0) {
+            try {
+                val pPos = player.blockPosition()
+                val pcx = pPos.x shr 4
+                val pcz = pPos.z shr 4
+                for (dx in -1..1) {
+                    for (dz in -1..1) {
+                        val chunk = level.getChunk(pcx + dx, pcz + dz)
+                        if (chunk is net.minecraft.world.level.chunk.LevelChunk) {
+                            com.cobblemon.jei.journeymap.structure.StructureRegionScanner.onChunkLoaded(chunk)
+                        }
+                    }
+                }
+            } catch (_: Throwable) {}
         }
 
         val targetSpecies = if (CobblemonOverlayManager.isOverlayActive) CobblemonOverlayManager.activeSpecies else null

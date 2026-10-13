@@ -74,6 +74,7 @@ class CobblemonJourneyMapSearchScreen(
         showOverlayBtn = Button.builder(Component.translatable("gui.cobblemon_jm.search.show_overlay")) {
             selectedSpecies?.let {
                 CobblemonOverlayManager.setOverlay(it)
+                com.cobblemon.jei.journeymap.structure.StructureOverlayManager.highlightStructureForSpecies(it)
                 CobblemonJourneyMapPlugin.updateButton()
                 onClose()
             }
@@ -83,6 +84,7 @@ class CobblemonJourneyMapSearchScreen(
         // Bouton : Désactiver le calque
         clearOverlayBtn = Button.builder(Component.translatable("gui.cobblemon_jm.search.clear_overlay")) {
             CobblemonOverlayManager.clearOverlay()
+            com.cobblemon.jei.journeymap.structure.StructureOverlayManager.highlightStructureForSpecies(null)
             CobblemonJourneyMapPlugin.updateButton()
             onClose()
         }.bounds(centerX + 125, height - 34, 110, 20).build()
@@ -311,8 +313,25 @@ class CobblemonJourneyMapSearchScreen(
             guiGraphics.drawString(font, "• Lieux : $biomesDesc", x, infoY + 67, 0xFF54A0FF.toInt(), false)
         }
 
+        // Détection de structures (fossiles ou monuments légendaires)
+        val matchingStructs = com.cobblemon.jei.journeymap.structure.StructureOverlayManager.getDiscoveredStructuresForSpecies(sp)
+        val isFossilOrLegendary = com.cobblemon.jei.journeymap.structure.DynamicStructureRegistryService.getStructuresForSpecies(sp).isNotEmpty() ||
+            matchingStructs.isNotEmpty()
+
+        if (isFossilOrLegendary) {
+            val structY = if (natural.isEmpty()) infoY + 38 else infoY + 78
+            guiGraphics.drawString(font, "• Structures :", x, structY, 0xFFFFA502.toInt(), false)
+            if (matchingStructs.isNotEmpty()) {
+                val first = matchingStructs.first()
+                guiGraphics.drawString(font, "  ✓ ${matchingStructs.size} site(s) découvert(s)", x, structY + 11, 0xFF2ED573.toInt(), false)
+                guiGraphics.drawString(font, "  [${first.pos.x}, ${first.pos.z}]", x, structY + 22, 0xFFCCCCCC.toInt(), false)
+            } else {
+                guiGraphics.drawString(font, "  ✗ Non découverte (zone explorée)", x, structY + 11, 0xFFFF6B6B.toInt(), false)
+            }
+        }
+
         // Statut du calque actuel
-        val statusY = y + 120
+        val statusY = y + 138
         if (CobblemonOverlayManager.isOverlayActive && CobblemonOverlayManager.activeSpecies == sp) {
             guiGraphics.fill(x - 2, statusY - 2, x + maxWidth + 2, statusY + 12, 0x332ED573.toInt())
             val count = SpawnOverlayManager.activeRarityCounts.values.sum()

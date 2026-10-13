@@ -61,7 +61,26 @@ Il fournit :
 
 ---
 
-### 4. 🎴 HUD Flottant & Compteurs de Détection
+### 4. 🏛️ Découverte Dynamique des Structures : Fossiles & Monuments Légendaires
+- **Zéro liste codée en dur** :
+  - Interrogation directe du registre mondial `Registries.STRUCTURE` au chargement du monde.
+  - Détection automatique par namespaces (`cobblemon`, `legendarymonuments`) et tags (`#cobblemon:fossil`, `#cobblemon:legendary`, etc.).
+- **Sites Archéologiques & Fossiles (`FossilStructureHandler`)** :
+  - Catégorie JourneyMap dédiée : `"Cobblemon Fossils"`.
+  - Infobulle complète avec les fossiles et Pokémon déterrés (Amonita, Kabuto, Ptéra, Lilia, Anorith, Dinoclier, Kranidos, Carapagos, Arkéapti, Ptyranidur, Amagara, fossiles de Galar).
+  - Détection et centrage sur les zones à blocs suspects (`BrushableBlockEntity` / sable et gravier suspects).
+- **Monuments & Sanctuaires Légendaires (`LegendaryStructureHandler`)** :
+  - Catégorie JourneyMap dédiée : `"Legendary Monuments"`.
+  - Marqueur doré distinctif avec icône issue du mod ou du sprite Cobblemon.
+  - Centrage fidèle sur les blocs de piédestal (`*_pedestal`), autels et sanctuaires dans les chunks chargés.
+- **Mise en évidence interactive** :
+  - Sélectionner un Pokémon fossile ou légendaire dans l'interface illumine instantanément les structures correspondantes.
+- **Performance Asynchrone (`StructureRegionScanner`)** :
+  - Scan multithreadé sans latence des en-têtes Anvil (`.mca`) et mise en cache persistant.
+
+---
+
+### 5. 🎴 HUD Flottant & Compteurs de Détection
 - Carte d'information moderne intégrée sous le bouton JourneyMap :
   - Modèle 3D / icône du Pokémon suivi.
   - Badges des types élémentaires colorés.
@@ -93,14 +112,21 @@ Cobblemon_JourneyMap/
 │       ├── ChunkPolygonMerger.kt         # Fusion géométrique 2D des chunks adjacents
 │       ├── JourneyMapDiskScanner.kt      # Scan asynchrone des régions disques JourneyMap & Anvil
 │       ├── PokemonRadarService.kt        # Radar d'entités temps réel & Sentinelle Shiny
-│       └── RarityColorPalette.kt         # Charte graphique & infobulles riches
+│       ├── RarityColorPalette.kt         # Charte graphique & infobulles riches
+│       └── structure/                    # Module de détection et cartographie dynamique des structures
+│           ├── DynamicStructureRegistryService.kt # Classification dynamique sans hardcoding
+│           ├── FossilStructureHandler.kt          # Gestionnaire sites archéologiques & fossiles
+│           ├── LegendaryStructureHandler.kt       # Gestionnaire monuments & sanctuaires légendaires
+│           ├── StructureRegionScanner.kt          # Scan asynchrone E/S disques (.mca)
+│           └── StructureOverlayManager.kt         # Coordinateur central JourneyMap
 ├── neoforge/                             # Module NeoForge 1.21.1
 │   ├── src/main/java/.../CobblemonJeiNeoForge.java # Point d'entrée mod client NeoForge
 │   └── src/main/resources/META-INF/neoforge.mods.toml
 └── docs/                                 # Documentation technique détaillée
     ├── ARCHITECTURE.md
     ├── RADAR_AND_SHINY_SENTRY.md
-    └── JOURNEYMAP_INTEGRATION.md
+    ├── JOURNEYMAP_INTEGRATION.md
+    └── DYNAMIC_STRUCTURE_DISCOVERY.md
 ```
 
 ---

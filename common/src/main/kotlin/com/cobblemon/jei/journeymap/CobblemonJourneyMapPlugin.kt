@@ -45,10 +45,12 @@ class CobblemonJourneyMapPlugin : IClientPlugin {
             if (isActive && speciesName != null) {
                 button.setLabels("Cobblemon: $speciesName", "Cobblemon Spawns")
                 val radarStatus = PokemonRadarService.getStatusSummary(speciesName)
+                val structStatus = com.cobblemon.jei.journeymap.structure.StructureOverlayManager.getStatusSummary(active)
                 button.setTooltip(
                     "Cobblemon Spawns",
                     "§ePokémon suivi : §f$speciesName",
                     "§bRadar : $radarStatus",
+                    "§6Structures : §7$structStatus",
                     "§7Cliquer pour changer ou désactiver"
                 )
                 try {
@@ -73,6 +75,11 @@ class CobblemonJourneyMapPlugin : IClientPlugin {
     override fun initialize(api: IClientAPI) {
         logger.info("Cobblemon JourneyMap Plugin: Initialisation réussie.")
         CobblemonOverlayManager.initialize(api)
+        try {
+            com.cobblemon.jei.journeymap.structure.StructureOverlayManager.initialize(api)
+        } catch (t: Throwable) {
+            logger.error("Cobblemon JourneyMap Plugin: Erreur initialisation StructureOverlayManager: {}", t.message)
+        }
         try {
             PokemonRadarService.initialize(api)
         } catch (t: Throwable) {
