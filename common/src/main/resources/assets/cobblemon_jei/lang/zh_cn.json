@@ -21,7 +21,6 @@
   "gui.cobblemon_jei.category.pokemon_spawns.no_spawns.breeding": "• 繁育（牧场 / 蛋）",
   "gui.cobblemon_jei.category.pokemon_spawns.no_spawns.special": "• 化石复活、特殊钓鱼或头目",
   "gui.cobblemon_jei.category.pokemon_spawns.no_spawns.quest": "• 任务事件 / 特殊结构",
-
   "cobblemon_jei.bucket.common": "普通",
   "cobblemon_jei.bucket.uncommon": "罕见",
   "cobblemon_jei.bucket.rare": "稀有",
@@ -35,7 +34,6 @@
   "cobblemon_jei.weather.rain": "雨天",
   "cobblemon_jei.weather.thundering": "雷雨",
   "cobblemon_jei.weather.any": "任意",
-
   "gui.cobblemon_jei.category.pokemon_evolutions": "宝可梦进化",
   "gui.cobblemon_jei.category.pokemon_evolutions.condition_title": "条件：",
   "gui.cobblemon_jei.category.pokemon_evolutions.direct_level": "• 需要升级",
@@ -45,7 +43,6 @@
   "gui.cobblemon_jei.category.pokemon_evolutions.tooltip_title": "进化条件：",
   "gui.cobblemon_jei.category.pokemon_evolutions.tooltip_type": "• 类型：%s",
   "gui.cobblemon_jei.category.pokemon_evolutions.tooltip_item": "• 所需物品：%s",
-
   "gui.cobblemon_jei.category.pokemon_pasture": "牧场产物",
   "gui.cobblemon_jei.category.pokemon_pasture.amount": "数量：%s",
   "gui.cobblemon_jei.category.pokemon_pasture.chance": "掉落概率：%s",
@@ -69,7 +66,6 @@
   "gui.cobblemon_jei.label.tool": "工具",
   "gui.cobblemon_jei.label.pasture": "牧场",
   "gui.cobblemon_jei.label.drops": "产物",
-
   "cobblemon_jei.action.brush": "刷毛",
   "cobblemon_jei.action.milking": "挤奶",
   "cobblemon_jei.action.shears": "剪毛",
@@ -78,16 +74,13 @@
   "cobblemon_jei.action.bottle": "玻璃瓶收集",
   "cobblemon_jei.action.manual": "手动交互",
   "cobblemon_jei.action.passive": "被动掉落",
-
   "gui.cobblemon_jei.ingredient.type": "属性：",
   "gui.cobblemon_jei.ingredient.generation": "第 %d 世代",
   "gui.cobblemon_jei.ingredient.id": "ID：%s",
   "gui.cobblemon_jei.ingredient.aspects": "形态：%s",
-
   "journeymap.theme.cobblemon.button": "Cobblemon 宝可梦检索",
   "journeymap.button.active": "Cobblemon：%s",
   "journeymap.button.default": "Cobblemon 生成",
-
   "gui.cobblemon_jm.search.title": "Cobblemon 生成检索 - JourneyMap",
   "gui.cobblemon_jm.search.hint": "输入宝可梦名称或图鉴编号搜索...",
   "gui.cobblemon_jm.search.prev": "◀ 上一页",
@@ -113,17 +106,17 @@
   "gui.cobblemon_jm.detail.sites_not_discovered": "  ✗ 未发现（已探索区域无分布）",
   "gui.cobblemon_jm.detail.layer_active": "▶ 地图图层已激活",
   "gui.cobblemon_jm.detail.layer_active_chunks": "▶ 图层已激活（%d 个区块）",
-
   "gui.cobblemon_jm.filter.dimension_title": "维度筛选",
   "gui.cobblemon_jm.filter.all_dimensions": "所有维度",
   "gui.cobblemon_jm.filter.current_dimension": "当前维度（%s）",
   "gui.cobblemon_jm.filter.active": "当前：%s",
   "gui.cobblemon_jm.filter.hint_cycle": "左键：下一项 • 右键：上一项",
-
   "chat.cobblemon_jm.scan_start": "§6[Cobblemon] §f正在检索 §e%s§f 的生成区域...",
   "chat.cobblemon_jm.scan_progress": "§b[Cobblemon] §f已扫描：§e%d / %d 区块 §7（找到 %d 个区域）...",
   "chat.cobblemon_jm.scan_complete": "§a[Cobblemon] §e%s§f 检索完成：已在 JourneyMap 上显示 §a%d 个区块§f。",
   "chat.cobblemon_jm.overlay_disabled": "§7[Cobblemon] 图层已禁用。",
   "chat.cobblemon_jm.radar.shiny": "§6★ [异色雷达] §e%s §6★ 附近发现异色宝可梦！",
-  "chat.cobblemon_jm.radar.nearby": "§b⚡ [Cobblemon 雷达] §f%s §a在附近出现！"
+  "chat.cobblemon_jm.radar.nearby": "§b⚡ [Cobblemon 雷达] §f%s §a在附近出现！",
+  "gui.cobblemon_jei.category.pokemon_pasture.interval": "产出间隔：约 %s 分钟（服务器配置）",
+  "gui.cobblemon_jei.category.pokemon_pasture.tooltip.interval": "• 产出周期：约 %s 分钟（代谢速率/服务器）"
 }

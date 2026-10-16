@@ -21,7 +21,6 @@
   "gui.cobblemon_jei.category.pokemon_spawns.no_spawns.breeding": "• Zucht (Weide / Eier)",
   "gui.cobblemon_jei.category.pokemon_spawns.no_spawns.special": "• Fossilien, Angeln oder Bosse",
   "gui.cobblemon_jei.category.pokemon_spawns.no_spawns.quest": "• Quest-Event / Struktur",
-
   "cobblemon_jei.bucket.common": "Häufig",
   "cobblemon_jei.bucket.uncommon": "Ungewöhnlich",
   "cobblemon_jei.bucket.rare": "Selten",
@@ -35,7 +34,6 @@
   "cobblemon_jei.weather.rain": "Regen",
   "cobblemon_jei.weather.thundering": "Gewitter",
   "cobblemon_jei.weather.any": "Beliebig",
-
   "gui.cobblemon_jei.category.pokemon_evolutions": "Pokémon-Entwicklungen",
   "gui.cobblemon_jei.category.pokemon_evolutions.condition_title": "Bedingung:",
   "gui.cobblemon_jei.category.pokemon_evolutions.direct_level": "• Levelaufstieg erforderlich",
@@ -45,7 +43,6 @@
   "gui.cobblemon_jei.category.pokemon_evolutions.tooltip_title": "Entwicklungsbedingungen:",
   "gui.cobblemon_jei.category.pokemon_evolutions.tooltip_type": "• Typ: %s",
   "gui.cobblemon_jei.category.pokemon_evolutions.tooltip_item": "• Benötigter Gegenstand: %s",
-
   "gui.cobblemon_jei.category.pokemon_pasture": "Weide-Erträge",
   "gui.cobblemon_jei.category.pokemon_pasture.amount": "Menge: %s",
   "gui.cobblemon_jei.category.pokemon_pasture.chance": "Drop-Chance: %s",
@@ -69,7 +66,6 @@
   "gui.cobblemon_jei.label.tool": "Werkzeug",
   "gui.cobblemon_jei.label.pasture": "Weide",
   "gui.cobblemon_jei.label.drops": "Beute",
-
   "cobblemon_jei.action.brush": "Bürsten",
   "cobblemon_jei.action.milking": "Melken",
   "cobblemon_jei.action.shears": "Scheren",
@@ -78,16 +74,13 @@
   "cobblemon_jei.action.bottle": "Flaschenabfüllung",
   "cobblemon_jei.action.manual": "Manuelle Interaktion",
   "cobblemon_jei.action.passive": "Passiver Drop",
-
   "gui.cobblemon_jei.ingredient.type": "Typ: ",
   "gui.cobblemon_jei.ingredient.generation": "Generation %d",
   "gui.cobblemon_jei.ingredient.id": "ID: %s",
   "gui.cobblemon_jei.ingredient.aspects": "Aspekte: %s",
-
   "journeymap.theme.cobblemon.button": "Cobblemon Pokémon-Suche",
   "journeymap.button.active": "Cobblemon: %s",
   "journeymap.button.default": "Cobblemon-Spawns",
-
   "gui.cobblemon_jm.search.title": "Cobblemon Spawn-Suche - JourneyMap",
   "gui.cobblemon_jm.search.hint": "Nach Name oder Pokédex-Nr. suchen...",
   "gui.cobblemon_jm.search.prev": "◀ Zurück",
@@ -113,17 +106,17 @@
   "gui.cobblemon_jm.detail.sites_not_discovered": "  ✗ Nicht entdeckt (erkundetes Gebiet)",
   "gui.cobblemon_jm.detail.layer_active": "▶ Ebene auf Karte aktiv",
   "gui.cobblemon_jm.detail.layer_active_chunks": "▶ Ebene aktiv (%d Chunks)",
-
   "gui.cobblemon_jm.filter.dimension_title": "Dimensions-Filter",
   "gui.cobblemon_jm.filter.all_dimensions": "Alle Welten",
   "gui.cobblemon_jm.filter.current_dimension": "Aktuelle Welt (%s)",
   "gui.cobblemon_jm.filter.active": "Aktiv: %s",
   "gui.cobblemon_jm.filter.hint_cycle": "Linksklick: Weiter • Rechtsklick: Zurück",
-
   "chat.cobblemon_jm.scan_start": "§6[Cobblemon] §fSuche Spawns für §e%s§f...",
   "chat.cobblemon_jm.scan_progress": "§b[Cobblemon] §fGescant: §e%d / %d Chunks §7(%d Chunks gefunden)...",
   "chat.cobblemon_jm.scan_complete": "§a[Cobblemon] §fScan abgeschlossen für §e%s§f: §a%d Chunks §fauf JourneyMap angezeigt.",
   "chat.cobblemon_jm.overlay_disabled": "§7[Cobblemon] Ebene deaktiviert.",
   "chat.cobblemon_jm.radar.shiny": "§6★ [Schillerndes Radar] §e%s §6★ SHINY in der Nähe entdeckt!",
-  "chat.cobblemon_jm.radar.nearby": "§b⚡ [Cobblemon Radar] §f%s §ain der Nähe gesichtet!"
+  "chat.cobblemon_jm.radar.nearby": "§b⚡ [Cobblemon Radar] §f%s §ain der Nähe gesichtet!",
+  "gui.cobblemon_jei.category.pokemon_pasture.interval": "Intervall: ~%s Min. (Servereinstellung)",
+  "gui.cobblemon_jei.category.pokemon_pasture.tooltip.interval": "• Intervall: ~%s Minuten (Stoffwechsel/Server)"
 }

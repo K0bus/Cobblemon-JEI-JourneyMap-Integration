@@ -116,5 +116,7 @@
   "chat.cobblemon_jm.scan_complete": "§a[Cobblemon] §fEscaneamento concluído para §e%s§f: §a%d chunks §fexibidos no JourneyMap.",
   "chat.cobblemon_jm.overlay_disabled": "§7[Cobblemon] Camada desativada.",
   "chat.cobblemon_jm.radar.shiny": "§6★ [Radar Brilhante] §e%s §6★ SHINY detectado por perto!",
-  "chat.cobblemon_jm.radar.nearby": "§b⚡ [Radar Cobblemon] §f%s §aavistado por perto!"
+  "chat.cobblemon_jm.radar.nearby": "§b⚡ [Radar Cobblemon] §f%s §aavistado por perto!",
+  "gui.cobblemon_jei.category.pokemon_pasture.interval": "Intervalo: ~%s min (configuração do servidor)",
+  "gui.cobblemon_jei.category.pokemon_pasture.tooltip.interval": "• Intervalo: ~%s minutos (metabolismo/servidor)"
 }

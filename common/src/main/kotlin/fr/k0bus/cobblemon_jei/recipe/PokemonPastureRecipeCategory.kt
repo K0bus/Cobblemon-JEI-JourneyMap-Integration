@@ -191,14 +191,18 @@ class PokemonPastureRecipeCategory(
             val line2 = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tool_required", toolNames).string
             guiGraphics.drawString(font, font.plainSubstrByWidth(line2, WIDTH - 16), 8, cardY + 17, 0xFFE0E0E0.toInt(), false)
 
-            val line3 = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.interaction_direct").string
+            val line3 = if (recipe.estimatedMinutes > 0.0) {
+                Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.interval", recipe.displayIntervalMinutes).string
+            } else {
+                Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.interaction_direct").string
+            }
             guiGraphics.drawString(font, font.plainSubstrByWidth(line3, WIDTH - 16), 8, cardY + 29, 0xFFAAAAAA.toInt(), false)
         } else {
             val line1 = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.mode_passive").string
             guiGraphics.drawString(font, font.plainSubstrByWidth(line1, WIDTH - 16), 8, cardY + 5, 0xFF7BED9F.toInt(), false)
 
-            val line2 = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.desc_passive").string
-            guiGraphics.drawString(font, font.plainSubstrByWidth(line2, WIDTH - 16), 8, cardY + 17, 0xFFAAAAAA.toInt(), false)
+            val line2 = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.interval", recipe.displayIntervalMinutes).string
+            guiGraphics.drawString(font, font.plainSubstrByWidth(line2, WIDTH - 16), 8, cardY + 17, 0xFFFFD32A.toInt(), false)
 
             val line3 = if (recipe.conditions.isNotEmpty()) {
                 Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.condition", recipe.conditions.joinToString(" • ")).string
@@ -225,6 +229,13 @@ class PokemonPastureRecipeCategory(
                 Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tooltip.action", recipe.actionName)
                     .withStyle(ChatFormatting.AQUA)
             )
+
+            if (recipe.harvestType == PastureHarvestType.PASSIVE_DROP || recipe.estimatedMinutes > 0.0) {
+                tooltips.add(
+                    Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tooltip.interval", recipe.displayIntervalMinutes)
+                        .withStyle(ChatFormatting.GREEN)
+                )
+            }
 
             if (recipe.requiredTools.isNotEmpty()) {
                 val names = recipe.requiredTools.joinToString(", ") { it.hoverName.string }

@@ -176,6 +176,9 @@ object PokemonPastureDataLoader {
                     }
                 }
 
+                val cooldownTicks = interObj.get("cooldown")?.asString?.toIntOrNull()
+                    ?: (if (interObj.get("cooldown")?.isJsonPrimitive == true && interObj.get("cooldown").asJsonPrimitive.isNumber) interObj.get("cooldown").asInt else 0)
+
                 if (dropOutputs.isNotEmpty()) {
                     val signature = "${species.resourceIdentifier}|$grouping|${dropOutputs.joinToString { it.itemStack.item.toString() }}"
                     if (seenSignatures.add(signature)) {
@@ -188,6 +191,7 @@ object PokemonPastureDataLoader {
                                 requiredTools = requiredTools.distinctBy { it.item },
                                 outputs = dropOutputs,
                                 conditions = interactionConditions,
+                                cooldownTicks = cooldownTicks,
                                 notes = null
                             )
                         )

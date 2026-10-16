@@ -1,6 +1,8 @@
 package fr.k0bus.cobblemon_jei.recipe
 
 import fr.k0bus.cobblemon_jei.ingredient.PokemonSpeciesIngredient
+import com.cobblemon.mod.common.Cobblemon
+import com.cobblemon.mod.common.api.pokemon.stats.Stats
 import com.cobblemon.mod.common.pokemon.FormData
 import com.cobblemon.mod.common.pokemon.Species
 import net.minecraft.network.chat.Component
@@ -62,9 +64,46 @@ data class PokemonPastureRecipe(
     val requiredTools: List<ItemStack> = emptyList(),
     val outputs: List<PastureDropItem> = emptyList(),
     val conditions: List<String> = emptyList(),
+    val cooldownTicks: Int = 0,
     val notes: String? = null
 ) {
     val pokemonIngredient = PokemonSpeciesIngredient(species, form)
     val actionName: Component
         get() = Component.translatable(actionTranslationKey)
+
+    /**
+     * Intervalle estimé en minutes selon les paramètres du serveur / de Cobblemon.
+     * Pour les drops passifs : calculé via le métabolisme officiel de l'espèce indexé sur la vitesse et le BST.
+     * Pour les interactions manuelles : calculé via le cooldown en ticks divisé par 1200 (20 ticks * 60 s).
+     */
+    val estimatedMinutes: Double
+        get() {
+            if (harvestType == PastureHarvestType.INTERACTION) {
+                return if (cooldownTicks > 0) cooldownTicks / 1200.0 else 0.0
+            }
+
+            // Calcul du métabolisme officiel Cobblemon
+            val speed = species.baseStats.getOrDefault(Stats.SPEED, 0)
+            val bst = species.baseStats.values.sum().coerceAtLeast(1)
+            val minM = 4.0
+            val maxM = 20.0
+            val seconds = ((maxM - (speed.toDouble() / bst.toDouble()) * maxM * minM) * 60.0).toInt().coerceAtLeast(60)
+
+            // Facteur multiplicateur si le serveur modifie pastureBlockUpdateTicks (par défaut 40)
+            val serverMultiplier = try {
+                val updateTicks = Cobblemon.config.pastureBlockUpdateTicks
+                if (updateTicks > 0) updateTicks.toDouble() / 40.0 else 1.0
+            } catch (_: Throwable) {
+                1.0
+            }
+
+            val finalMinutes = (seconds / 60.0) * serverMultiplier
+            return (Math.round(finalMinutes * 10.0) / 10.0).coerceAtLeast(1.0)
+        }
+
+    val displayIntervalMinutes: String
+        get() {
+            val mins = estimatedMinutes
+            return if (mins % 1.0 == 0.0) "${mins.toInt()}" else String.format(java.util.Locale.ROOT, "%.1f", mins)
+        }
 }
