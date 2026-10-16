@@ -149,48 +149,71 @@ class CobblemonJourneyMapSearchScreen(
 
     private fun initDimensionFilters() {
         val currentDim = minecraft?.level?.dimension()
+        val allSpawnRecipes = PokemonSpawnDataLoader.loadSpawnRecipes()
         val filters = mutableListOf<DimensionFilter>()
 
-        if (currentDim != null) {
+        // Option "Monde actuel" si le joueur se trouve dans une dimension contenant des Pokémon
+        if (currentDim != null && hasPokemonInDimension(currentDim, allSpawnRecipes)) {
             filters.add(DimensionFilter.Current(currentDim))
         }
         filters.add(DimensionFilter.All)
 
         val seen = mutableSetOf<ResourceKey<Level>>()
 
-        // 1. Dimensions officielles de base (proposées en tête de liste)
-        val standardDims = listOf(
-            Pair(Level.OVERWORLD, "Overworld"),
-            Pair(Level.NETHER, "Nether"),
-            Pair(Level.END, "The End")
-        )
-        for ((key, name) in standardDims) {
-            filters.add(DimensionFilter.Specific(key, name))
-            seen.add(key)
-        }
+        // Dimensions candidates : Overworld, Nether, The End + dimensions moddées enregistrées
+        val candidateDims = mutableListOf<ResourceKey<Level>>()
+        candidateDims.add(Level.OVERWORLD)
+        candidateDims.add(Level.NETHER)
+        candidateDims.add(Level.END)
 
-        // 2. Dimensions réelles supplémentaires enregistrées dans le monde (ex: Aether, Undergarden...)
         val registeredLevels = minecraft?.connection?.levels()?.toSet() ?: emptySet()
         val extraRegistered = registeredLevels
-            .filter { it !in seen }
+            .filter { it !in candidateDims }
             .sortedBy { it.location().toString() }
+        candidateDims.addAll(extraRegistered)
 
-        for (dimKey in extraRegistered) {
-            val cleanName = getReadableDimensionName(dimKey)
-            filters.add(DimensionFilter.Specific(dimKey, cleanName))
-            seen.add(dimKey)
+        // Seuls les mondes contenant effectivement au moins un Pokémon sont conservés
+        for (dimKey in candidateDims) {
+            if (seen.add(dimKey) && hasPokemonInDimension(dimKey, allSpawnRecipes)) {
+                val cleanName = getReadableDimensionName(dimKey)
+                filters.add(DimensionFilter.Specific(dimKey, cleanName))
+            }
         }
 
         availableFilters = filters
         if (currentDimensionFilter !in availableFilters) {
-            currentDimensionFilter = if (currentDim != null) {
-                availableFilters.firstOrNull { it is DimensionFilter.Current } ?: DimensionFilter.All
-            } else {
-                DimensionFilter.All
-            }
+            currentDimensionFilter = availableFilters.firstOrNull { it is DimensionFilter.Current }
+                ?: availableFilters.firstOrNull { it is DimensionFilter.All }
+                ?: DimensionFilter.All
         }
 
         recomputeDimensionCompatibleSpecies()
+    }
+
+    private fun hasPokemonInDimension(
+        dimKey: ResourceKey<Level>,
+        allSpawnRecipes: List<PokemonSpawnRecipe>
+    ): Boolean {
+        // 1. Spawns sauvages naturels
+        if (allSpawnRecipes.any { it.isNaturalSpawn && isRecipeInDimension(it, dimKey) }) {
+            return true
+        }
+
+        // 2. Structures découvertes ou répertoriées (fossiles, sanctuaires légendaires)
+        try {
+            if (dimKey == Level.OVERWORLD && allSpecies.any {
+                fr.k0bus.cobblemon_jei.journeymap.structure.DynamicStructureRegistryService.getStructuresForSpecies(it).isNotEmpty()
+            }) {
+                return true
+            }
+            if (allSpecies.any { sp ->
+                fr.k0bus.cobblemon_jei.journeymap.structure.StructureOverlayManager.getDiscoveredStructuresForSpecies(sp).any { it.dimension == dimKey }
+            }) {
+                return true
+            }
+        } catch (_: Throwable) {}
+
+        return false
     }
 
     private fun cycleDimensionFilter(forward: Boolean) {
