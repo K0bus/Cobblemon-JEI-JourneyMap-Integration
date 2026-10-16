@@ -424,11 +424,8 @@ object PokemonSpawnDataLoader {
                 lower.contains("the_end") || lower.contains("/end") || lower.contains("is_end") ||
                     lower.startsWith("minecraft:end_") || lower == "minecraft:the_end" -> deduced.add("minecraft:the_end")
                 lower.contains("aether") -> deduced.add("aether:the_aether")
-                lower.contains("twilightforest") -> deduced.add("twilightforest:twilight_forest")
+                lower.contains("twilightforest") || lower.contains("twilight_forest") -> deduced.add("twilightforest:twilight_forest")
                 lower.contains("undergarden") -> deduced.add("undergarden:undergarden")
-                ns != "minecraft" && ns != "cobblemon" && ns != "c" && ns != "forge" && ns != "neoforge" -> {
-                    deduced.add("$ns:$ns")
-                }
                 else -> deduced.add("minecraft:overworld")
             }
         }

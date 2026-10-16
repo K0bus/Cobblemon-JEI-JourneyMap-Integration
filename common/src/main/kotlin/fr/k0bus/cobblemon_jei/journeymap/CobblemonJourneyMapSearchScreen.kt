@@ -156,6 +156,9 @@ class CobblemonJourneyMapSearchScreen(
         }
         filters.add(DimensionFilter.All)
 
+        val seen = mutableSetOf<ResourceKey<Level>>()
+
+        // 1. Dimensions officielles de base (proposées en tête de liste)
         val standardDims = listOf(
             Pair(Level.OVERWORLD, "Overworld"),
             Pair(Level.NETHER, "Nether"),
@@ -163,27 +166,20 @@ class CobblemonJourneyMapSearchScreen(
         )
         for ((key, name) in standardDims) {
             filters.add(DimensionFilter.Specific(key, name))
+            seen.add(key)
         }
 
-        try {
-            val seen = standardDims.map { it.first.location().toString() }.toMutableSet()
-            currentDim?.let { seen.add(it.location().toString()) }
-            val allSpawnRecipes = PokemonSpawnDataLoader.loadSpawnRecipes()
-            val extraDims = allSpawnRecipes
-                .flatMap { it.dimensions }
-                .map { it.trim().lowercase() }
-                .filter { it.isNotEmpty() && !it.contains("any") }
-                .distinct()
+        // 2. Dimensions réelles supplémentaires enregistrées dans le monde (ex: Aether, Undergarden...)
+        val registeredLevels = minecraft?.connection?.levels()?.toSet() ?: emptySet()
+        val extraRegistered = registeredLevels
+            .filter { it !in seen }
+            .sortedBy { it.location().toString() }
 
-            for (dimId in extraDims) {
-                val parsedLoc = ResourceLocation.tryParse(dimId) ?: continue
-                if (seen.add(parsedLoc.toString())) {
-                    val key = ResourceKey.create(Registries.DIMENSION, parsedLoc)
-                    val cleanName = getReadableDimensionName(key)
-                    filters.add(DimensionFilter.Specific(key, cleanName))
-                }
-            }
-        } catch (_: Throwable) {}
+        for (dimKey in extraRegistered) {
+            val cleanName = getReadableDimensionName(dimKey)
+            filters.add(DimensionFilter.Specific(dimKey, cleanName))
+            seen.add(dimKey)
+        }
 
         availableFilters = filters
         if (currentDimensionFilter !in availableFilters) {
@@ -577,6 +573,8 @@ class CobblemonJourneyMapSearchScreen(
                 "the_nether", "nether" -> "Nether"
                 "the_end", "end" -> "The End"
                 "the_aether", "aether" -> "L'Aether"
+                "twilight_forest" -> "Twilight Forest"
+                "undergarden" -> "Undergarden"
                 else -> dimKey.location().path.replace("_", " ").split(" ")
                     .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
             }
