@@ -1,0 +1,196 @@
+package fr.k0bus.cobblemon_jei.recipe
+
+import fr.k0bus.cobblemon_jei.ingredient.PokemonSpeciesIngredient
+import com.cobblemon.mod.common.CobblemonItems
+import mezz.jei.api.constants.VanillaTypes
+import mezz.jei.api.gui.builder.IRecipeLayoutBuilder
+import mezz.jei.api.gui.drawable.IDrawable
+import mezz.jei.api.gui.ingredient.IRecipeSlotsView
+import mezz.jei.api.helpers.IGuiHelper
+import mezz.jei.api.recipe.IFocusGroup
+import mezz.jei.api.recipe.RecipeIngredientRole
+import mezz.jei.api.recipe.RecipeType
+import mezz.jei.api.recipe.category.IRecipeCategory
+import net.minecraft.ChatFormatting
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.network.chat.Component
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
+
+/**
+ * Catégorie JEI pour les évolutions de Pokémon dans Cobblemon.
+ * Affiche le Pokémon d'origine, le Pokémon résultant, l'objet nécessaire (Pierre foudre, objet tenu, etc.)
+ * et le résumé textuel des conditions d'évolution (niveau, bonheur, météo, etc.).
+ */
+@Suppress("DEPRECATION")
+class PokemonEvolutionRecipeCategory(
+    private val guiHelper: IGuiHelper
+) : IRecipeCategory<PokemonEvolutionRecipe> {
+
+    companion object {
+        val RECIPE_TYPE: RecipeType<PokemonEvolutionRecipe> = RecipeType.create(
+            "cobblemon_jei",
+            "pokemon_evolutions",
+            PokemonEvolutionRecipe::class.java
+        )
+
+        const val WIDTH = 176
+        const val HEIGHT = 94
+    }
+
+    override fun getRecipeType(): RecipeType<PokemonEvolutionRecipe> = RECIPE_TYPE
+
+    override fun getTitle(): Component {
+        return Component.translatable("gui.cobblemon_jei.category.pokemon_evolutions")
+    }
+
+    override fun getBackground(): IDrawable {
+        return guiHelper.createBlankDrawable(WIDTH, HEIGHT)
+    }
+
+    override fun getIcon(): IDrawable {
+        val stack = try {
+            ItemStack(CobblemonItems.THUNDER_STONE)
+        } catch (_: Throwable) {
+            ItemStack(Items.AMETHYST_SHARD)
+        }
+        return guiHelper.createDrawableItemStack(stack)
+    }
+
+    override fun setRecipe(
+        builder: IRecipeLayoutBuilder,
+        recipe: PokemonEvolutionRecipe,
+        focuses: IFocusGroup
+    ) {
+        // Slot 1 : Pokémon de départ (Sous-évolution)
+        builder.addSlot(RecipeIngredientRole.INPUT, 16, 20)
+            .addIngredient(PokemonSpeciesIngredient.TYPE, recipe.inputIngredient)
+
+        // Slot 2 : Objet d'évolution (si requis : Pierre Foudre, objet tenu, etc.)
+        if (recipe.requiredItems.isNotEmpty()) {
+            builder.addSlot(RecipeIngredientRole.INPUT, 80, 10)
+                .addIngredients(VanillaTypes.ITEM_STACK, recipe.requiredItems)
+        }
+
+        // Slot 3 : Pokémon évolué (Résultat)
+        builder.addSlot(RecipeIngredientRole.OUTPUT, 142, 20)
+            .addIngredient(PokemonSpeciesIngredient.TYPE, recipe.outputIngredient)
+    }
+
+    override fun draw(
+        recipe: PokemonEvolutionRecipe,
+        recipeSlotsView: IRecipeSlotsView,
+        guiGraphics: GuiGraphics,
+        mouseX: Double,
+        mouseY: Double
+    ) {
+        val font = Minecraft.getInstance().font
+
+        // 1. Fond sombre élégant
+        guiGraphics.fill(0, 0, WIDTH, HEIGHT, 0xFF141519.toInt())
+        guiGraphics.fill(1, 1, WIDTH - 1, HEIGHT - 1, 0xFF1C1E24.toInt())
+
+        // 2. Cadres des slots Pokémon (Origine et Résultat)
+        // Slot Origine (15, 19 à 34, 38)
+        guiGraphics.fill(15, 19, 34, 38, 0xFF0E0F12.toInt())
+        guiGraphics.fill(14, 18, 35, 19, 0xFF3D4050.toInt())
+        guiGraphics.fill(14, 37, 35, 38, 0xFF3D4050.toInt())
+        guiGraphics.fill(14, 18, 15, 38, 0xFF3D4050.toInt())
+        guiGraphics.fill(34, 18, 35, 38, 0xFF3D4050.toInt())
+
+        // Slot Résultat (141, 19 à 160, 38)
+        guiGraphics.fill(141, 19, 160, 38, 0xFF0E0F12.toInt())
+        guiGraphics.fill(140, 18, 161, 19, 0xFF3D4050.toInt())
+        guiGraphics.fill(140, 37, 161, 38, 0xFF3D4050.toInt())
+        guiGraphics.fill(140, 18, 141, 38, 0xFF3D4050.toInt())
+        guiGraphics.fill(160, 18, 161, 38, 0xFF3D4050.toInt())
+
+        // 3. Cadre central de l'objet si requis
+        if (recipe.requiredItems.isNotEmpty()) {
+            guiGraphics.fill(79, 9, 98, 28, 0xFF0E0F12.toInt())
+            guiGraphics.fill(78, 8, 99, 9, 0xFFE1B12C.toInt())
+            guiGraphics.fill(78, 27, 99, 28, 0xFFE1B12C.toInt())
+            guiGraphics.fill(78, 8, 79, 28, 0xFFE1B12C.toInt())
+            guiGraphics.fill(97, 8, 98, 28, 0xFFE1B12C.toInt())
+        }
+
+        // 4. Flèche d'évolution centrale stylisée
+        val arrowY = if (recipe.requiredItems.isNotEmpty()) 32 else 24
+        guiGraphics.fill(60, arrowY + 3, 110, arrowY + 5, 0xFF54A0FF.toInt())
+        guiGraphics.fill(108, arrowY + 1, 114, arrowY + 7, 0xFF54A0FF.toInt())
+        guiGraphics.fill(113, arrowY + 2, 116, arrowY + 6, 0xFF54A0FF.toInt())
+
+        // 5. Noms des deux Pokémon au-dessus de leurs slots respectifs
+        val srcName = recipe.sourceSpecies.translatedName.string
+        val dstName = recipe.targetSpecies.translatedName.string
+
+        val srcW = font.width(srcName)
+        val dstW = font.width(dstName)
+
+        val srcX = (24 - srcW / 2).coerceIn(4, 70)
+        val dstX = (150 - dstW / 2).coerceIn(100, WIDTH - dstW - 4)
+
+        guiGraphics.drawString(font, srcName, srcX, 7, 0xFFCCCCCC.toInt(), false)
+        guiGraphics.drawString(font, dstName, dstX, 7, 0xFF2ED573.toInt(), false)
+
+        // 6. Carte récapitulative des conditions (Y: 52 à 88)
+        val cardY = 50
+        guiGraphics.fill(6, cardY, WIDTH - 6, HEIGHT - 6, 0xFF181920.toInt())
+        guiGraphics.fill(5, cardY - 1, WIDTH - 5, cardY, 0xFF2F3240.toInt())
+
+        // Libellé de variante / condition
+        val variantTitle = "Condition :"
+        guiGraphics.drawString(font, variantTitle, 10, cardY + 5, 0xFFFF9F43.toInt(), false)
+
+        // Texte principal de condition
+        val summaryText = recipe.requirementsSummary
+        val maxSummaryWidth = WIDTH - 72
+        val displaySummary = if (font.width(summaryText) > maxSummaryWidth) {
+            font.plainSubstrByWidth(summaryText, maxSummaryWidth - 6) + "…"
+        } else {
+            summaryText
+        }
+        guiGraphics.drawString(font, displaySummary, 62, cardY + 5, 0xFFFFFFFF.toInt(), false)
+
+        // Ligne secondaire (autres détails ou conditions)
+        if (recipe.additionalConditions.isNotEmpty()) {
+            val subText = recipe.additionalConditions.first()
+            guiGraphics.drawString(font, "• $subText", 10, cardY + 18, 0xFFAAAAAA.toInt(), false)
+            if (recipe.additionalConditions.size > 1) {
+                guiGraphics.drawString(font, "+ ${recipe.additionalConditions.size - 1} autre condition (survoler)", 10, cardY + 27, 0xFF888888.toInt(), false)
+            }
+        } else if (recipe.requiredItems.isNotEmpty()) {
+            val itemName = recipe.requiredItems.first().hoverName.string
+            guiGraphics.drawString(font, "• Requiert l'objet : $itemName", 10, cardY + 18, 0xFFE0E0E0.toInt(), false)
+        } else {
+            guiGraphics.drawString(font, "• Évolution directe au niveau requis", 10, cardY + 18, 0xFF888888.toInt(), false)
+        }
+    }
+
+    override fun getTooltipStrings(
+        recipe: PokemonEvolutionRecipe,
+        recipeSlotsView: IRecipeSlotsView,
+        mouseX: Double,
+        mouseY: Double
+    ): List<Component> {
+        val tooltips = mutableListOf<Component>()
+
+        // Tooltip complet si survol de la zone de condition (Y entre 50 et 88)
+        if (mouseY >= 50 && mouseY <= (HEIGHT - 6) && mouseX >= 6 && mouseX <= (WIDTH - 6)) {
+            tooltips.add(Component.literal("Conditions d'évolution :").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
+            tooltips.add(Component.literal(" • Type : ${recipe.evolutionVariant}").withStyle(ChatFormatting.AQUA))
+
+            if (recipe.requiredItems.isNotEmpty()) {
+                val itemNames = recipe.requiredItems.joinToString(", ") { it.hoverName.string }
+                tooltips.add(Component.literal(" • Objet requis : $itemNames").withStyle(ChatFormatting.YELLOW))
+            }
+
+            for (cond in recipe.additionalConditions) {
+                tooltips.add(Component.literal(" • $cond").withStyle(ChatFormatting.GRAY))
+            }
+        }
+
+        return tooltips
+    }
+}

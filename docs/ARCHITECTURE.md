@@ -32,14 +32,14 @@ Pour fonctionner de manière transparente et exhaustive dans tous les environnem
 ## 🧩 Ponts d'Interopérabilité
 
 ### 1. Just Enough Items (JEI)
-- **Plugin** : [CobblemonJeiPlugin.kt](file:///home/k0bus/dev/minecraft/Cobblemon_JourneyMap/common/src/main/kotlin/com/cobblemon/jei/CobblemonJeiPlugin.kt) annoté `@JeiPlugin`.
+- **Plugin** : [CobblemonJeiPlugin.kt](file:///home/k0bus/dev/minecraft/Cobblemon_JourneyMap/common/src/main/kotlin/fr/k0bus/cobblemon_jei/CobblemonJeiPlugin.kt) annoté `@JeiPlugin`.
 - **Ingrédient personnalisé** : `PokemonSpeciesIngredient` avec renderer graphique de modèles/icônes.
 - **Catégories enregistrées** :
-  - `cobblemon:spawn` : [PokemonSpawnRecipeCategory.kt](file:///home/k0bus/dev/minecraft/Cobblemon_JourneyMap/common/src/main/kotlin/com/cobblemon/jei/recipe/PokemonSpawnRecipeCategory.kt)
-  - `cobblemon:evolution` : [PokemonEvolutionRecipeCategory.kt](file:///home/k0bus/dev/minecraft/Cobblemon_JourneyMap/common/src/main/kotlin/com/cobblemon/jei/recipe/PokemonEvolutionRecipeCategory.kt)
+  - `cobblemon:spawn` : [PokemonSpawnRecipeCategory.kt](file:///home/k0bus/dev/minecraft/Cobblemon_JourneyMap/common/src/main/kotlin/fr/k0bus/cobblemon_jei/recipe/PokemonSpawnRecipeCategory.kt)
+  - `cobblemon:evolution` : [PokemonEvolutionRecipeCategory.kt](file:///home/k0bus/dev/minecraft/Cobblemon_JourneyMap/common/src/main/kotlin/fr/k0bus/cobblemon_jei/recipe/PokemonEvolutionRecipeCategory.kt)
 
 ### 2. JourneyMap API v2
-- **Plugin** : [CobblemonJourneyMapPlugin.kt](file:///home/k0bus/dev/minecraft/Cobblemon_JourneyMap/common/src/main/kotlin/com/cobblemon/jei/journeymap/CobblemonJourneyMapPlugin.kt) implémentant `IClientPlugin`.
+- **Plugin** : [CobblemonJourneyMapPlugin.kt](file:///home/k0bus/dev/minecraft/Cobblemon_JourneyMap/common/src/main/kotlin/fr/k0bus/cobblemon_jei/journeymap/CobblemonJourneyMapPlugin.kt) implémentant `IClientPlugin`.
 - **Événements** :
   - `ADDON_BUTTON_DISPLAY_EVENT` : Ajout du bouton Pokéball dans la barre d'outils plein écran.
   - `ScreenEvent.Render.Post` : Dessin du HUD d'information flottant.

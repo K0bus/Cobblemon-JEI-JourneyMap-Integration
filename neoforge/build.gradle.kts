@@ -32,6 +32,7 @@ dependencies {
     compileOnly("info.journeymap:journeymap-api-neoforge:2.0.0-1.21.1-SNAPSHOT")
     testImplementation("info.journeymap:journeymap-api-neoforge:2.0.0-1.21.1-SNAPSHOT")
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testImplementation(kotlin("reflect"))
 }
 
 tasks.test {

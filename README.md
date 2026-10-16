@@ -2,127 +2,130 @@
 
 [![Minecraft](https://img.shields.io/badge/Minecraft-1.21.1-brightgreen.svg)](https://minecraft.net/)
 [![NeoForge](https://img.shields.io/badge/NeoForge-21.1.249+-orange.svg)](https://neoforged.net/)
+[![Fabric](https://img.shields.io/badge/Fabric-0.16.10+-blue.svg)](https://fabricmc.net/)
 [![Cobblemon](https://img.shields.io/badge/Cobblemon-1.7.3+-red.svg)](https://cobblemon.com/)
 [![JourneyMap](https://img.shields.io/badge/JourneyMap-5.10.x%20API%20v2-blue.svg)](https://journeymap.info/)
 [![JEI](https://img.shields.io/badge/JEI-19.21+-purple.svg)](https://www.curseforge.com/minecraft/mc-mods/jei)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Cobblemon JEI & JourneyMap Integration** est un mod client haute performance pour Minecraft Java (NeoForge 1.21.1), conçu pour fusionner l'écosystème **Cobblemon** avec **Just Enough Items (JEI)** et **JourneyMap**.
+**Cobblemon JEI & JourneyMap Integration** is a high-performance client-side mod for Minecraft Java (NeoForge & Fabric 1.21.1), designed to seamlessly bridge the **Cobblemon** ecosystem with **Just Enough Items (JEI)** and **JourneyMap**.
 
-Il fournit :
-1. **Une intégration JEI complète** pour consulter les conditions d'apparition (biomes, dimensions, météo, tranches horaires, altitudes, contextes) et les arbres d'évolution de chaque espèce.
-2. **Une cartographie interactive JourneyMap** affichant sur la minimap et la carte plein écran les zones éligibles de spawn explorées avec fusion géométrique des chunks et code couleur par rareté.
-3. **Un radar d'entités en temps réel** avec **Sentinelle Shiny globale** (détection de tous les Pokémon Shiny sauvages à proximité avec alertes sonores et visuelles).
-4. **Un HUD immersif** flottant sous le bouton Pokéball de la carte plein écran.
-
----
-
-## 🌟 Fonctionnalités Principales
-
-### 1. 🔍 Intégration Just Enough Items (JEI)
-- **Recherche par ingrédient Cobblemon** : Recherchez n'importe quel Pokémon par son nom traduit (FR/EN), numéro de Pokédex national, ou type élémentaire.
-- **Fiches d'apparition ultra-détaillées** :
-  - Dimensions éligibles (Overworld, Nether, End, dimensions moddées comme l'Aether).
-  - Biomes autorisés (avec résolution des tags dynamiques `#minecraft:is_forest`, `#c:is_nether`, etc.).
-  - Conditions environnementales : Météo (clair, pluie, orage), tranche horaire (jour, nuit, aube, crépuscule), altitude Y min/max, contextes (au sol, dans l'eau, dans la lave, souterrain, pêche).
-  - Poids de spawn, rareté estimée et niveau moyen.
-- **Fiches d'évolution** :
-  - Niveaux requis, objets d'évolution (pierres, câbles de liaison), échanges, amitié, tenues d'objets, moments de la journée.
+It provides:
+1. **Comprehensive JEI Integration** to look up natural spawn conditions (biomes, dimensions, weather, time windows, altitudes, contexts) and full evolution trees for any species.
+2. **Interactive JourneyMap Cartography** showing explored spawn-eligible zones on both the minimap and fullscreen map, featuring 2D geometric chunk polygon merging and rarity-coded palettes.
+3. **Real-time Entity Radar & Global Shiny Sentry** (passively scans and alerts you to any nearby wild Shiny Pokémon with visual announcements and audio fanfares).
+4. **Dynamic Structure Discovery** automatically locating archaeological fossil dig sites and legendary monument shrines.
+5. **Immersive Floating HUD** displaying tracked species stats, element types, and live detection counters directly below the fullscreen JourneyMap toolbar.
 
 ---
 
-### 2. 🗺️ Cartographie & Overlays JourneyMap
-- **Bouton dédié dans la barre d'outils plein écran** : Icône Pokéball cliquable permettant de rechercher et sélectionner un Pokémon à suivre.
-- **Moteur de fusion géométrique de chunks (`ChunkPolygonMerger`)** :
-  - Combine automatiquement les chunks adjacents éligibles en polygones 2D optimisés.
-  - Zéro quadrillage interne parasite, jusqu'à 95% d'objets graphiques en moins pour des performances fluides.
-- **Charte graphique indexée sur la rareté (`RarityColorPalette`)** :
-  - 🟢 **Commun (Common)** : Vert émeraude (`#2ECC71`)
-  - 🔵 **Peu commun (Uncommon)** : Bleu lagon (`#3498DB`)
-  - 🟣 **Rare (Rare)** : Violet améthyste (`#9B59B6`)
-  - 🟠 **Ultra-Rare (Ultra-Rare)** : Ambre néon (`#E67E22`)
-- **Scan persistant asynchrone (`JourneyMapDiskScanner`)** :
-  - **Étape 1 (Instantanée)** : Affichage immédiat (< 15ms) à partir du cache mémoire et des chunks chargés en RAM.
-  - **Étape 2 (Arrière-plan)** : Analyse multithreadée des régions explorées sur disque (`.mca`, `.jmc`, tuiles JourneyMap).
-  - Support multi-dimensionnel complet (Overworld, Nether, End, Aether, dimensions moddées).
+## 🌟 Key Features
+
+### 1. 🔍 Just Enough Items (JEI) Integration
+- **Search by Cobblemon Species Ingredient**: Look up any Pokémon by its translated name (EN/FR), National Pokédex number, or elemental types.
+- **Ultra-Detailed Spawn Cards**:
+  - Eligible dimensions (Overworld, Nether, End, plus modded dimensions such as The Aether).
+  - Allowed biomes (with dynamic registry tag resolution like `#minecraft:is_forest`, `#c:is_nether`, etc.).
+  - Environmental criteria: Weather (clear, rain, thunder), time of day (day, night, dawn, dusk), Y altitude bounds, and spawn contexts (ground, water, lava, underground, fishing).
+  - Spawn weights, estimated rarity buckets, and level ranges.
+- **Evolution Tree Cards**:
+  - Level thresholds, evolution stones and items (linking cords, held items), trade conditions, friendship levels, and required time-of-day windows.
 
 ---
 
-### 3. ⚡ Radar en temps réel & Sentinelle Shiny Globale
-- **Sentinelle Shiny permanente** :
-  - Détecte **tous les Pokémon Shiny sauvages** à proximité (~160 blocs horizontalement, 64 blocs verticalement), même si aucun Pokémon n'est traqué ou si vous en cherchez un autre.
-  - **Alerte Sonore** : Fanfare triomphale (`UI_TOAST_CHALLENGE_COMPLETE`).
-  - **Alerte Visuelle** : Message doré dans l'Actionbar.
-  - **Marqueur JourneyMap dédié (`MarkerOverlay`)** : Pokéball dorée scintillante pointant la position du Shiny avec son nom, niveau et statut.
-- **Radar de cible traquée** :
-  - Piste en direct l'espèce et la forme du Pokémon actuellement sélectionné.
-  - Déplacement fluide du marqueur sur la minimap et la carte plein écran.
-  - Nettoyage instantané lors de la capture, défaite ou despawn de l'entité.
+### 2. 🗺️ JourneyMap Mapping & Overlays
+- **Dedicated Fullscreen Toolbar Button**: Custom Pokéball icon allowing instant searching and toggling of Pokémon species tracking.
+- **Geometric Chunk Polygon Merger (`ChunkPolygonMerger`)**:
+  - Automatically merges contiguous eligible chunks into smooth, clean 2D polygon boundaries.
+  - Eliminates interior grid lines and reduces graphical map overlay objects by up to 95% for fluid framerates.
+- **Rarity Color Palette (`RarityColorPalette`)**:
+  - 🟢 **Common**: Emerald Green (`#2ECC71`)
+  - 🔵 **Uncommon**: Lagoon Blue (`#3498DB`)
+  - 🟣 **Rare**: Amethyst Purple (`#9B59B6`)
+  - 🟠 **Ultra-Rare**: Neon Amber (`#E67E22`)
+- **2-Tier Asynchronous Disk Scanner (`JourneyMapDiskScanner`)**:
+  - **Tier 1 (Instantaneous)**: Immediate rendering (< 15 ms) utilizing active RAM chunks and in-memory caches.
+  - **Tier 2 (Background Thread)**: Multi-threaded asynchronous scanning of on-disk explored world regions (`.mca`, `.jmc`, JourneyMap map tiles).
+  - Full multi-dimension support (Overworld, Nether, End, modded dimensions).
 
 ---
 
-### 4. 🏛️ Découverte Dynamique des Structures : Fossiles & Monuments Légendaires
-- **Zéro liste codée en dur** :
-  - Interrogation directe du registre mondial `Registries.STRUCTURE` au chargement du monde.
-  - Détection automatique par namespaces (`cobblemon`, `legendarymonuments`) et tags (`#cobblemon:fossil`, `#cobblemon:legendary`, etc.).
-- **Sites Archéologiques & Fossiles (`FossilStructureHandler`)** :
-  - Catégorie JourneyMap dédiée : `"Cobblemon Fossils"`.
-  - Infobulle complète avec les fossiles et Pokémon déterrés (Amonita, Kabuto, Ptéra, Lilia, Anorith, Dinoclier, Kranidos, Carapagos, Arkéapti, Ptyranidur, Amagara, fossiles de Galar).
-  - Détection et centrage sur les zones à blocs suspects (`BrushableBlockEntity` / sable et gravier suspects).
-- **Monuments & Sanctuaires Légendaires (`LegendaryStructureHandler`)** :
-  - Catégorie JourneyMap dédiée : `"Legendary Monuments"`.
-  - Marqueur doré distinctif avec icône issue du mod ou du sprite Cobblemon.
-  - Centrage fidèle sur les blocs de piédestal (`*_pedestal`), autels et sanctuaires dans les chunks chargés.
-- **Mise en évidence interactive** :
-  - Sélectionner un Pokémon fossile ou légendaire dans l'interface illumine instantanément les structures correspondantes.
-- **Performance Asynchrone (`StructureRegionScanner`)** :
-  - Scan multithreadé sans latence des en-têtes Anvil (`.mca`) et mise en cache persistant.
+### 3. ⚡ Real-Time Entity Radar & Global Shiny Sentry
+- **Permanent Global Shiny Sentry**:
+  - Passively scans for **any wild Shiny Pokémon** within range (~160 blocks horizontally, 64 blocks vertically), even when no Pokémon is currently selected or when tracking a different target.
+  - **Audio Fanfare**: Plays a celebratory chime (`UI_TOAST_CHALLENGE_COMPLETE`).
+  - **Visual Notification**: Golden highlight banner in the client Actionbar.
+  - **Dedicated Map Marker (`MarkerOverlay`)**: Sparkling golden Pokéball marker highlighting the Shiny's exact position with species name, level, and status tooltip.
+- **Active Target Radar**:
+  - Tracks live positions of the selected species and form in real-time.
+  - Smooth marker movement on both the minimap and fullscreen map.
+  - Automatic removal upon entity capture, defeat, or despawn.
 
 ---
 
-### 5. 🎴 HUD Flottant & Compteurs de Détection
-- Carte d'information moderne intégrée sous le bouton JourneyMap :
-  - Modèle 3D / icône du Pokémon suivi.
-  - Badges des types élémentaires colorés.
-  - Rareté estimée et Pokédex #.
-  - Barre de progression animée du scan global des régions.
-  - État du radar en temps réel (*"X cible(s) à portée"* / *"★ SHINY détecté !"*).
+### 4. 🏛️ Dynamic Structure Discovery: Fossils & Legendary Monuments
+- **Zero Hardcoded Registry Lists**:
+  - Inspects the game's `Registries.STRUCTURE` dynamically during world join.
+  - Automatically indexes structures by namespaces (`cobblemon`, `legendarymonuments`) and data tags (`#cobblemon:fossil`, `#cobblemon:legendary`).
+- **Archaeological Fossil Sites (`FossilStructureHandler`)**:
+  - Dedicated JourneyMap overlay category: `"Cobblemon Fossils"`.
+  - Detailed tooltips displaying resurrectable prehistoric species (Omanyte, Kabuto, Aerodactyl, Lileep, Anorith, Shieldon, Cranidos, Tirtouga, Archen, Tyrunt, Amaura, and Galar fossils).
+  - Accurate spatial positioning pinpointing suspicious blocks (`BrushableBlockEntity` / suspicious sand and gravel).
+- **Legendary Monuments & Shrines (`LegendaryStructureHandler`)**:
+  - Dedicated JourneyMap overlay category: `"Legendary Monuments"`.
+  - Distinctive shrine markers centered precisely over pedestal blocks (`*_pedestal`), altars, and sanctums in loaded chunks.
+- **Interactive Cross-Highlighter**:
+  - Selecting a fossil or legendary species in JEI or JourneyMap immediately illuminates its corresponding archaeological and monument sites.
+- **Asynchronous Disk Performance (`StructureRegionScanner`)**:
+  - Multi-threaded asynchronous parsing of Anvil chunk headers (`.mca`) with persistent caching.
 
 ---
 
-## 🛠️ Architecture Technique
+### 5. 🎴 Floating HUD & Live Statistics
+- Modern floating information card integrated directly below the JourneyMap toolbar button:
+  - 3D Pokémon model preview or official sprite icon.
+  - Colored elemental type badges.
+  - Pokedex # and estimated rarity indicator.
+  - Animated progress indicator for asynchronous region scanning.
+  - Live radar status (*"X target(s) in range"* / *"★ SHINY Detected!"*).
+
+---
+
+## 🛠️ Project Structure & Architecture
 
 ```
 Cobblemon_JourneyMap/
-├── common/src/main/kotlin/com/cobblemon/jei/
-│   ├── CobblemonJeiPlugin.kt             # Point d'entrée JEI (ingrédients, catégories, recettes)
+├── common/src/main/kotlin/fr/k0bus/cobblemon_jei/
+│   ├── CobblemonJeiPlugin.kt             # JEI entrypoint (ingredients, categories, recipes)
 │   ├── data/
-│   │   ├── CobblemonDataScanner.kt       # Découverte multi-sources des JSON de données (ModList, Classpath, Disque)
-│   │   ├── PokemonSpawnDataLoader.kt     # Parsing & consolidation des règles de spawn Cobblemon
-│   │   └── PokemonEvolutionDataLoader.kt # Parsing & résolution des branches d'évolution
-│   ├── ingredient/                       # Gestion du type d'ingrédient Pokémon dans JEI
-│   ├── recipe/                           # Catégories graphiques JEI (Spawn & Évolution)
+│   │   ├── CobblemonDataScanner.kt       # Multi-source JSON scanner (ModList, Classpath, Disk)
+│   │   ├── PokemonSpawnDataLoader.kt     # Parsing & consolidation of Cobblemon spawn rules
+│   │   └── PokemonEvolutionDataLoader.kt # Evolution branch resolver
+│   ├── ingredient/                       # Custom JEI Pokémon species ingredient & renderer
+│   ├── recipe/                           # JEI graphical recipe categories (Spawns & Evolutions)
 │   └── journeymap/
-│       ├── CobblemonJourneyMapPlugin.kt  # Enregistrement plugin JourneyMap v2 & bouton UI
-│       ├── CobblemonJourneyMapOverlayHud.kt # HUD carte plein écran sous le bouton Pokéball
-│       ├── CobblemonJourneyMapSearchScreen.kt # Écran de sélection et de recherche de Pokémon
-│       ├── CobblemonOverlayManager.kt    # Façade publique de contrôle de l'overlay
-│       ├── SpawnOverlayManager.kt        # Orchestrateur d'affichage et pipeline en 2 étapes
-│       ├── CobblemonSpawnMatcher.kt      # Algorithme d'éligibilité biome/dimension
-│       ├── ChunkPolygonMerger.kt         # Fusion géométrique 2D des chunks adjacents
-│       ├── JourneyMapDiskScanner.kt      # Scan asynchrone des régions disques JourneyMap & Anvil
-│       ├── PokemonRadarService.kt        # Radar d'entités temps réel & Sentinelle Shiny
-│       ├── RarityColorPalette.kt         # Charte graphique & infobulles riches
-│       └── structure/                    # Module de détection et cartographie dynamique des structures
-│           ├── DynamicStructureRegistryService.kt # Classification dynamique sans hardcoding
-│           ├── FossilStructureHandler.kt          # Gestionnaire sites archéologiques & fossiles
-│           ├── LegendaryStructureHandler.kt       # Gestionnaire monuments & sanctuaires légendaires
-│           ├── StructureRegionScanner.kt          # Scan asynchrone E/S disques (.mca)
-│           └── StructureOverlayManager.kt         # Coordinateur central JourneyMap
-├── neoforge/                             # Module NeoForge 1.21.1
-│   ├── src/main/java/.../CobblemonJeiNeoForge.java # Point d'entrée mod client NeoForge
+│       ├── CobblemonJourneyMapPlugin.kt  # JourneyMap API v2 client plugin & UI toolbar button
+│       ├── CobblemonJourneyMapOverlayHud.kt # Fullscreen HUD card below the Pokéball button
+│       ├── CobblemonJourneyMapSearchScreen.kt # Pokémon search & selection dialog
+│       ├── CobblemonOverlayManager.kt    # Public overlay controller facade
+│       ├── SpawnOverlayManager.kt        # 2-step display pipeline orchestrator
+│       ├── CobblemonSpawnMatcher.kt      # Biome/dimension condition matching engine
+│       ├── ChunkPolygonMerger.kt         # 2D geometric adjacent chunk polygon merger
+│       ├── JourneyMapDiskScanner.kt      # Multi-threaded async disk region scanner
+│       ├── PokemonRadarService.kt        # Live radar tracker & Global Shiny Sentry
+│       ├── RarityColorPalette.kt         # Rarity color palette & rich tooltip generator
+│       └── structure/                    # Dynamic structure cartography module
+│           ├── DynamicStructureRegistryService.kt # Tag-based structure classifier
+│           ├── FossilStructureHandler.kt          # Archaeological site handler
+│           ├── LegendaryStructureHandler.kt       # Legendary monument handler
+│           ├── StructureRegionScanner.kt          # Async Anvil (.mca) region scanner
+│           └── StructureOverlayManager.kt         # JourneyMap structure coordinator
+├── neoforge/                             # NeoForge 1.21.1 module
+│   ├── src/main/java/.../CobblemonJeiNeoForge.java # Client @Mod entrypoint
 │   └── src/main/resources/META-INF/neoforge.mods.toml
-└── docs/                                 # Documentation technique détaillée
+├── fabric/                               # Fabric 1.21.1 module
+│   └── src/main/resources/fabric.mod.json # Fabric mod metadata & entrypoint configuration
+└── docs/                                 # Detailed technical documentation
     ├── ARCHITECTURE.md
     ├── RADAR_AND_SHINY_SENTRY.md
     ├── JOURNEYMAP_INTEGRATION.md
@@ -131,34 +134,38 @@ Cobblemon_JourneyMap/
 
 ---
 
-## 🚀 Installation & Compilation
+## 🚀 Installation & Build
 
-### Prérequis
-- **Java 21** (JDK 21 Temurin / OpenJDK recommandé)
+### Requirements
+- **Java 21** (Temurin / OpenJDK 21 recommended)
 - **Minecraft** 1.21.1
-- **NeoForge** 21.1.249 ou supérieur
+- **NeoForge** 21.1.249+ or **Fabric Loader** 0.16.10+
 - **Cobblemon** 1.7.3+
 - **JourneyMap** 5.10.x (API v2)
 - **JEI (Just Enough Items)** 19.21+
 
-### Compilation depuis les sources
+### Building From Source
+
+The project uses Gradle with automated dynamic Git versioning:
 
 ```bash
-# Cloner le dépôt
+# Clone the repository
 git clone git@github.com:K0bus/Cobblemon-JEI-JourneyMap-Integration.git
 cd Cobblemon-JEI-JourneyMap-Integration
 
-# Compiler le projet
-./gradlew clean test build
+# Run test suite and build both jars (NeoForge & Fabric)
+./gradlew clean check assemble
 ```
 
-Le fichier JAR compilé se trouve dans :
-`neoforge/build/libs/cobblemon-jei-neoforge-1.0.0.jar`
+Compiled mod JARs will be generated under:
+- **NeoForge**: `neoforge/build/libs/cobblemon-jei-neoforge-<version>.jar`
+- **Fabric**: `fabric/build/libs/cobblemon-jei-fabric-<version>.jar`
 
-Copiez simplement ce fichier dans votre dossier `.minecraft/mods/` ou dans votre instance PrismLauncher / CurseForge.
+Copy the corresponding JAR file into your `.minecraft/mods/` directory or your Prism Launcher / Modrinth / CurseForge profile.
 
 ---
 
-## 📄 Licence
-Ce projet est sous licence [MIT](LICENSE).
-Cobblemon est une marque de ses créateurs respectifs. Minecraft est une marque déposée de Mojang Studios.
+## 📄 License
+This project is licensed under the [MIT License](LICENSE).
+
+Cobblemon is a trademark of its respective creators. Minecraft is a registered trademark of Mojang Studios.

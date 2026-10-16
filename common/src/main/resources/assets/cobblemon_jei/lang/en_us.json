@@ -12,32 +12,38 @@
   "gui.cobblemon_jei.category.pokemon_spawns.no_spawns.title": "No Natural Spawns Found",
   "gui.cobblemon_jei.category.pokemon_spawns.no_spawns.desc": "This Pokémon cannot be found naturally in the wild.",
   "gui.cobblemon_jei.category.pokemon_spawns.no_spawns.how": "Obtain via: Evolution, Breeding, Fossils, or Special Events.",
-
   "cobblemon_jei.bucket.common": "Common",
   "cobblemon_jei.bucket.uncommon": "Uncommon",
   "cobblemon_jei.bucket.rare": "Rare",
   "cobblemon_jei.bucket.ultra-rare": "Ultra-Rare",
-
   "cobblemon_jei.time.day": "Day",
   "cobblemon_jei.time.night": "Night",
   "cobblemon_jei.time.dawn": "Dawn",
   "cobblemon_jei.time.dusk": "Dusk",
   "cobblemon_jei.time.any": "Any",
-
   "cobblemon_jei.weather.clear": "Clear",
   "cobblemon_jei.weather.rain": "Rain",
   "cobblemon_jei.weather.thundering": "Thunderstorm",
   "cobblemon_jei.weather.any": "Any",
-
   "gui.cobblemon_jei.category.pokemon_evolutions": "Pokémon Evolutions",
   "gui.cobblemon_jei.category.pokemon_evolutions.condition": "Condition:",
   "gui.cobblemon_jei.category.pokemon_evolutions.item": "Required Item:",
-
   "journeymap.theme.cobblemon.button": "Cobblemon Pokémon Search",
   "gui.cobblemon_jm.search.title": "Cobblemon Spawn Search - JourneyMap",
   "gui.cobblemon_jm.search.hint": "Search by Pokémon name or Dex number...",
   "gui.cobblemon_jm.search.show_overlay": "Show on Map",
   "gui.cobblemon_jm.search.clear_overlay": "Clear Overlay",
   "gui.cobblemon_jm.search.no_spawns": "No natural spawns in this dimension",
-  "gui.cobblemon_jm.search.selected": "Selected: %s"
+  "gui.cobblemon_jm.search.selected": "Selected: %s",
+
+  "gui.cobblemon_jm.filter.dimension_title": "Dimension Filter",
+  "gui.cobblemon_jm.filter.all_dimensions": "All Dimensions",
+  "gui.cobblemon_jm.filter.current_dimension": "Current Dimension (%s)",
+  "gui.cobblemon_jm.filter.active": "Active: %s",
+  "gui.cobblemon_jm.filter.hint_cycle": "Left click: Next • Right click: Previous",
+  "gui.cobblemon_jei.category.pokemon_pasture": "Pasture Produce & Farming",
+  "gui.cobblemon_jei.category.pokemon_pasture.amount": "Amount: %s",
+  "gui.cobblemon_jei.category.pokemon_pasture.chance": "Drop Chance: %s",
+  "gui.cobblemon_jei.category.pokemon_pasture.interaction": "Manual Interaction",
+  "gui.cobblemon_jei.category.pokemon_pasture.passive": "Passive Pasture Drops"
 }

@@ -39,5 +39,17 @@
   "gui.cobblemon_jm.search.show_overlay": "Afficher sur la carte",
   "gui.cobblemon_jm.search.clear_overlay": "Désactiver le calque",
   "gui.cobblemon_jm.search.no_spawns": "Aucun spawn naturel dans cette dimension",
-  "gui.cobblemon_jm.search.selected": "Sélection : %s"
+  "gui.cobblemon_jm.search.selected": "Sélection : %s",
+
+  "gui.cobblemon_jm.filter.dimension_title": "Filtre par Dimension",
+  "gui.cobblemon_jm.filter.all_dimensions": "Tous les mondes",
+  "gui.cobblemon_jm.filter.current_dimension": "Monde actuel (%s)",
+  "gui.cobblemon_jm.filter.active": "Actif : %s",
+  "gui.cobblemon_jm.filter.hint_cycle": "Clic gauche : Suivant • Clic droit : Précédent",
+
+  "gui.cobblemon_jei.category.pokemon_pasture": "Pâturage Pokémon",
+  "gui.cobblemon_jei.category.pokemon_pasture.amount": "Quantité : %s",
+  "gui.cobblemon_jei.category.pokemon_pasture.chance": "Taux d'obtention : %s",
+  "gui.cobblemon_jei.category.pokemon_pasture.interaction": "Interaction manuelle",
+  "gui.cobblemon_jei.category.pokemon_pasture.passive": "Production passive au pâturage"
 }

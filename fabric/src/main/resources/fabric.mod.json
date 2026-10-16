@@ -15,7 +15,7 @@
   "environment": "client",
   "entrypoints": {
     "jei_mod_plugin": [
-      "com.cobblemon.jei.CobblemonJeiPlugin"
+      "fr.k0bus.cobblemon_jei.CobblemonJeiPlugin"
     ]
   },
   "depends": {
