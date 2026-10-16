@@ -89,8 +89,20 @@ object CobblemonSpawnMatcher {
 
         val tagLocations = holder.tags().map { it.location().toString() }.toList().toMutableSet()
 
+        val isNether = biomeId.contains("nether") || biomeId in NETHER_BIOMES ||
+                biomeId == "biomesoplenty:crystalline_chasm" || biomeId == "byg:warped_desert" ||
+                biomeId.startsWith("incendium:") || biomeId.startsWith("betternether:") ||
+                tagLocations.any { it.contains("is_nether") || it.contains("in_nether") }
+
+        val isEnd = biomeId.contains("the_end") || biomeId in END_BIOMES ||
+                biomeId.startsWith("nullscape:") || biomeId.startsWith("betterend:") ||
+                tagLocations.any { it.contains("is_end") || it.contains("in_the_end") }
+
+        val isAether = biomeId.startsWith("aether:") || biomeId.contains("aether") ||
+                tagLocations.any { it.contains("is_aether") }
+
         // Enrichissement synthétique des balises
-        if (biomeId.contains("nether") || biomeId in NETHER_BIOMES) {
+        if (isNether) {
             tagLocations.add("minecraft:is_nether")
             tagLocations.add("cobblemon:is_nether")
             if (biomeId.contains("basalt")) {
@@ -104,7 +116,7 @@ object CobblemonSpawnMatcher {
                 tagLocations.add("cobblemon:nether/is_crimson")
                 tagLocations.add("cobblemon:nether/is_forest")
             }
-            if (biomeId.contains("warped")) {
+            if (biomeId.contains("warped") || biomeId == "byg:warped_desert") {
                 tagLocations.add("cobblemon:nether/is_warped")
                 tagLocations.add("cobblemon:nether/is_fungus")
             }
@@ -112,14 +124,14 @@ object CobblemonSpawnMatcher {
                 tagLocations.add("cobblemon:nether/is_soul_sand")
             }
         }
-        if (biomeId.startsWith("aether:") || biomeId.contains("aether")) {
+        if (isAether) {
             tagLocations.add("aether:is_aether")
         }
-        if (biomeId.contains("the_end") || biomeId in END_BIOMES) {
+        if (isEnd) {
             tagLocations.add("minecraft:is_end")
             tagLocations.add("cobblemon:is_end")
         }
-        if (!biomeId.contains("nether") && !biomeId.contains("end") && !biomeId.startsWith("aether:") && biomeId !in NETHER_BIOMES && biomeId !in END_BIOMES) {
+        if (!isNether && !isEnd && !isAether) {
             tagLocations.add("minecraft:is_overworld")
             tagLocations.add("cobblemon:is_overworld")
         }

@@ -420,12 +420,37 @@ object PokemonSpawnDataLoader {
             val ns = if (lower.contains(":")) lower.substringBefore(":") else "minecraft"
 
             when {
-                lower.contains("nether") -> deduced.add("minecraft:the_nether")
-                lower.contains("the_end") || lower.contains("/end") || lower.contains("is_end") ||
-                    lower.startsWith("minecraft:end_") || lower == "minecraft:the_end" -> deduced.add("minecraft:the_end")
+                // --- NETHER (Vanilla, tags, et mods comme Biomes O' Plenty, BYG, Incendium, BetterNether) ---
+                lower.contains("nether") ||
+                lower == "biomesoplenty:crystalline_chasm" ||
+                lower == "byg:warped_desert" ||
+                lower.startsWith("incendium:") ||
+                lower.startsWith("betternether:") ||
+                lower.contains("in_nether") -> {
+                    deduced.add("minecraft:the_nether")
+                }
+
+                // --- THE END (Vanilla, tags, et mods comme Nullscape, BetterEnd) ---
+                lower.contains("the_end") ||
+                lower.contains("/end") ||
+                lower.contains("is_end") ||
+                lower.contains("in_the_end") ||
+                lower.startsWith("minecraft:end_") ||
+                lower == "minecraft:the_end" ||
+                lower.startsWith("nullscape:") ||
+                lower.startsWith("betterend:") -> {
+                    deduced.add("minecraft:the_end")
+                }
+
+                // --- AUTRES DIMENSIONS MODDÉES ---
                 lower.contains("aether") -> deduced.add("aether:the_aether")
+                lower.contains("the_bumblezone") || lower.startsWith("the_bumblezone:") -> deduced.add("the_bumblezone:the_bumblezone")
                 lower.contains("twilightforest") || lower.contains("twilight_forest") -> deduced.add("twilightforest:twilight_forest")
                 lower.contains("undergarden") -> deduced.add("undergarden:undergarden")
+                lower.contains("distortion_world") -> deduced.add("legendarymonuments:distortion_world")
+                lower.contains("allthemodium:other") || lower.contains("the_other") -> deduced.add("allthemodium:the_other")
+
+                // --- OVERWORLD (Vanilla, Terralith, Biomes O' Plenty surface, Regions Unexplored, etc.) ---
                 else -> deduced.add("minecraft:overworld")
             }
         }

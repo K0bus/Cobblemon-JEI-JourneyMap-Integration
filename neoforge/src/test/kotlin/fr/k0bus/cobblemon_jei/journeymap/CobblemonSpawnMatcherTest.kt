@@ -232,4 +232,43 @@ class CobblemonSpawnMatcherTest {
         assertTrue(CobblemonSpawnMatcher.isRecipeInDimension(emptyDimRecipe, net.minecraft.world.level.Level.OVERWORLD))
         assertFalse(CobblemonSpawnMatcher.isRecipeInDimension(emptyDimRecipe, net.minecraft.world.level.Level.END))
     }
+
+    @Test
+    fun `test custom nether and end mod biomes are correctly partitioned`() {
+        // Biomes Nether customisés
+        val bopChasm = fr.k0bus.cobblemon_jei.data.PokemonSpawnDataLoader.inferDimensions(emptySet(), setOf("biomesoplenty:crystalline_chasm"))
+        assertEquals(setOf("minecraft:the_nether"), bopChasm)
+
+        val bygDesert = fr.k0bus.cobblemon_jei.data.PokemonSpawnDataLoader.inferDimensions(emptySet(), setOf("byg:warped_desert"))
+        assertEquals(setOf("minecraft:the_nether"), bygDesert)
+
+        val incendium = fr.k0bus.cobblemon_jei.data.PokemonSpawnDataLoader.inferDimensions(emptySet(), setOf("incendium:ash_barrens"))
+        assertEquals(setOf("minecraft:the_nether"), incendium)
+
+        // Biomes End customisés
+        val nullscape = fr.k0bus.cobblemon_jei.data.PokemonSpawnDataLoader.inferDimensions(emptySet(), setOf("nullscape:crystal_peaks"))
+        assertEquals(setOf("minecraft:the_end"), nullscape)
+
+        val betterEnd = fr.k0bus.cobblemon_jei.data.PokemonSpawnDataLoader.inferDimensions(emptySet(), setOf("betterend:foggy_mushroomland"))
+        assertEquals(setOf("minecraft:the_end"), betterEnd)
+
+        // Biomes Overworld provenant de mods
+        val terralith = fr.k0bus.cobblemon_jei.data.PokemonSpawnDataLoader.inferDimensions(emptySet(), setOf("terralith:emerald_peaks"))
+        assertEquals(setOf("minecraft:overworld"), terralith)
+
+        val bopGlade = fr.k0bus.cobblemon_jei.data.PokemonSpawnDataLoader.inferDimensions(emptySet(), setOf("biomesoplenty:aspen_glade"))
+        assertEquals(setOf("minecraft:overworld"), bopGlade)
+
+        // Test de correspondance matchesRecipe pour l'End avec un biome Nullscape
+        val (beldum, beldumForm) = createDummySpeciesAndForm("beldum")
+        val endRecipe = PokemonSpawnRecipe(
+            species = beldum,
+            form = beldumForm,
+            bucket = "uncommon",
+            dimensions = setOf("minecraft:the_end"),
+            biomes = setOf("#cobblemon:is_end")
+        )
+        val nullscapeHolder = createMockHolder("nullscape:crystal_peaks")
+        assertTrue(CobblemonSpawnMatcher.matchesRecipe(nullscapeHolder, endRecipe))
+    }
 }
