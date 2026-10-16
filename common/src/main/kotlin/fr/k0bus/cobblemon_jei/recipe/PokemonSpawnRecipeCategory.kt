@@ -126,41 +126,51 @@ class PokemonSpawnRecipeCategory(
         recipe: PokemonSpawnRecipe
     ) {
         // Ligne 1 (y = 28) : Rareté & Poids
-        val bucketText = formatBucket(recipe.bucket)
+        val rarityComp = formatBucket(recipe.bucket)
         val rarityColor = getBucketColor(recipe.bucket)
-        val weightText = String.format("%.1f", recipe.weight)
-        guiGraphics.drawString(font, "Rareté :", 8, 28, 0xFFAAAAAA.toInt(), false)
-        guiGraphics.drawString(font, "$bucketText (Poids: $weightText)", 46, 28, rarityColor, false)
+        val weightText = String.format(java.util.Locale.ROOT, "%.1f", recipe.weight)
+        val rarityLabel = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.rarity_label").string
+        guiGraphics.drawString(font, rarityLabel, 8, 28, 0xFFAAAAAA.toInt(), false)
+        val weightLabel = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.weight_label", weightText).string
+        val rarityFull = "${rarityComp.string} $weightLabel"
+        guiGraphics.drawString(font, rarityFull, 8 + font.width(rarityLabel) + 4, 28, rarityColor, false)
 
         // Ligne 2 (y = 39) : Monde & Contexte/Position
         val dimLabel = formatDimension(recipe.dimensions)
-        guiGraphics.drawString(font, "Monde :", 8, 39, 0xFFAAAAAA.toInt(), false)
-        guiGraphics.drawString(font, dimLabel, 46, 39, 0xFF1DD1A1.toInt(), false)
+        val worldLabel = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.world_label").string
+        guiGraphics.drawString(font, worldLabel, 8, 39, 0xFFAAAAAA.toInt(), false)
+        val worldStartX = 8 + font.width(worldLabel) + 4
+        guiGraphics.drawString(font, dimLabel, worldStartX, 39, 0xFF1DD1A1.toInt(), false)
 
         val contextLabel = formatContext(recipe.context)
-        val dimWidth = font.width("Monde : $dimLabel")
-        val posX = (8 + dimWidth + 8).coerceIn(88, 115)
+        val dimWidth = worldStartX + font.width(dimLabel)
+        val posX = (dimWidth + 8).coerceIn(88, 115)
         if (posX + font.width(contextLabel) <= WIDTH - 8) {
             guiGraphics.drawString(font, "•", posX - 5, 39, 0xFF666666.toInt(), false)
             guiGraphics.drawString(font, contextLabel, posX, 39, 0xFF54A0FF.toInt(), false)
         }
 
         // Ligne 3 (y = 50) : Niveaux
-        guiGraphics.drawString(font, "Niveaux :", 8, 50, 0xFFAAAAAA.toInt(), false)
-        guiGraphics.drawString(font, "Lv. ${recipe.levelMin} - ${recipe.levelMax}", 50, 50, 0xFFE0E0E0.toInt(), false)
+        val levelsLabel = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.levels_label").string
+        guiGraphics.drawString(font, levelsLabel, 8, 50, 0xFFAAAAAA.toInt(), false)
+        val levelsRange = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.level_range", recipe.levelMin, recipe.levelMax).string
+        guiGraphics.drawString(font, levelsRange, 8 + font.width(levelsLabel) + 4, 50, 0xFFE0E0E0.toInt(), false)
 
         // Ligne 4 (y = 61) : Heure & Météo
         val timeLabel = formatTime(recipe.timeRange)
         val weatherLabel = formatWeather(recipe.weather)
-        guiGraphics.drawString(font, "Heure :", 8, 61, 0xFFAAAAAA.toInt(), false)
-        guiGraphics.drawString(font, timeLabel, 44, 61, 0xFFFEEA3A.toInt(), false)
+        val timeTitle = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.time_label").string
+        guiGraphics.drawString(font, timeTitle, 8, 61, 0xFFAAAAAA.toInt(), false)
+        val timeStartX = 8 + font.width(timeTitle) + 4
+        guiGraphics.drawString(font, timeLabel.string, timeStartX, 61, 0xFFFEEA3A.toInt(), false)
 
-        val timeWidth = 44 + font.width(timeLabel)
-        val weatherX = (timeWidth + 8).coerceIn(86, 108)
-        if (weatherX + font.width("Météo : $weatherLabel") <= WIDTH - 6) {
+        val timeTotalWidth = timeStartX + font.width(timeLabel.string)
+        val weatherTitle = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.weather_label").string
+        val weatherX = (timeTotalWidth + 8).coerceIn(86, 108)
+        if (weatherX + font.width("$weatherTitle ${weatherLabel.string}") <= WIDTH - 6) {
             guiGraphics.drawString(font, "•", weatherX - 5, 61, 0xFF666666.toInt(), false)
-            guiGraphics.drawString(font, "Météo :", weatherX, 61, 0xFFAAAAAA.toInt(), false)
-            guiGraphics.drawString(font, weatherLabel, weatherX + font.width("Météo : "), 61, 0xFF48DBFB.toInt(), false)
+            guiGraphics.drawString(font, weatherTitle, weatherX, 61, 0xFFAAAAAA.toInt(), false)
+            guiGraphics.drawString(font, weatherLabel.string, weatherX + font.width(weatherTitle) + 4, 61, 0xFF48DBFB.toInt(), false)
         }
 
         // 4. Bloc des biomes en bas (y = 73 à 124)
@@ -168,10 +178,12 @@ class PokemonSpawnRecipeCategory(
         guiGraphics.fill(6, biomeBoxY, WIDTH - 6, HEIGHT - 6, 0xFF181920.toInt())
         guiGraphics.fill(5, biomeBoxY - 1, WIDTH - 5, biomeBoxY, 0xFF2F3240.toInt())
 
-        guiGraphics.drawString(font, "Biomes compatibles :", 10, biomeBoxY + 3, 0xFFFF9F43.toInt(), false)
+        val biomesTitle = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.biomes").string
+        guiGraphics.drawString(font, biomesTitle, 10, biomeBoxY + 3, 0xFFFF9F43.toInt(), false)
 
         if (recipe.biomes.isEmpty()) {
-            guiGraphics.drawString(font, "Tous les biomes autorisés (ou non restreint)", 10, biomeBoxY + 15, 0xFF888888.toInt(), false)
+            val allBiomes = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.all_biomes").string
+            guiGraphics.drawString(font, allBiomes, 10, biomeBoxY + 15, 0xFF888888.toInt(), false)
         } else {
             val friendlyBiomes = recipe.biomes.map { formatBiomeName(it) }
             val firstLine = friendlyBiomes.take(3).joinToString(", ")
@@ -179,7 +191,7 @@ class PokemonSpawnRecipeCategory(
 
             if (friendlyBiomes.size > 3) {
                 val remaining = friendlyBiomes.size - 3
-                val moreText = "+ $remaining autres biomes... (survoler avec la souris)"
+                val moreText = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.biomes.more", remaining).string
                 guiGraphics.drawString(font, moreText, 10, biomeBoxY + 27, 0xFF888888.toInt(), false)
             } else if (friendlyBiomes.size > 1) {
                 val secondLine = friendlyBiomes.drop(3).take(3).joinToString(", ")
@@ -196,14 +208,26 @@ class PokemonSpawnRecipeCategory(
         guiGraphics.fill(6, startY, WIDTH - 6, HEIGHT - 6, 0x22FFA502.toInt())
         guiGraphics.fill(5, startY - 1, WIDTH - 5, HEIGHT - 5, 0x55FFA502.toInt())
 
-        guiGraphics.drawString(font, "⚠ Aucun spawn sauvage naturel", 12, startY + 6, 0xFFFFA502.toInt(), false)
-        guiGraphics.drawString(font, "Ce Pokémon ne peut pas être croisé dans la nature.", 12, startY + 18, 0xFFCCCCCC.toInt(), false)
+        val warn = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.no_spawns.warn").string
+        guiGraphics.drawString(font, warn, 12, startY + 6, 0xFFFFA502.toInt(), false)
 
-        guiGraphics.drawString(font, "Obtention possible par :", 12, startY + 32, 0xFFFFFFFF.toInt(), false)
-        guiGraphics.drawString(font, "• Évolution d'une sous-forme", 16, startY + 43, 0xFFAAAAAA.toInt(), false)
-        guiGraphics.drawString(font, "• Reproduction (Pension / Œufs)", 16, startY + 54, 0xFFAAAAAA.toInt(), false)
-        guiGraphics.drawString(font, "• Fossile, Pêche spécifique ou Boss", 16, startY + 65, 0xFFAAAAAA.toInt(), false)
-        guiGraphics.drawString(font, "• Événement de quête / Structure", 16, startY + 76, 0xFFAAAAAA.toInt(), false)
+        val desc = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.no_spawns.desc").string
+        guiGraphics.drawString(font, desc, 12, startY + 18, 0xFFCCCCCC.toInt(), false)
+
+        val obtain = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.no_spawns.obtain").string
+        guiGraphics.drawString(font, obtain, 12, startY + 32, 0xFFFFFFFF.toInt(), false)
+
+        val evo = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.no_spawns.evolution").string
+        guiGraphics.drawString(font, evo, 16, startY + 43, 0xFFAAAAAA.toInt(), false)
+
+        val breed = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.no_spawns.breeding").string
+        guiGraphics.drawString(font, breed, 16, startY + 54, 0xFFAAAAAA.toInt(), false)
+
+        val spec = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.no_spawns.special").string
+        guiGraphics.drawString(font, spec, 16, startY + 65, 0xFFAAAAAA.toInt(), false)
+
+        val quest = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.no_spawns.quest").string
+        guiGraphics.drawString(font, quest, 16, startY + 76, 0xFFAAAAAA.toInt(), false)
     }
 
     override fun getTooltipStrings(
@@ -217,7 +241,10 @@ class PokemonSpawnRecipeCategory(
         // Tooltip complet si survol de la zone des biomes (y entre 73 et 124)
         if (recipe.isNaturalSpawn && mouseY >= 73 && mouseY <= 124 && mouseX >= 6 && mouseX <= (WIDTH - 6)) {
             if (recipe.biomes.isNotEmpty()) {
-                tooltips.add(Component.literal("Biomes compatibles :").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
+                tooltips.add(
+                    Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_biomes")
+                        .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
+                )
                 for (biome in recipe.biomes) {
                     val isTag = biome.startsWith("#")
                     val prefix = if (isTag) " • [Tag] " else " • "
@@ -226,13 +253,19 @@ class PokemonSpawnRecipeCategory(
                 }
             }
             if (recipe.antiBiomes.isNotEmpty()) {
-                tooltips.add(Component.literal("Biomes exclus :").withStyle(ChatFormatting.RED, ChatFormatting.BOLD))
+                tooltips.add(
+                    Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_anti_biomes")
+                        .withStyle(ChatFormatting.RED, ChatFormatting.BOLD)
+                )
                 for (anti in recipe.antiBiomes) {
                     tooltips.add(Component.literal(" ✗ $anti").withStyle(ChatFormatting.RED))
                 }
             }
             if (recipe.structures.isNotEmpty()) {
-                tooltips.add(Component.literal("Structures :").withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD))
+                tooltips.add(
+                    Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_structures")
+                        .withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD)
+                )
                 for (struct in recipe.structures) {
                     tooltips.add(Component.literal(" 🏛 $struct").withStyle(ChatFormatting.LIGHT_PURPLE))
                 }
@@ -244,13 +277,13 @@ class PokemonSpawnRecipeCategory(
 
     // --- Helpers de formatage ---
 
-    private fun formatBucket(bucket: String): String {
+    private fun formatBucket(bucket: String): Component {
         return when (bucket.lowercase()) {
-            "common" -> "Commun"
-            "uncommon" -> "Peu commun"
-            "rare" -> "Rare"
-            "ultra-rare" -> "Ultra-Rare"
-            else -> bucket.replaceFirstChar { it.uppercase() }
+            "common" -> Component.translatable("cobblemon_jei.bucket.common")
+            "uncommon" -> Component.translatable("cobblemon_jei.bucket.uncommon")
+            "rare" -> Component.translatable("cobblemon_jei.bucket.rare")
+            "ultra-rare" -> Component.translatable("cobblemon_jei.bucket.ultra-rare")
+            else -> Component.literal(bucket.replaceFirstChar { it.uppercase() })
         }
     }
 
@@ -275,27 +308,27 @@ class PokemonSpawnRecipeCategory(
         }
     }
 
-    private fun formatTime(time: String): String {
+    private fun formatTime(time: String): Component {
         return when (time.lowercase()) {
-            "day" -> "Jour"
-            "night" -> "Nuit"
-            "dawn" -> "Aube"
-            "dusk" -> "Crépuscule"
-            else -> "Tous"
+            "day" -> Component.translatable("cobblemon_jei.time.day")
+            "night" -> Component.translatable("cobblemon_jei.time.night")
+            "dawn" -> Component.translatable("cobblemon_jei.time.dawn")
+            "dusk" -> Component.translatable("cobblemon_jei.time.dusk")
+            else -> Component.translatable("cobblemon_jei.time.any")
         }
     }
 
-    private fun formatWeather(weather: String): String {
+    private fun formatWeather(weather: String): Component {
         return when (weather.lowercase()) {
-            "clear" -> "Dégagé"
-            "rain" -> "Pluie"
-            "thundering" -> "Orage"
-            else -> "Tous"
+            "clear" -> Component.translatable("cobblemon_jei.weather.clear")
+            "rain" -> Component.translatable("cobblemon_jei.weather.rain")
+            "thundering" -> Component.translatable("cobblemon_jei.weather.thundering")
+            else -> Component.translatable("cobblemon_jei.weather.any")
         }
     }
 
     private fun formatDimension(dimensions: Set<String>): String {
-        if (dimensions.isEmpty()) return "Tous"
+        if (dimensions.isEmpty()) return Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.all_worlds").string
         return dimensions.joinToString(", ") { dim ->
             val clean = if (dim.contains(":")) dim.substringAfter(":") else dim
             when (clean.lowercase()) {

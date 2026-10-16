@@ -49,12 +49,12 @@ object PokemonPastureDataLoader {
         // 2. Chargement des drops passifs de pâturage (DropTable des Pokémon)
         loadPassiveDrops(recipes, seenSignatures)
 
-        // Tri ergonomique par numéro de Pokédex puis type de récolte puis nom de l'action
+        // Tri ergonomique par numéro de Pokédex puis type de récolte puis clé de l'action
         val sortedRecipes = recipes.sortedWith(
             compareBy<PokemonPastureRecipe> { it.species.nationalPokedexNumber }
                 .thenBy { it.species.name }
                 .thenBy { it.harvestType }
-                .thenBy { it.actionName }
+                .thenBy { it.actionTranslationKey }
         )
 
         cachedRecipes = sortedRecipes
@@ -129,7 +129,7 @@ object PokemonPastureDataLoader {
                 val interObj = interElem.asJsonObject
 
                 val grouping = interObj.get("grouping")?.asString ?: "cobblemon:interaction"
-                val actionName = getActionDisplayName(grouping)
+                val actionTranslationKey = getActionTranslationKey(grouping)
 
                 val requiredTools = mutableListOf<ItemStack>()
                 val interactionConditions = baseConditions.toMutableList()
@@ -184,11 +184,11 @@ object PokemonPastureDataLoader {
                                 species = species,
                                 form = form,
                                 harvestType = PastureHarvestType.INTERACTION,
-                                actionName = actionName,
+                                actionTranslationKey = actionTranslationKey,
                                 requiredTools = requiredTools.distinctBy { it.item },
                                 outputs = dropOutputs,
                                 conditions = interactionConditions,
-                                notes = "Interaction avec le Pokémon lorsqu'il est en pâturage"
+                                notes = null
                             )
                         )
                     }
@@ -249,11 +249,11 @@ object PokemonPastureDataLoader {
                                 species = species,
                                 form = form,
                                 harvestType = PastureHarvestType.PASSIVE_DROP,
-                                actionName = "Production passive",
+                                actionTranslationKey = "cobblemon_jei.action.passive",
                                 requiredTools = emptyList(),
                                 outputs = dropItems,
                                 conditions = emptyList(),
-                                notes = "Butin généré régulièrement lorsque le Pokémon paît dans l'enclos"
+                                notes = null
                             )
                         )
                     }
@@ -272,15 +272,15 @@ object PokemonPastureDataLoader {
             }
     }
 
-    private fun getActionDisplayName(grouping: String): String {
+    private fun getActionTranslationKey(grouping: String): String {
         return when (grouping) {
-            "cobblemon:brush" -> "Brossage"
-            "cobblemon:milking" -> "Traite"
-            "cobblemon:shears" -> "Tonte"
-            "cobblemon:bone_meal" -> "Fertilisation"
-            "cobblemon:bucket" -> "Prélèvement (Seau)"
-            "cobblemon:glass_bottle" -> "Prélèvement (Bouteille)"
-            else -> "Interaction manuelle"
+            "cobblemon:brush" -> "cobblemon_jei.action.brush"
+            "cobblemon:milking" -> "cobblemon_jei.action.milking"
+            "cobblemon:shears" -> "cobblemon_jei.action.shears"
+            "cobblemon:bone_meal" -> "cobblemon_jei.action.fertilize"
+            "cobblemon:bucket" -> "cobblemon_jei.action.bucket"
+            "cobblemon:glass_bottle" -> "cobblemon_jei.action.bottle"
+            else -> "cobblemon_jei.action.manual"
         }
     }
 

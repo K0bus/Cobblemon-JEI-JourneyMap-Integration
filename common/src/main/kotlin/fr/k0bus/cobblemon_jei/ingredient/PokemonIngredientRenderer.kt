@@ -43,7 +43,7 @@ class PokemonIngredientRenderer : IIngredientRenderer<PokemonSpeciesIngredient> 
         tooltip.add(title)
 
         // 2. Types élémentaires avec code couleur
-        val typeLine = Component.literal("Type: ").withStyle(ChatFormatting.DARK_GRAY)
+        val typeLine = Component.translatable("gui.cobblemon_jei.ingredient.type").withStyle(ChatFormatting.DARK_GRAY)
             .append(ingredient.primaryType.displayName.copy().withStyle(getTypeColor(ingredient.primaryType.name)))
 
         val sec = ingredient.secondaryType
@@ -55,20 +55,20 @@ class PokemonIngredientRenderer : IIngredientRenderer<PokemonSpeciesIngredient> 
 
         // 3. Génération
         tooltip.add(
-            Component.literal("Génération ${ingredient.generation}")
+            Component.translatable("gui.cobblemon_jei.ingredient.generation", ingredient.generation)
                 .withStyle(ChatFormatting.DARK_AQUA)
         )
 
         // 4. Informations avancées (si F3+H activé)
         if (tooltipFlag.isAdvanced) {
             tooltip.add(
-                Component.literal("ID: ${ingredient.species.resourceIdentifier}")
+                Component.translatable("gui.cobblemon_jei.ingredient.id", ingredient.species.resourceIdentifier.toString())
                     .withStyle(ChatFormatting.DARK_GRAY)
             )
             if (ingredient.form.aspects.isNotEmpty()) {
                 val aspectsStr = ingredient.form.aspects.joinToString(", ")
                 tooltip.add(
-                    Component.literal("Aspects: $aspectsStr")
+                    Component.translatable("gui.cobblemon_jei.ingredient.aspects", aspectsStr)
                         .withStyle(ChatFormatting.DARK_GRAY)
                 )
             }

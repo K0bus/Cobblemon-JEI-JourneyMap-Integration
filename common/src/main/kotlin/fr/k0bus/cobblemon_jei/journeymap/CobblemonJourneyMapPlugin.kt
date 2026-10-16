@@ -54,7 +54,7 @@ class CobblemonJourneyMapPlugin : IClientPlugin {
                     "§7Cliquer pour changer ou désactiver"
                 )
                 try {
-                    button.button?.message = Component.literal("Cobblemon: $speciesName")
+                    button.button?.message = Component.translatable("journeymap.button.active", speciesName)
                 } catch (_: Throwable) {}
             } else {
                 button.setLabels("Cobblemon Spawns", "Cobblemon Spawns")
@@ -64,7 +64,7 @@ class CobblemonJourneyMapPlugin : IClientPlugin {
                     "§7Cliquer pour rechercher un Pokémon"
                 )
                 try {
-                    button.button?.message = Component.literal("Cobblemon Spawns")
+                    button.button?.message = Component.translatable("journeymap.button.default")
                 } catch (_: Throwable) {}
             }
         }

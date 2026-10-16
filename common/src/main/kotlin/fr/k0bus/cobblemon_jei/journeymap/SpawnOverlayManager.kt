@@ -112,7 +112,7 @@ object SpawnOverlayManager {
         mc.execute {
             CobblemonJourneyMapPlugin.updateButton()
             player.displayClientMessage(
-                net.minecraft.network.chat.Component.literal("§6[Cobblemon] §fScan des apparitions de §e${species.translatedName.string}§f en cours..."),
+                net.minecraft.network.chat.Component.translatable("chat.cobblemon_jm.scan_start", species.translatedName),
                 true
             )
         }
@@ -193,8 +193,15 @@ object SpawnOverlayManager {
                         mc.execute {
                             if (isCancelled()) return@execute
                             val p = mc.player ?: return@execute
-                            val msg = "§6[Cobblemon] §fScan §e${species.translatedName.string}§f : §b$pct% §7($completedRegions/$totalRegions rég. • $eligibleCount zones)"
-                            p.displayClientMessage(net.minecraft.network.chat.Component.literal(msg), true)
+                            p.displayClientMessage(
+                                net.minecraft.network.chat.Component.translatable(
+                                    "chat.cobblemon_jm.scan_progress",
+                                    completedRegions,
+                                    totalRegions,
+                                    eligibleCount
+                                ),
+                                true
+                            )
                         }
                     }
                 )
@@ -239,12 +246,14 @@ object SpawnOverlayManager {
 
                         val p = mc.player
                         if (p != null) {
-                            val completeMsg = if (finalEligibleCount > 0) {
-                                "§a[Cobblemon] §fScan terminé pour §e${species.translatedName.string} §a($finalEligibleCount zones trouvées)"
-                            } else {
-                                "§c[Cobblemon] §fScan terminé : §7aucun spawn pour §e${species.translatedName.string} §7dans cette dimension"
-                            }
-                            p.displayClientMessage(net.minecraft.network.chat.Component.literal(completeMsg), true)
+                            p.displayClientMessage(
+                                net.minecraft.network.chat.Component.translatable(
+                                    "chat.cobblemon_jm.scan_complete",
+                                    species.translatedName,
+                                    finalEligibleCount
+                                ),
+                                true
+                            )
                         }
                     } catch (e: Exception) {
                         logger.error("Cobblemon JM: Erreur affichage final JourneyMap : {}", e.message)
@@ -330,7 +339,7 @@ object SpawnOverlayManager {
             Minecraft.getInstance().execute {
                 CobblemonJourneyMapPlugin.updateButton()
                 Minecraft.getInstance().player?.displayClientMessage(
-                    net.minecraft.network.chat.Component.literal("§7[Cobblemon] Calque désactivé."),
+                    net.minecraft.network.chat.Component.translatable("chat.cobblemon_jm.overlay_disabled"),
                     true
                 )
             }

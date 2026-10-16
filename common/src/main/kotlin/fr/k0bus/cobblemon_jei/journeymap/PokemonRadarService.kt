@@ -359,7 +359,7 @@ object PokemonRadarService {
                     false
                 )
                 player.displayClientMessage(
-                    Component.literal("§6★ [Sentinelle Shiny] §e${species.translatedName.string} §6★ SHINY détecté à proximité !"),
+                    Component.translatable("chat.cobblemon_jm.radar.shiny", species.translatedName),
                     true
                 )
             } catch (_: Throwable) {}
@@ -385,7 +385,7 @@ object PokemonRadarService {
                     false
                 )
                 player.displayClientMessage(
-                    Component.literal("§b⚡ [Radar Cobblemon] §f${species.translatedName.string} §aaperçu à proximité !"),
+                    Component.translatable("chat.cobblemon_jm.radar.nearby", species.translatedName),
                     true
                 )
             } catch (_: Throwable) {}

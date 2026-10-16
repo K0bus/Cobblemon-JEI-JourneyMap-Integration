@@ -3,6 +3,7 @@ package fr.k0bus.cobblemon_jei.recipe
 import fr.k0bus.cobblemon_jei.ingredient.PokemonSpeciesIngredient
 import com.cobblemon.mod.common.pokemon.FormData
 import com.cobblemon.mod.common.pokemon.Species
+import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 
 /**
@@ -10,12 +11,16 @@ import net.minecraft.world.item.ItemStack
  */
 enum class PastureHarvestType(
     val badgeColor: Int,
-    val tooltipTitle: String
+    val badgeKey: String,
+    val tooltipKey: String
 ) {
     /** Interaction manuelle avec le Pokémon en pâturage (Brossage, Traite, Tonte, etc.) */
-    INTERACTION(0xFFFF9F43.toInt(), "Interaction de Pâturage"),
+    INTERACTION(0xFFFF9F43.toInt(), "gui.cobblemon_jei.badge.manual", "gui.cobblemon_jei.category.pokemon_pasture.tooltip_title.manual"),
     /** Production automatique / butin passif généré périodiquement par le Pokémon dans l'enclos */
-    PASSIVE_DROP(0xFF2ED573.toInt(), "Production Passive de Pâturage")
+    PASSIVE_DROP(0xFF2ED573.toInt(), "gui.cobblemon_jei.badge.passive", "gui.cobblemon_jei.category.pokemon_pasture.tooltip_title.passive");
+
+    fun getBadgeComponent(): Component = Component.translatable(badgeKey)
+    fun getTooltipTitleComponent(): Component = Component.translatable(tooltipKey)
 }
 
 /**
@@ -53,11 +58,13 @@ data class PokemonPastureRecipe(
     val species: Species,
     val form: FormData,
     val harvestType: PastureHarvestType,
-    val actionName: String,
+    val actionTranslationKey: String,
     val requiredTools: List<ItemStack> = emptyList(),
     val outputs: List<PastureDropItem> = emptyList(),
     val conditions: List<String> = emptyList(),
     val notes: String? = null
 ) {
     val pokemonIngredient = PokemonSpeciesIngredient(species, form)
+    val actionName: Component
+        get() = Component.translatable(actionTranslationKey)
 }

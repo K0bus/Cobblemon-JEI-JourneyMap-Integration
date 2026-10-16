@@ -36,7 +36,7 @@ class PokemonEvolutionRecipeCategory(
         )
 
         const val WIDTH = 176
-        const val HEIGHT = 94
+        const val HEIGHT = 108
     }
 
     override fun getRecipeType(): RecipeType<PokemonEvolutionRecipe> = RECIPE_TYPE
@@ -134,37 +134,53 @@ class PokemonEvolutionRecipeCategory(
         guiGraphics.drawString(font, srcName, srcX, 7, 0xFFCCCCCC.toInt(), false)
         guiGraphics.drawString(font, dstName, dstX, 7, 0xFF2ED573.toInt(), false)
 
-        // 6. Carte récapitulative des conditions (Y: 52 à 88)
-        val cardY = 50
-        guiGraphics.fill(6, cardY, WIDTH - 6, HEIGHT - 6, 0xFF181920.toInt())
+        // 6. Carte récapitulative des conditions (Y: 52 à 103)
+        val cardY = 52
+        guiGraphics.fill(6, cardY, WIDTH - 6, HEIGHT - 5, 0xFF181920.toInt())
         guiGraphics.fill(5, cardY - 1, WIDTH - 5, cardY, 0xFF2F3240.toInt())
 
-        // Libellé de variante / condition
-        val variantTitle = "Condition :"
-        guiGraphics.drawString(font, variantTitle, 10, cardY + 5, 0xFFFF9F43.toInt(), false)
+        // Libellé de condition
+        val variantTitle = Component.translatable("gui.cobblemon_jei.category.pokemon_evolutions.condition_title").string
+        guiGraphics.drawString(font, variantTitle, 10, cardY + 6, 0xFFFF9F43.toInt(), false)
 
-        // Texte principal de condition
+        val titleWidth = font.width(variantTitle) + 4
+        val maxSummaryWidth = WIDTH - 16 - titleWidth
         val summaryText = recipe.requirementsSummary
-        val maxSummaryWidth = WIDTH - 72
         val displaySummary = if (font.width(summaryText) > maxSummaryWidth) {
             font.plainSubstrByWidth(summaryText, maxSummaryWidth - 6) + "…"
         } else {
             summaryText
         }
-        guiGraphics.drawString(font, displaySummary, 62, cardY + 5, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, displaySummary, 10 + titleWidth, cardY + 6, 0xFFFFFFFF.toInt(), false)
 
-        // Ligne secondaire (autres détails ou conditions)
+        // Lignes secondaires
         if (recipe.additionalConditions.isNotEmpty()) {
-            val subText = recipe.additionalConditions.first()
-            guiGraphics.drawString(font, "• $subText", 10, cardY + 18, 0xFFAAAAAA.toInt(), false)
+            val subText = "• ${recipe.additionalConditions.first()}"
+            guiGraphics.drawString(font, font.plainSubstrByWidth(subText, WIDTH - 20), 10, cardY + 20, 0xFFAAAAAA.toInt(), false)
+
             if (recipe.additionalConditions.size > 1) {
-                guiGraphics.drawString(font, "+ ${recipe.additionalConditions.size - 1} autre condition (survoler)", 10, cardY + 27, 0xFF888888.toInt(), false)
+                val moreText = Component.translatable(
+                    "gui.cobblemon_jei.category.pokemon_evolutions.more_conditions",
+                    recipe.additionalConditions.size - 1
+                ).string
+                guiGraphics.drawString(font, font.plainSubstrByWidth(moreText, WIDTH - 20), 10, cardY + 32, 0xFF888888.toInt(), false)
+            } else {
+                val hint = Component.translatable("gui.cobblemon_jei.category.pokemon_evolutions.hint_hover").string
+                guiGraphics.drawString(font, font.plainSubstrByWidth(hint, WIDTH - 20), 10, cardY + 32, 0xFF666666.toInt(), false)
             }
         } else if (recipe.requiredItems.isNotEmpty()) {
             val itemName = recipe.requiredItems.first().hoverName.string
-            guiGraphics.drawString(font, "• Requiert l'objet : $itemName", 10, cardY + 18, 0xFFE0E0E0.toInt(), false)
+            val line2 = Component.translatable("gui.cobblemon_jei.category.pokemon_evolutions.item_needed", itemName).string
+            guiGraphics.drawString(font, font.plainSubstrByWidth(line2, WIDTH - 20), 10, cardY + 20, 0xFFE0E0E0.toInt(), false)
+
+            val hint = Component.translatable("gui.cobblemon_jei.category.pokemon_evolutions.hint_hover").string
+            guiGraphics.drawString(font, font.plainSubstrByWidth(hint, WIDTH - 20), 10, cardY + 32, 0xFF666666.toInt(), false)
         } else {
-            guiGraphics.drawString(font, "• Évolution directe au niveau requis", 10, cardY + 18, 0xFF888888.toInt(), false)
+            val directLine = Component.translatable("gui.cobblemon_jei.category.pokemon_evolutions.direct_level").string
+            guiGraphics.drawString(font, font.plainSubstrByWidth(directLine, WIDTH - 20), 10, cardY + 20, 0xFF888888.toInt(), false)
+
+            val hint = Component.translatable("gui.cobblemon_jei.category.pokemon_evolutions.hint_hover").string
+            guiGraphics.drawString(font, font.plainSubstrByWidth(hint, WIDTH - 20), 10, cardY + 32, 0xFF666666.toInt(), false)
         }
     }
 
@@ -176,14 +192,23 @@ class PokemonEvolutionRecipeCategory(
     ): List<Component> {
         val tooltips = mutableListOf<Component>()
 
-        // Tooltip complet si survol de la zone de condition (Y entre 50 et 88)
-        if (mouseY >= 50 && mouseY <= (HEIGHT - 6) && mouseX >= 6 && mouseX <= (WIDTH - 6)) {
-            tooltips.add(Component.literal("Conditions d'évolution :").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
-            tooltips.add(Component.literal(" • Type : ${recipe.evolutionVariant}").withStyle(ChatFormatting.AQUA))
+        // Tooltip complet si survol de la carte inférieure
+        if (mouseY >= 52 && mouseY <= (HEIGHT - 5) && mouseX >= 6 && mouseX <= (WIDTH - 6)) {
+            tooltips.add(
+                Component.translatable("gui.cobblemon_jei.category.pokemon_evolutions.tooltip_title")
+                    .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
+            )
+            tooltips.add(
+                Component.translatable("gui.cobblemon_jei.category.pokemon_evolutions.tooltip_type", recipe.evolutionVariant)
+                    .withStyle(ChatFormatting.AQUA)
+            )
 
             if (recipe.requiredItems.isNotEmpty()) {
                 val itemNames = recipe.requiredItems.joinToString(", ") { it.hoverName.string }
-                tooltips.add(Component.literal(" • Objet requis : $itemNames").withStyle(ChatFormatting.YELLOW))
+                tooltips.add(
+                    Component.translatable("gui.cobblemon_jei.category.pokemon_evolutions.tooltip_item", itemNames)
+                        .withStyle(ChatFormatting.YELLOW)
+                )
             }
 
             for (cond in recipe.additionalConditions) {

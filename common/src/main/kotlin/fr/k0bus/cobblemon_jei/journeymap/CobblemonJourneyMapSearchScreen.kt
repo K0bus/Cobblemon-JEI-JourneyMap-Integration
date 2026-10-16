@@ -106,12 +106,12 @@ class CobblemonJourneyMapSearchScreen(
         addRenderableWidget(dimFilterBtn)
 
         // Boutons de pagination
-        prevPageBtn = Button.builder(Component.literal("◀ Précédent")) {
+        prevPageBtn = Button.builder(Component.translatable("gui.cobblemon_jm.search.prev")) {
             if (currentPage > 0) currentPage--
         }.bounds(centerX - 180, height - 34, 80, 20).build()
         addRenderableWidget(prevPageBtn)
 
-        nextPageBtn = Button.builder(Component.literal("Suivant ▶")) {
+        nextPageBtn = Button.builder(Component.translatable("gui.cobblemon_jm.search.next")) {
             val maxPage = (filteredSpecies.size - 1) / itemsPerPage
             if (currentPage < maxPage) currentPage++
         }.bounds(centerX - 95, height - 34, 80, 20).build()
@@ -416,7 +416,7 @@ class CobblemonJourneyMapSearchScreen(
 
         // Indicateur de page
         val filterTag = if (currentDimensionFilter !is DimensionFilter.All) " [${currentDimensionFilter.shortName}]" else ""
-        val pageInfo = "Page ${currentPage + 1} / ${maxPage + 1} (${filteredSpecies.size} Pokémon$filterTag)"
+        val pageInfo = Component.translatable("gui.cobblemon_jm.search.page_info", currentPage + 1, maxPage + 1, filteredSpecies.size, filterTag).string
         guiGraphics.drawString(font, pageInfo, listLeft, listTop + itemsPerPage * itemHeight + 4, 0xFFAAAAAA.toInt(), false)
 
         // Rendu du panneau de prévisualisation à droite
@@ -434,7 +434,8 @@ class CobblemonJourneyMapSearchScreen(
         selectedSpecies?.let { sp ->
             renderPokemonDetail(guiGraphics, sp, detailLeft + 8, detailTop + 8, detailWidth - 16)
         } ?: run {
-            guiGraphics.drawCenteredString(font, "Aucun Pokémon sélectionné", detailLeft + detailWidth / 2, detailTop + 40, 0xFF888888.toInt())
+            val noSelection = Component.translatable("gui.cobblemon_jm.search.no_selection").string
+            guiGraphics.drawCenteredString(font, noSelection, detailLeft + detailWidth / 2, detailTop + 40, 0xFF888888.toInt())
         }
     }
 
@@ -508,14 +509,18 @@ class CobblemonJourneyMapSearchScreen(
         val displayRecipes = if (dimFiltered.isNotEmpty()) dimFiltered else natural
 
         val infoY = y + 51
-        guiGraphics.drawString(font, "Apparitions :", x, infoY, 0xFFFF9F43.toInt(), false)
+        val spawnsTitle = Component.translatable("gui.cobblemon_jm.detail.spawns_title").string
+        guiGraphics.drawString(font, spawnsTitle, x, infoY, 0xFFFF9F43.toInt(), false)
 
         if (natural.isEmpty()) {
-            guiGraphics.drawString(font, "✗ Aucun spawn naturel", x, infoY + 12, 0xFFFF4757.toInt(), false)
-            guiGraphics.drawString(font, "(Évolution, fossile ou œuf)", x, infoY + 23, 0xFFAAAAAA.toInt(), false)
+            val noNat = Component.translatable("gui.cobblemon_jm.detail.no_natural_spawns").string
+            guiGraphics.drawString(font, noNat, x, infoY + 12, 0xFFFF4757.toInt(), false)
+            val subNat = Component.translatable("gui.cobblemon_jm.detail.no_natural_spawns_sub").string
+            guiGraphics.drawString(font, subNat, x, infoY + 23, 0xFFAAAAAA.toInt(), false)
         } else if (targetDim != null && dimFiltered.isEmpty()) {
             val filterName = currentDimensionFilter.shortName
-            guiGraphics.drawString(font, "✗ Absent de : $filterName", x, infoY + 12, 0xFFFF4757.toInt(), false)
+            val absent = Component.translatable("gui.cobblemon_jm.detail.absent_from", filterName).string
+            guiGraphics.drawString(font, absent, x, infoY + 12, 0xFFFF4757.toInt(), false)
             val allDims = natural.flatMap { it.dimensions }.toSet()
             val dimsDesc = if (allDims.isEmpty()) "Overworld" else allDims.joinToString(", ") { d ->
                 val clean = if (d.contains(":")) d.substringAfter(":") else d
@@ -527,14 +532,22 @@ class CobblemonJourneyMapSearchScreen(
                     else -> clean.replaceFirstChar { it.uppercase() }
                 }
             }
-            guiGraphics.drawString(font, "• Présent dans : $dimsDesc", x, infoY + 23, 0xFFAAAAAA.toInt(), false)
+            val present = Component.translatable("gui.cobblemon_jm.detail.present_in", dimsDesc).string
+            guiGraphics.drawString(font, present, x, infoY + 23, 0xFFAAAAAA.toInt(), false)
         } else {
             val best = displayRecipes.maxByOrNull { it.weight } ?: displayRecipes.first()
             val rarity = SpawnRarity.fromBucketOrWeight(best.bucket, best.weight)
-            guiGraphics.drawString(font, "✓ Spawns sauvages actifs", x, infoY + 12, 0xFF2ED573.toInt(), false)
-            guiGraphics.drawString(font, "• Rareté : ${rarity.displayName}", x, infoY + 23, (0xFF000000 or RarityColorPalette.createShapeProperties(rarity).strokeColor.toLong()).toInt(), false)
-            guiGraphics.drawString(font, "• Niveaux : Lv. ${best.levelMin}-${best.levelMax}", x, infoY + 34, 0xFFCCCCCC.toInt(), false)
-            guiGraphics.drawString(font, "• Heure : ${best.timeRange} | Météo : ${best.weather}", x, infoY + 45, 0xFFCCCCCC.toInt(), false)
+            val activeSpawns = Component.translatable("gui.cobblemon_jm.detail.wild_spawns_active").string
+            guiGraphics.drawString(font, activeSpawns, x, infoY + 12, 0xFF2ED573.toInt(), false)
+
+            val rarityLine = Component.translatable("gui.cobblemon_jm.detail.rarity", rarity.displayName).string
+            guiGraphics.drawString(font, rarityLine, x, infoY + 23, (0xFF000000 or RarityColorPalette.createShapeProperties(rarity).strokeColor.toLong()).toInt(), false)
+
+            val levelsLine = Component.translatable("gui.cobblemon_jm.detail.levels", best.levelMin, best.levelMax).string
+            guiGraphics.drawString(font, levelsLine, x, infoY + 34, 0xFFCCCCCC.toInt(), false)
+
+            val timeWeatherLine = Component.translatable("gui.cobblemon_jm.detail.time_weather", best.timeRange, best.weather).string
+            guiGraphics.drawString(font, timeWeatherLine, x, infoY + 45, 0xFFCCCCCC.toInt(), false)
 
             val dims = displayRecipes.flatMap { it.dimensions }.toSet()
             val dimsDesc = if (dims.isEmpty()) "Overworld" else dims.joinToString(", ") { d ->
@@ -547,11 +560,16 @@ class CobblemonJourneyMapSearchScreen(
                     else -> clean.replaceFirstChar { it.uppercase() }
                 }
             }
-            guiGraphics.drawString(font, "• Monde : $dimsDesc", x, infoY + 56, 0xFF1DD1A1.toInt(), false)
+            val worldLine = Component.translatable("gui.cobblemon_jm.detail.world", dimsDesc).string
+            guiGraphics.drawString(font, worldLine, x, infoY + 56, 0xFF1DD1A1.toInt(), false)
 
             val biomesCount = displayRecipes.flatMap { it.biomes }.toSet().size
-            val biomesDesc = if (biomesCount > 0) "$biomesCount biomes compatibles" else "Tous biomes de la dimension"
-            guiGraphics.drawString(font, "• Lieux : $biomesDesc", x, infoY + 67, 0xFF54A0FF.toInt(), false)
+            val biomesLine = if (biomesCount > 0) {
+                Component.translatable("gui.cobblemon_jm.detail.locations_count", biomesCount).string
+            } else {
+                Component.translatable("gui.cobblemon_jm.detail.locations_all").string
+            }
+            guiGraphics.drawString(font, biomesLine, x, infoY + 67, 0xFF54A0FF.toInt(), false)
         }
 
         // Détection de structures (fossiles ou monuments légendaires)
@@ -561,13 +579,16 @@ class CobblemonJourneyMapSearchScreen(
 
         if (isFossilOrLegendary) {
             val structY = if (natural.isEmpty()) infoY + 38 else infoY + 78
-            guiGraphics.drawString(font, "• Structures :", x, structY, 0xFFFFA502.toInt(), false)
+            val structTitle = Component.translatable("gui.cobblemon_jm.detail.structures_title").string
+            guiGraphics.drawString(font, structTitle, x, structY, 0xFFFFA502.toInt(), false)
             if (matchingStructs.isNotEmpty()) {
                 val first = matchingStructs.first()
-                guiGraphics.drawString(font, "  ✓ ${matchingStructs.size} site(s) découvert(s)", x, structY + 11, 0xFF2ED573.toInt(), false)
+                val discovered = Component.translatable("gui.cobblemon_jm.detail.sites_discovered", matchingStructs.size).string
+                guiGraphics.drawString(font, discovered, x, structY + 11, 0xFF2ED573.toInt(), false)
                 guiGraphics.drawString(font, "  [${first.pos.x}, ${first.pos.z}]", x, structY + 22, 0xFFCCCCCC.toInt(), false)
             } else {
-                guiGraphics.drawString(font, "  ✗ Non découverte (zone explorée)", x, structY + 11, 0xFFFF6B6B.toInt(), false)
+                val notDiscovered = Component.translatable("gui.cobblemon_jm.detail.sites_not_discovered").string
+                guiGraphics.drawString(font, notDiscovered, x, structY + 11, 0xFFFF6B6B.toInt(), false)
             }
         }
 
@@ -576,7 +597,11 @@ class CobblemonJourneyMapSearchScreen(
         if (CobblemonOverlayManager.isOverlayActive && CobblemonOverlayManager.activeSpecies == sp) {
             guiGraphics.fill(x - 2, statusY - 2, x + maxWidth + 2, statusY + 12, 0x332ED573.toInt())
             val count = SpawnOverlayManager.activeRarityCounts.values.sum()
-            val text = if (count > 0) "▶ Calque actif ($count chunks)" else "▶ Calque actif sur la carte"
+            val text = if (count > 0) {
+                Component.translatable("gui.cobblemon_jm.detail.layer_active_chunks", count).string
+            } else {
+                Component.translatable("gui.cobblemon_jm.detail.layer_active").string
+            }
             guiGraphics.drawString(font, text, x, statusY, 0xFF2ED573.toInt(), false)
         }
     }

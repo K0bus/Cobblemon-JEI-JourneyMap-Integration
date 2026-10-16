@@ -36,7 +36,7 @@ class PokemonPastureRecipeCategory(
         )
 
         const val WIDTH = 176
-        const val HEIGHT = 104
+        const val HEIGHT = 128
     }
 
     override fun getRecipeType(): RecipeType<PokemonPastureRecipe> = RECIPE_TYPE
@@ -64,16 +64,16 @@ class PokemonPastureRecipeCategory(
         focuses: IFocusGroup
     ) {
         // Slot 1 : Pokémon en INPUT (recherchable via 'U' sur le Pokémon)
-        builder.addSlot(RecipeIngredientRole.INPUT, 16, 38)
+        builder.addSlot(RecipeIngredientRole.INPUT, 16, 34)
             .addIngredient(PokemonSpeciesIngredient.TYPE, recipe.pokemonIngredient)
 
         // Slot 2 : Outil requis en INPUT ou Bloc de Pâturage en CATALYST
         if (recipe.requiredTools.isNotEmpty()) {
-            builder.addSlot(RecipeIngredientRole.INPUT, 58, 38)
+            builder.addSlot(RecipeIngredientRole.INPUT, 50, 34)
                 .addIngredients(VanillaTypes.ITEM_STACK, recipe.requiredTools)
         } else {
             val pastureStack = try { ItemStack(CobblemonBlocks.PASTURE) } catch (_: Throwable) { ItemStack(Items.HAY_BLOCK) }
-            builder.addSlot(RecipeIngredientRole.CATALYST, 58, 38)
+            builder.addSlot(RecipeIngredientRole.CATALYST, 50, 34)
                 .addItemStack(pastureStack)
         }
 
@@ -122,43 +122,51 @@ class PokemonPastureRecipeCategory(
         guiGraphics.fill(0, 0, WIDTH, HEIGHT, 0xFF141519.toInt())
         guiGraphics.fill(1, 1, WIDTH - 1, HEIGHT - 1, 0xFF1C1E24.toInt())
 
-        // 2. Bandeau supérieur (En-tête)
-        guiGraphics.fill(2, 2, WIDTH - 2, 24, 0xFF242630.toInt())
+        // 2. Bandeau supérieur (En-tête Y: 2 à 20)
+        guiGraphics.fill(2, 2, WIDTH - 2, 20, 0xFF242630.toInt())
 
-        // Numéro de Pokédex et nom du Pokémon
+        // Badge de type d'action à droite (court : "Passif" / "Manuel")
+        val badgeText = recipe.harvestType.getBadgeComponent().string
+        val badgeW = font.width(badgeText)
+        val badgeX = WIDTH - badgeW - 10
+        guiGraphics.fill(badgeX - 4, 3, WIDTH - 4, 18, 0xFF101216.toInt())
+        guiGraphics.drawString(font, badgeText, badgeX - 1, 6, recipe.harvestType.badgeColor, false)
+
+        // Numéro de Pokédex et nom du Pokémon à gauche (tronqué proprement avant le badge)
         val dexStr = String.format("#%04d", recipe.species.nationalPokedexNumber)
         val nameStr = recipe.species.translatedName.string
         val headerTitle = "$dexStr $nameStr"
-        guiGraphics.drawString(font, headerTitle, 6, 6, 0xFFFFFFFF.toInt(), false)
+        val maxHeaderWidth = badgeX - 12
+        val displayHeader = if (font.width(headerTitle) > maxHeaderWidth) {
+            font.plainSubstrByWidth(headerTitle, maxHeaderWidth - 6) + "…"
+        } else {
+            headerTitle
+        }
+        guiGraphics.drawString(font, displayHeader, 6, 6, 0xFFFFFFFF.toInt(), false)
 
-        // Badge de type d'action à droite de l'en-tête
-        val badgeColor = recipe.harvestType.badgeColor
-        val actionText = recipe.actionName
-        val actionW = font.width(actionText)
-        val badgeX = WIDTH - actionW - 10
-        guiGraphics.fill(badgeX - 4, 4, WIDTH - 6, 18, 0xFF101216.toInt())
-        guiGraphics.drawString(font, actionText, badgeX - 2, 7, badgeColor, false)
+        // 3. Libellés au-dessus des slots (Y: 23)
+        val pokeLabel = Component.translatable("gui.cobblemon_jei.label.pokemon").string
+        val pokeLabelW = font.width(pokeLabel)
+        guiGraphics.drawString(font, pokeLabel, 16 + 9 - pokeLabelW / 2, 23, 0xFF999999.toInt(), false)
 
-        // 3. Cadre des slots
-        // Slot Pokémon (15, 37 à 34, 56)
-        drawSlotBorder(guiGraphics, 15, 37, 0xFF3D4050.toInt())
+        val toolKey = if (recipe.requiredTools.isNotEmpty()) "gui.cobblemon_jei.label.tool" else "gui.cobblemon_jei.label.pasture"
+        val toolLabel = Component.translatable(toolKey).string
+        val toolLabelW = font.width(toolLabel)
+        guiGraphics.drawString(font, toolLabel, 50 + 9 - toolLabelW / 2, 23, 0xFF999999.toInt(), false)
 
-        // Slot Outil / Pâturage (57, 37 à 76, 56)
+        val dropsLabel = Component.translatable("gui.cobblemon_jei.label.drops").string
+        val dropsLabelW = font.width(dropsLabel)
+        guiGraphics.drawString(font, dropsLabel, 126 - dropsLabelW / 2, 23, 0xFF999999.toInt(), false)
+
+        // Cadres des slots d'entrée
+        drawSlotBorder(guiGraphics, 15, 33, 0xFF3D4050.toInt())
         val toolBorderColor = if (recipe.requiredTools.isNotEmpty()) 0xFFE1B12C.toInt() else 0xFF3D4050.toInt()
-        drawSlotBorder(guiGraphics, 57, 37, toolBorderColor)
+        drawSlotBorder(guiGraphics, 49, 33, toolBorderColor)
 
-        // Libellés au-dessus des slots d'entrée
-        guiGraphics.drawString(font, "Pokémon", 12, 27, 0xFF999999.toInt(), false)
-        val toolLabel = if (recipe.requiredTools.isNotEmpty()) "Outil" else "Pâturage"
-        guiGraphics.drawString(font, toolLabel, 55, 27, 0xFF999999.toInt(), false)
-
-        // Flèche centrale stylisée vers la droite (X: 79 à 99, Y: 46)
-        guiGraphics.fill(80, 46, 97, 48, 0xFF54A0FF.toInt())
-        guiGraphics.fill(95, 44, 99, 50, 0xFF54A0FF.toInt())
-        guiGraphics.fill(98, 45, 101, 49, 0xFF54A0FF.toInt())
-
-        // Libellé au-dessus des sorties
-        guiGraphics.drawString(font, "Butins", 108, 27, 0xFF999999.toInt(), false)
+        // Flèche centrale stylisée vers la droite (X: 74 à 94, Y: 42)
+        guiGraphics.fill(74, 42, 91, 44, 0xFF54A0FF.toInt())
+        guiGraphics.fill(89, 40, 93, 46, 0xFF54A0FF.toInt())
+        guiGraphics.fill(92, 41, 95, 45, 0xFF54A0FF.toInt())
 
         // Cadres pour les slots de sortie
         val outputCount = recipe.outputs.size
@@ -167,32 +175,38 @@ class PokemonPastureRecipeCategory(
             drawSlotBorder(guiGraphics, slotX - 1, slotY - 1, 0xFF2ED573.toInt())
         }
 
-        // 4. Carte récapitulative inférieure (Y: 72 à 98)
-        val cardY = 72
+        // 4. Carte récapitulative inférieure (Y: 76 à 122)
+        val cardY = 76
         guiGraphics.fill(4, cardY, WIDTH - 4, HEIGHT - 5, 0xFF181920.toInt())
         guiGraphics.fill(4, cardY - 1, WIDTH - 4, cardY, 0xFF2F3240.toInt())
 
-        // Ligne 1 : Résumé de l'action
         if (recipe.harvestType == PastureHarvestType.INTERACTION) {
+            val actionStr = recipe.actionName.string
+            val line1 = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.action_label", actionStr).string
+            guiGraphics.drawString(font, font.plainSubstrByWidth(line1, WIDTH - 16), 8, cardY + 5, 0xFFFFBE76.toInt(), false)
+
             val toolNames = if (recipe.requiredTools.isNotEmpty()) {
                 recipe.requiredTools.joinToString(", ") { it.hoverName.string }
-            } else "Clic droit"
-            val line1 = "Action : ${recipe.actionName} avec $toolNames"
-            val truncated1 = font.plainSubstrByWidth(line1, WIDTH - 16)
-            guiGraphics.drawString(font, truncated1, 8, cardY + 5, 0xFFFFBE76.toInt(), false)
-        } else {
-            val line1 = "Mode : Production continue au pâturage"
-            guiGraphics.drawString(font, line1, 8, cardY + 5, 0xFF7BED9F.toInt(), false)
-        }
+            } else "-"
+            val line2 = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tool_required", toolNames).string
+            guiGraphics.drawString(font, font.plainSubstrByWidth(line2, WIDTH - 16), 8, cardY + 17, 0xFFE0E0E0.toInt(), false)
 
-        // Ligne 2 : Détails / Conditions
-        val line2 = when {
-            recipe.conditions.isNotEmpty() -> "Condition : ${recipe.conditions.joinToString(" • ")}"
-            recipe.harvestType == PastureHarvestType.INTERACTION -> "Interaction directe sur le Pokémon placé en enclos."
-            else -> "Loot lâché périodiquement lorsque le Pokémon paît."
+            val line3 = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.interaction_direct").string
+            guiGraphics.drawString(font, font.plainSubstrByWidth(line3, WIDTH - 16), 8, cardY + 29, 0xFFAAAAAA.toInt(), false)
+        } else {
+            val line1 = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.mode_passive").string
+            guiGraphics.drawString(font, font.plainSubstrByWidth(line1, WIDTH - 16), 8, cardY + 5, 0xFF7BED9F.toInt(), false)
+
+            val line2 = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.desc_passive").string
+            guiGraphics.drawString(font, font.plainSubstrByWidth(line2, WIDTH - 16), 8, cardY + 17, 0xFFAAAAAA.toInt(), false)
+
+            val line3 = if (recipe.conditions.isNotEmpty()) {
+                Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.condition", recipe.conditions.joinToString(" • ")).string
+            } else {
+                Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.hint_hover").string
+            }
+            guiGraphics.drawString(font, font.plainSubstrByWidth(line3, WIDTH - 16), 8, cardY + 29, 0xFF888888.toInt(), false)
         }
-        val truncated2 = font.plainSubstrByWidth(line2, WIDTH - 16)
-        guiGraphics.drawString(font, truncated2, 8, cardY + 16, 0xFFAAAAAA.toInt(), false)
     }
 
     override fun getTooltipStrings(
@@ -203,25 +217,40 @@ class PokemonPastureRecipeCategory(
     ): List<Component> {
         val tooltips = mutableListOf<Component>()
 
-        // Tooltip sur la zone d'en-tête ou de description
-        if (mouseY in 72.0..(HEIGHT - 5.0) && mouseX in 4.0..(WIDTH - 4.0)) {
-            val title = recipe.harvestType.tooltipTitle
-            tooltips.add(Component.literal(title).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
-            tooltips.add(Component.literal("• Action : ${recipe.actionName}").withStyle(ChatFormatting.AQUA))
+        // Tooltip sur la zone inférieure récapitulative
+        if (mouseY in 76.0..(HEIGHT - 5.0) && mouseX in 4.0..(WIDTH - 4.0)) {
+            val titleComp = recipe.harvestType.getTooltipTitleComponent()
+            tooltips.add(titleComp.copy().withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
+            tooltips.add(
+                Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tooltip.action", recipe.actionName)
+                    .withStyle(ChatFormatting.AQUA)
+            )
 
             if (recipe.requiredTools.isNotEmpty()) {
                 val names = recipe.requiredTools.joinToString(", ") { it.hoverName.string }
-                tooltips.add(Component.literal("• Outil requis : $names").withStyle(ChatFormatting.YELLOW))
+                tooltips.add(
+                    Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tooltip.tool", names)
+                        .withStyle(ChatFormatting.YELLOW)
+                )
             } else {
-                tooltips.add(Component.literal("• Aucun outil requis (Production automatique)").withStyle(ChatFormatting.GRAY))
+                tooltips.add(
+                    Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tooltip.no_tool")
+                        .withStyle(ChatFormatting.GRAY)
+                )
             }
 
             for (cond in recipe.conditions) {
-                tooltips.add(Component.literal("• Condition : $cond").withStyle(ChatFormatting.RED))
+                tooltips.add(
+                    Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tooltip.condition", cond)
+                        .withStyle(ChatFormatting.RED)
+                )
             }
 
             recipe.notes?.let {
-                tooltips.add(Component.literal("• Note : $it").withStyle(ChatFormatting.DARK_GRAY))
+                tooltips.add(
+                    Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tooltip.note", it)
+                        .withStyle(ChatFormatting.DARK_GRAY)
+                )
             }
         }
 
@@ -238,22 +267,22 @@ class PokemonPastureRecipeCategory(
 
     private fun calculateOutputSlotPosition(index: Int, total: Int): Pair<Int, Int> {
         return when {
-            total <= 1 -> Pair(126, 38)
-            total == 2 -> Pair(114 + index * 24, 38)
+            total <= 1 -> Pair(126, 34)
+            total == 2 -> Pair(114 + index * 24, 34)
             total <= 4 -> {
                 val col = index % 2
                 val row = index / 2
-                Pair(114 + col * 24, 28 + row * 22)
+                Pair(114 + col * 24, 25 + row * 22)
             }
             total <= 6 -> {
                 val col = index % 3
                 val row = index / 3
-                Pair(106 + col * 22, 28 + row * 22)
+                Pair(104 + col * 22, 25 + row * 22)
             }
             else -> {
                 val col = index % 3
                 val row = (index / 3).coerceAtMost(1)
-                Pair(106 + col * 22, 28 + row * 22)
+                Pair(104 + col * 22, 25 + row * 22)
             }
         }
     }
