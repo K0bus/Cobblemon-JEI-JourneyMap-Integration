@@ -1,7 +1,7 @@
 package fr.k0bus.cobblemon_jei.recipe
 
+import fr.k0bus.cobblemon_jei.compat.cobbleworkers.CobbleworkersCompat
 import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.Items
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -21,55 +21,76 @@ class PokemonPastureRecipeTest {
     }
 
     @Test
-    fun `test PastureDropItem display formats`() {
+    fun `test PokemonInteractionDrop quantity formatting`() {
         val emptyStack = try { ItemStack.EMPTY } catch (_: Throwable) { null }
         if (emptyStack != null) {
-            val drop1 = PastureDropItem(
+            val dropSingle = PokemonInteractionDrop(
                 itemStack = emptyStack,
-                chancePercentage = 100.0f,
                 minCount = 1,
                 maxCount = 1
             )
-            assertEquals("1", drop1.quantityDisplay)
-            assertEquals("100%", drop1.chanceDisplay)
+            assertEquals("1", dropSingle.quantityDisplay)
 
-            val drop2 = PastureDropItem(
+            val dropRange = PokemonInteractionDrop(
                 itemStack = emptyStack,
-                chancePercentage = 50.0f,
                 minCount = 1,
                 maxCount = 3
             )
-            assertEquals("1 - 3", drop2.quantityDisplay)
-            assertEquals("50.0%", drop2.chanceDisplay)
-
-            val drop3 = PastureDropItem(
-                itemStack = emptyStack,
-                chancePercentage = 2.5f,
-                minCount = 0,
-                maxCount = 2
-            )
-            assertEquals("0 - 2", drop3.quantityDisplay)
-            assertEquals("2.5%", drop3.chanceDisplay)
+            assertEquals("1 - 3", dropRange.quantityDisplay)
         }
     }
 
     @Test
-    fun `test PastureHarvestType values`() {
-        val types = PastureHarvestType.values()
-        assertTrue(types.contains(PastureHarvestType.INTERACTION))
-        assertTrue(types.contains(PastureHarvestType.PASSIVE_DROP))
+    fun `test PokemonPastureRecipe properties`() {
+        val recipeContinuous = PokemonPastureRecipe(
+            jobId = "cobbleworkers:apricorn_harvester",
+            jobTitleKey = "gui.cobblemon_jei.job.apricorn_harvester",
+            eligiblePokemon = emptyList(),
+            targetInputs = emptyList(),
+            outputs = emptyList(),
+            cooldownSeconds = 0,
+            requirementsDescription = "Type : Insecte",
+            actionDescriptionKey = "gui.cobblemon_jei.job.apricorn_harvester.desc"
+        )
+        assertTrue(recipeContinuous.isContinuous)
+        assertEquals(0, recipeContinuous.cooldownSeconds)
+        assertEquals("Type : Insecte", recipeContinuous.requirementsDescription)
+
+        val recipeCooldown = PokemonPastureRecipe(
+            jobId = "cobbleworkers:lava_generator",
+            jobTitleKey = "gui.cobblemon_jei.job.lava_generator",
+            eligiblePokemon = emptyList(),
+            targetInputs = emptyList(),
+            outputs = emptyList(),
+            cooldownSeconds = 90,
+            requirementsDescription = "Type : Feu",
+            actionDescriptionKey = "gui.cobblemon_jei.job.lava_generator.desc"
+        )
+        assertFalse(recipeCooldown.isContinuous)
+        assertEquals(90, recipeCooldown.cooldownSeconds)
+
+        val recipeCyclic = PokemonPastureRecipe(
+            jobId = "cobbleworkers:pickup_looter",
+            jobTitleKey = "gui.cobblemon_jei.job.pickup_looter",
+            eligiblePokemon = emptyList(),
+            targetInputs = emptyList(),
+            outputs = listOf(
+                listOf(ItemStack.EMPTY),
+                listOf(ItemStack.EMPTY, ItemStack.EMPTY)
+            ),
+            cooldownSeconds = 210,
+            requirementsDescription = "Talent : Ramassage",
+            actionDescriptionKey = "gui.cobblemon_jei.job.pickup_looter.desc"
+        )
+        assertEquals(2, recipeCyclic.outputs.size)
+        assertEquals(1, recipeCyclic.outputs[0].size)
+        assertEquals(2, recipeCyclic.outputs[1].size)
     }
 
     @Test
-    fun `test PokemonPastureRecipe food items property`() {
-        val emptyStack = try { ItemStack.EMPTY } catch (_: Throwable) { null }
-        if (emptyStack != null) {
-            val appleStack = try { ItemStack(Items.APPLE) } catch (_: Throwable) { emptyStack }
-            val foods = listOf(appleStack)
-            val specific = listOf("Pomme")
-            // Test vérifiant que les listes de nourritures sont bien associées
-            assertEquals(1, foods.size)
-            assertEquals("Pomme", specific[0])
-        }
+    fun `test CobbleworkersCompat isLoaded does not throw`() {
+        // En environnement de test sans mod container complet, isLoaded doit renvoyer true (car la classe est sur le classpath) sans lever d'exception
+        val loaded = CobbleworkersCompat.isLoaded
+        assertTrue(loaded)
     }
 }

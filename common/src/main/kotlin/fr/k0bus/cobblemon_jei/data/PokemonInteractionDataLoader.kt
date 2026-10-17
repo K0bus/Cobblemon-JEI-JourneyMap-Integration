@@ -1,12 +1,9 @@
 package fr.k0bus.cobblemon_jei.data
 
-import fr.k0bus.cobblemon_jei.recipe.PastureDropItem
-import fr.k0bus.cobblemon_jei.recipe.PastureHarvestType
-import fr.k0bus.cobblemon_jei.recipe.PokemonPastureRecipe
-import com.cobblemon.mod.common.api.drop.ItemDropEntry
+import fr.k0bus.cobblemon_jei.recipe.PokemonInteractionDrop
+import fr.k0bus.cobblemon_jei.recipe.PokemonInteractionRecipe
 import com.cobblemon.mod.common.api.pokemon.PokemonProperties
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
-import com.cobblemon.mod.common.pokemon.FormData
 import com.cobblemon.mod.common.pokemon.Species
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -20,55 +17,23 @@ import org.slf4j.LoggerFactory
 import java.io.InputStreamReader
 
 /**
- * Chargeur de données pour la production de ressources au pâturage.
- *
- * Combine deux sources de données officielles :
- * 1. Les interactions de Pokémon (brossage, traite au seau/bouteille, tonte, fertilisation).
- * 2. Les tables de drops naturelles des Pokémon (butin passif généré au pâturage).
+ * Chargeur de données pour les interactions directes avec les Pokémon (Cobblemon).
+ * Tonte de Moumouton, traite d'Écrémeuh, brossage, bouteilles, etc.
  */
-object PokemonPastureDataLoader {
+object PokemonInteractionDataLoader {
 
-    private val logger = LoggerFactory.getLogger("CobblemonJEI/PastureLoader")
-    private var cachedRecipes: List<PokemonPastureRecipe>? = null
+    private val logger = LoggerFactory.getLogger("CobblemonJEI/InteractionLoader")
+    private var cachedRecipes: List<PokemonInteractionRecipe>? = null
 
-    /**
-     * Charge l'ensemble des recettes de pâturage (interactions manuelles + productions passives).
-     */
     @Synchronized
-    fun loadPastureRecipes(): List<PokemonPastureRecipe> {
+    fun loadInteractionRecipes(): List<PokemonInteractionRecipe> {
         cachedRecipes?.let { return it }
 
         PokemonEvolutionDataLoader.ensureSpeciesLoaded()
 
-        val recipes = mutableListOf<PokemonPastureRecipe>()
+        val recipes = mutableListOf<PokemonInteractionRecipe>()
         val seenSignatures = mutableSetOf<String>()
 
-        // 1. Chargement des interactions manuelles (brossage, traite, etc.)
-        loadInteractions(recipes, seenSignatures)
-
-        // 2. Chargement des drops passifs de pâturage (DropTable des Pokémon)
-        loadPassiveDrops(recipes, seenSignatures)
-
-        // Tri ergonomique par numéro de Pokédex puis type de récolte puis clé de l'action
-        val sortedRecipes = recipes.sortedWith(
-            compareBy<PokemonPastureRecipe> { it.species.nationalPokedexNumber }
-                .thenBy { it.species.name }
-                .thenBy { it.harvestType }
-                .thenBy { it.actionTranslationKey }
-        )
-
-        cachedRecipes = sortedRecipes
-        logger.info("Cobblemon JEI: ${sortedRecipes.size} recettes de pâturage chargées avec succès.")
-        return sortedRecipes
-    }
-
-    /**
-     * Scanne les fichiers de 'pokemon_interactions' pour créer les recettes d'interactions manuelles.
-     */
-    private fun loadInteractions(
-        recipes: MutableList<PokemonPastureRecipe>,
-        seenSignatures: MutableSet<String>
-    ) {
         CobblemonDataScanner.scanDataResources("pokemon_interactions") { name, stream ->
             try {
                 InputStreamReader(stream, Charsets.UTF_8).use { reader ->
@@ -79,14 +44,23 @@ object PokemonPastureDataLoader {
                 logger.debug("Erreur lecture interaction {}: {}", name, e.message)
             }
         }
+
+        val sortedRecipes = recipes.sortedWith(
+            compareBy<PokemonInteractionRecipe> { it.species.nationalPokedexNumber }
+                .thenBy { it.species.name }
+                .thenBy { it.actionTranslationKey }
+        )
+
+        cachedRecipes = sortedRecipes
+        logger.info("Cobblemon JEI: ${sortedRecipes.size} interactions Pokémon chargées avec succès.")
+        return sortedRecipes
     }
 
     private fun processInteractionJson(
         rootJson: JsonObject,
-        recipes: MutableList<PokemonPastureRecipe>,
+        recipes: MutableList<PokemonInteractionRecipe>,
         seenSignatures: MutableSet<String>
     ) {
-        // Extraction des cibles Pokémon (ex: "miltank", "bouffalant gender=female", "oricorio form=baile")
         val targets = mutableListOf<String>()
         if (rootJson.has("requirements") && rootJson.get("requirements").isJsonArray) {
             for (reqElem in rootJson.getAsJsonArray("requirements")) {
@@ -100,7 +74,6 @@ object PokemonPastureDataLoader {
         }
 
         if (targets.isEmpty()) return
-
         val interactionsArray = rootJson.getAsJsonArray("interactions") ?: return
 
         for (targetStr in targets) {
@@ -114,12 +87,11 @@ object PokemonPastureDataLoader {
                 species.standardForm
             }
 
-            // Conditions supplémentaires issues de la cible (ex: sexe)
             val baseConditions = mutableListOf<String>()
             parsedProps?.gender?.let { gender ->
                 when (gender.name.lowercase()) {
-                    "female" -> baseConditions.add("Femelle uniquement")
-                    "male" -> baseConditions.add("Mâle uniquement")
+                    "female" -> baseConditions.add("gui.cobblemon_jei.condition.female_only")
+                    "male" -> baseConditions.add("gui.cobblemon_jei.condition.male_only")
                     else -> {}
                 }
             }
@@ -134,7 +106,6 @@ object PokemonPastureDataLoader {
                 val requiredTools = mutableListOf<ItemStack>()
                 val interactionConditions = baseConditions.toMutableList()
 
-                // Analyse des prérequis de l'interaction (ex: outil tenu par le joueur)
                 if (interObj.has("requirements") && interObj.get("requirements").isJsonArray) {
                     for (reqElem in interObj.getAsJsonArray("requirements")) {
                         if (!reqElem.isJsonObject) continue
@@ -150,8 +121,7 @@ object PokemonPastureDataLoader {
                     }
                 }
 
-                // Extraction des objets donnés ou droppés
-                val dropOutputs = mutableListOf<PastureDropItem>()
+                val dropOutputs = mutableListOf<PokemonInteractionDrop>()
                 if (interObj.has("effects") && interObj.get("effects").isJsonArray) {
                     for (effElem in interObj.getAsJsonArray("effects")) {
                         if (!effElem.isJsonObject) continue
@@ -164,9 +134,8 @@ object PokemonPastureDataLoader {
                             if (itemHolder.isPresent && itemHolder.get() != Items.AIR) {
                                 val (minAmt, maxAmt) = parseAmount(effObj.get("amount"))
                                 dropOutputs.add(
-                                    PastureDropItem(
+                                    PokemonInteractionDrop(
                                         itemStack = ItemStack(itemHolder.get()),
-                                        chancePercentage = 100.0f,
                                         minCount = minAmt,
                                         maxCount = maxAmt
                                     )
@@ -182,88 +151,15 @@ object PokemonPastureDataLoader {
                 if (dropOutputs.isNotEmpty()) {
                     val signature = "${species.resourceIdentifier}|$grouping|${dropOutputs.joinToString { it.itemStack.item.toString() }}"
                     if (seenSignatures.add(signature)) {
-                        val foodData = PokemonFoodResolver.resolveFood(species, form)
                         recipes.add(
-                            PokemonPastureRecipe(
+                            PokemonInteractionRecipe(
                                 species = species,
                                 form = form,
-                                harvestType = PastureHarvestType.INTERACTION,
                                 actionTranslationKey = actionTranslationKey,
                                 requiredTools = requiredTools.distinctBy { it.item },
-                                foodItems = foodData.foodItems,
-                                specificFoodNames = foodData.specificFoodNames,
                                 outputs = dropOutputs,
                                 conditions = interactionConditions,
-                                cooldownTicks = cooldownTicks,
-                                notes = null
-                            )
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Parcourt les espèces et formes enregistrées pour extraire leurs drops passifs (DropTable).
-     */
-    private fun loadPassiveDrops(
-        recipes: MutableList<PokemonPastureRecipe>,
-        seenSignatures: MutableSet<String>
-    ) {
-        val allSpecies = PokemonSpecies.species
-
-        for (species in allSpecies) {
-            val formsToProcess = mutableListOf<FormData>()
-            formsToProcess.add(species.standardForm)
-            for (f in species.forms) {
-                if (f != species.standardForm) {
-                    formsToProcess.add(f)
-                }
-            }
-
-            for (form in formsToProcess) {
-                val dropTable = try { form.drops } catch (_: Throwable) { null } ?: continue
-                if (dropTable.entries.isEmpty()) continue
-
-                val dropItems = mutableListOf<PastureDropItem>()
-
-                for (entry in dropTable.entries) {
-                    if (entry is ItemDropEntry) {
-                        val itemHolder = BuiltInRegistries.ITEM.getOptional(entry.item)
-                        if (itemHolder.isPresent && itemHolder.get() != Items.AIR) {
-                            val min = entry.quantityRange?.first ?: entry.quantity
-                            val max = entry.quantityRange?.last ?: entry.quantity
-                            val pct = entry.percentage.coerceIn(0.1f, 100.0f)
-
-                            dropItems.add(
-                                PastureDropItem(
-                                    itemStack = ItemStack(itemHolder.get()),
-                                    chancePercentage = pct,
-                                    minCount = min,
-                                    maxCount = max
-                                )
-                            )
-                        }
-                    }
-                }
-
-                if (dropItems.isNotEmpty()) {
-                    val signature = "passive|${species.resourceIdentifier}|${form.name}|${dropItems.joinToString { it.itemStack.item.toString() }}"
-                    if (seenSignatures.add(signature)) {
-                        val foodData = PokemonFoodResolver.resolveFood(species, form)
-                        recipes.add(
-                            PokemonPastureRecipe(
-                                species = species,
-                                form = form,
-                                harvestType = PastureHarvestType.PASSIVE_DROP,
-                                actionTranslationKey = "cobblemon_jei.action.passive",
-                                requiredTools = emptyList(),
-                                foodItems = foodData.foodItems,
-                                specificFoodNames = foodData.specificFoodNames,
-                                outputs = dropItems,
-                                conditions = emptyList(),
-                                notes = null
+                                cooldownTicks = cooldownTicks
                             )
                         )
                     }
@@ -284,13 +180,13 @@ object PokemonPastureDataLoader {
 
     private fun getActionTranslationKey(grouping: String): String {
         return when (grouping) {
-            "cobblemon:brush" -> "cobblemon_jei.action.brush"
-            "cobblemon:milking" -> "cobblemon_jei.action.milking"
-            "cobblemon:shears" -> "cobblemon_jei.action.shears"
-            "cobblemon:bone_meal" -> "cobblemon_jei.action.fertilize"
-            "cobblemon:bucket" -> "cobblemon_jei.action.bucket"
-            "cobblemon:glass_bottle" -> "cobblemon_jei.action.bottle"
-            else -> "cobblemon_jei.action.manual"
+            "cobblemon:brush" -> "gui.cobblemon_jei.action.brush"
+            "cobblemon:milking" -> "gui.cobblemon_jei.action.milking"
+            "cobblemon:shears" -> "gui.cobblemon_jei.action.shears"
+            "cobblemon:bone_meal" -> "gui.cobblemon_jei.action.fertilize"
+            "cobblemon:bucket" -> "gui.cobblemon_jei.action.bucket"
+            "cobblemon:glass_bottle" -> "gui.cobblemon_jei.action.bottle"
+            else -> "gui.cobblemon_jei.action.manual"
         }
     }
 
@@ -303,7 +199,6 @@ object PokemonPastureDataLoader {
                 if (tagOpt.isPresent && tagOpt.get().size() > 0) {
                     tagOpt.get().forEach { output.add(ItemStack(it.value())) }
                 } else {
-                    // Fallbacks si le tag est encore vide ou personnalisé
                     when {
                         conditionStr.contains("brush") -> output.add(ItemStack(Items.BRUSH))
                         conditionStr.contains("fertilizer") || conditionStr.contains("bone_meal") -> output.add(ItemStack(Items.BONE_MEAL))
@@ -317,7 +212,6 @@ object PokemonPastureDataLoader {
                 }
             }
         } catch (_: Throwable) {
-            // Fallback de sécurité selon le nom
             when {
                 conditionStr.contains("bucket") -> output.add(ItemStack(Items.BUCKET))
                 conditionStr.contains("bottle") -> output.add(ItemStack(Items.GLASS_BOTTLE))

@@ -28,5 +28,8 @@
     "fabric-language-kotlin": ">=1.12.0",
     "cobblemon": ">=1.7.0",
     "jei": ">=19.0.0"
+  },
+  "suggests": {
+    "cobbleworkers": ">=2.0.0"
   }
 }

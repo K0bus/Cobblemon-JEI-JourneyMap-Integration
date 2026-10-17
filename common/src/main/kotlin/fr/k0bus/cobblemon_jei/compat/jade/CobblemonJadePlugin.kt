@@ -16,13 +16,8 @@ class CobblemonJadePlugin : IWailaPlugin {
 
     override fun registerClient(registration: IWailaClientRegistration) {
         registration.registerEntityComponent(PastureFullnessProvider.INSTANCE, PokemonEntity::class.java)
-        registration.registerEntityComponent(PastureDropTimerProvider.INSTANCE, PokemonEntity::class.java)
-
         registration.addConfig(PastureFullnessProvider.UID, true)
-        registration.addConfig(PastureDropTimerProvider.UID, true)
-
         registration.markAsClientFeature(PastureFullnessProvider.UID)
-        registration.markAsClientFeature(PastureDropTimerProvider.UID)
     }
 
     companion object {

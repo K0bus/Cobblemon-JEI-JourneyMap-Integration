@@ -11,7 +11,6 @@ import mezz.jei.api.recipe.IFocusGroup
 import mezz.jei.api.recipe.RecipeIngredientRole
 import mezz.jei.api.recipe.RecipeType
 import mezz.jei.api.recipe.category.IRecipeCategory
-import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.network.chat.Component
@@ -19,9 +18,11 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 
 /**
- * Catégorie JEI pour la production de ressources au pâturage dans Cobblemon.
- * Affiche le Pokémon requis, l'outil nécessaire (ou le bloc de pâturage),
- * ainsi que l'ensemble des butins et ressources générés (quantités et pourcentages).
+ * Catégorie JEI pour les métiers de travail au pâturage du mod Cobbleworkers.
+ * Affiche le travail effectué par les Pokémon assignés au bloc de pâturage :
+ * - Les Pokémon éligibles (par type, talent, move ou espèce)
+ * - Le bloc ou équipement cible dans l'enclos
+ * - Les ressources produites et le temps de recharge (cooldown).
  */
 @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
 class PokemonPastureRecipeCategory(
@@ -36,7 +37,7 @@ class PokemonPastureRecipeCategory(
         )
 
         const val WIDTH = 176
-        const val HEIGHT = 128
+        const val HEIGHT = 118
     }
 
     override fun getRecipeType(): RecipeType<PokemonPastureRecipe> = RECIPE_TYPE
@@ -53,7 +54,7 @@ class PokemonPastureRecipeCategory(
         val stack = try {
             ItemStack(CobblemonBlocks.PASTURE)
         } catch (_: Throwable) {
-            ItemStack(Items.SHEARS)
+            ItemStack(Items.HAY_BLOCK)
         }
         return guiHelper.createDrawableItemStack(stack)
     }
@@ -63,80 +64,29 @@ class PokemonPastureRecipeCategory(
         recipe: PokemonPastureRecipe,
         focuses: IFocusGroup
     ) {
-        val hasTool = recipe.requiredTools.isNotEmpty()
-        val pokeSlotX = if (hasTool) 12 else 24
-        val foodSlotX = if (hasTool) 38 else 52
-        val toolSlotX = 64
+        val pokeSlotX = 22
+        val targetSlotX = 52
 
-        // Slot 1 : Pokémon en INPUT (recherchable via 'U' sur le Pokémon)
-        builder.addSlot(RecipeIngredientRole.INPUT, pokeSlotX, 34)
-            .addIngredient(PokemonSpeciesIngredient.TYPE, recipe.pokemonIngredient)
-
-        // Slot 2 : Nourriture acceptée en INPUT (recherchable via 'U' sur la nourriture)
-        val foodSlot = builder.addSlot(RecipeIngredientRole.INPUT, foodSlotX, 34)
-            .addIngredients(VanillaTypes.ITEM_STACK, recipe.foodItems)
-
-        foodSlot.addTooltipCallback { _, tooltip ->
-            tooltip.add(
-                Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.food_title")
-                    .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
-            )
-            tooltip.add(
-                Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.food_desc")
-                    .withStyle(ChatFormatting.YELLOW)
-            )
-            if (recipe.specificFoodNames.isNotEmpty()) {
-                tooltip.add(
-                    Component.translatable(
-                        "gui.cobblemon_jei.category.pokemon_pasture.food_specific",
-                        recipe.specificFoodNames.joinToString(", ")
-                    ).withStyle(ChatFormatting.AQUA)
-                )
-            }
-            tooltip.add(
-                Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.food_universal")
-                    .withStyle(ChatFormatting.GRAY)
-            )
-            tooltip.add(
-                Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.food_how_to")
-                    .withStyle(ChatFormatting.GREEN)
-            )
+        // Slot 1 : Pokémon éligibles en INPUT (recherchable via 'U' sur le Pokémon)
+        val pokeSlot = builder.addSlot(RecipeIngredientRole.INPUT, pokeSlotX, 32)
+        for (poke in recipe.eligiblePokemon) {
+            pokeSlot.addIngredient(PokemonSpeciesIngredient.TYPE, poke)
         }
 
-        // Slot 3 : Outil requis en INPUT (uniquement si un outil est requis)
-        if (hasTool) {
-            builder.addSlot(RecipeIngredientRole.INPUT, toolSlotX, 34)
-                .addIngredients(VanillaTypes.ITEM_STACK, recipe.requiredTools)
-        }
+        // Slot 2 : Cible / Bloc requis dans l'enclos en INPUT
+        builder.addSlot(RecipeIngredientRole.INPUT, targetSlotX, 32)
+            .addIngredients(VanillaTypes.ITEM_STACK, recipe.targetInputs)
 
-        // Slots OUTPUT : Ressources produites (recherchables via 'R' sur les items)
+        // Slot 3+ : Objets produits en OUTPUT (recherchables via 'R' sur les items)
         val outputs = recipe.outputs
         val outputCount = outputs.size
 
         for (i in outputs.indices) {
-            val dropItem = outputs[i]
             val (slotX, slotY) = calculateOutputSlotPosition(i, outputCount)
-
-            val slotBuilder = builder.addSlot(RecipeIngredientRole.OUTPUT, slotX, slotY)
-                .addItemStack(dropItem.itemStack)
-
-            // Infobulle détaillée sur chaque slot de butin
-            slotBuilder.addTooltipCallback { _, tooltip ->
-                tooltip.add(
-                    Component.translatable(
-                        "gui.cobblemon_jei.category.pokemon_pasture.amount",
-                        dropItem.quantityDisplay
-                    ).withStyle(ChatFormatting.GOLD)
-                )
-                tooltip.add(
-                    Component.translatable(
-                        "gui.cobblemon_jei.category.pokemon_pasture.chance",
-                        dropItem.chanceDisplay
-                    ).withStyle(ChatFormatting.AQUA)
-                )
-                for (cond in dropItem.conditions) {
-                    tooltip.add(Component.literal("• $cond").withStyle(ChatFormatting.GRAY))
-                }
+            val slotStacks = outputs[i]
+            if (slotStacks.isNotEmpty()) {
+                builder.addSlot(RecipeIngredientRole.OUTPUT, slotX, slotY)
+                    .addItemStacks(slotStacks)
             }
         }
     }
@@ -150,57 +100,46 @@ class PokemonPastureRecipeCategory(
     ) {
         val font = Minecraft.getInstance().font
 
-        // 1. Fond général élégant thème sombre
+        // 1. Fond général thème sombre
         guiGraphics.fill(0, 0, WIDTH, HEIGHT, 0xFF141519.toInt())
         guiGraphics.fill(1, 1, WIDTH - 1, HEIGHT - 1, 0xFF1C1E24.toInt())
 
-        // 2. Bandeau supérieur (En-tête Y: 2 à 20)
+        // 2. Bandeau supérieur (Y: 2 à 20)
         guiGraphics.fill(2, 2, WIDTH - 2, 20, 0xFF242630.toInt())
 
-        // Badge de type d'action à droite (court : "Passif" / "Manuel")
-        val badgeText = recipe.harvestType.getBadgeComponent().string
+        // Badge de cooldown à droite (ex: "90s" ou "Continu")
+        val badgeText = if (recipe.isContinuous) {
+            Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.continuous").string
+        } else {
+            "${recipe.cooldownSeconds}s"
+        }
         val badgeW = font.width(badgeText)
         val badgeX = WIDTH - badgeW - 10
+        val badgeColor = if (recipe.isContinuous) 0xFF2ED573.toInt() else 0xFFFFA502.toInt()
         guiGraphics.fill(badgeX - 4, 3, WIDTH - 4, 18, 0xFF101216.toInt())
-        guiGraphics.drawString(font, badgeText, badgeX - 1, 6, recipe.harvestType.badgeColor, false)
+        guiGraphics.drawString(font, badgeText, badgeX - 1, 6, badgeColor, false)
 
-        // Numéro de Pokédex et nom du Pokémon à gauche (tronqué proprement avant le badge)
-        val dexStr = String.format("#%04d", recipe.species.nationalPokedexNumber)
-        val nameStr = recipe.species.translatedName.string
-        val headerTitle = "$dexStr $nameStr"
-        val maxHeaderWidth = badgeX - 12
-        val displayHeader = if (font.width(headerTitle) > maxHeaderWidth) {
-            font.plainSubstrByWidth(headerTitle, maxHeaderWidth - 6) + "…"
+        // Nom du métier à gauche
+        val titleText = recipe.jobTitle.string
+        val maxTitleWidth = badgeX - 12
+        val displayTitle = if (font.width(titleText) > maxTitleWidth) {
+            font.plainSubstrByWidth(titleText, maxTitleWidth - 6) + "…"
         } else {
-            headerTitle
+            titleText
         }
-        guiGraphics.drawString(font, displayHeader, 6, 6, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, displayTitle, 6, 6, 0xFFFFFFFF.toInt(), false)
 
-        // 3. Libellés au-dessus des slots (Y: 23)
-        val inputsLabel = Component.translatable("gui.cobblemon_jei.label.inputs").string
-        val inputsLabelW = font.width(inputsLabel)
-        guiGraphics.drawString(font, inputsLabel, 47 - inputsLabelW / 2, 23, 0xFF999999.toInt(), false)
+        // 3. Cadres des slots
+        val pokeSlotX = 22
+        val targetSlotX = 52
 
-        val dropsLabel = Component.translatable("gui.cobblemon_jei.label.drops").string
-        val dropsLabelW = font.width(dropsLabel)
-        guiGraphics.drawString(font, dropsLabel, 138 - dropsLabelW / 2, 23, 0xFF999999.toInt(), false)
+        drawSlotBorder(guiGraphics, pokeSlotX - 1, 31, 0xFF3D4050.toInt())
+        drawSlotBorder(guiGraphics, targetSlotX - 1, 31, 0xFFE1B12C.toInt())
 
-        val hasTool = recipe.requiredTools.isNotEmpty()
-        val pokeSlotX = if (hasTool) 12 else 24
-        val foodSlotX = if (hasTool) 38 else 52
-        val toolSlotX = 64
-
-        // Cadres des slots d'entrée
-        drawSlotBorder(guiGraphics, pokeSlotX - 1, 33, 0xFF3D4050.toInt())
-        drawSlotBorder(guiGraphics, foodSlotX - 1, 33, 0xFFFFA502.toInt())
-        if (hasTool) {
-            drawSlotBorder(guiGraphics, toolSlotX - 1, 33, 0xFFE1B12C.toInt())
-        }
-
-        // Flèche centrale stylisée vers la droite (X: 85 à 101, Y: 42)
-        guiGraphics.fill(85, 42, 97, 44, 0xFF54A0FF.toInt())
-        guiGraphics.fill(95, 40, 99, 46, 0xFF54A0FF.toInt())
-        guiGraphics.fill(98, 41, 101, 45, 0xFF54A0FF.toInt())
+        // Flèche centrale stylisée vers la droite (X: 79 à 95, Y: 40)
+        guiGraphics.fill(79, 40, 91, 42, 0xFF54A0FF.toInt())
+        guiGraphics.fill(89, 38, 93, 44, 0xFF54A0FF.toInt())
+        guiGraphics.fill(92, 39, 95, 43, 0xFF54A0FF.toInt())
 
         // Cadres pour les slots de sortie
         val outputCount = recipe.outputs.size
@@ -209,120 +148,33 @@ class PokemonPastureRecipeCategory(
             drawSlotBorder(guiGraphics, slotX - 1, slotY - 1, 0xFF2ED573.toInt())
         }
 
-        // 4. Carte récapitulative inférieure (Y: 76 à 122)
-        val cardY = 76
+        // 4. Carte récapitulative inférieure (Y: 66 à 113)
+        val cardY = 66
         guiGraphics.fill(4, cardY, WIDTH - 4, HEIGHT - 5, 0xFF181920.toInt())
         guiGraphics.fill(4, cardY - 1, WIDTH - 4, cardY, 0xFF2F3240.toInt())
 
-        if (recipe.harvestType == PastureHarvestType.INTERACTION) {
-            val actionStr = recipe.actionName.string
-            val line1 = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.action_label", actionStr).string
-            guiGraphics.drawString(font, font.plainSubstrByWidth(line1, WIDTH - 16), 8, cardY + 4, 0xFFFFBE76.toInt(), false)
+        // Ligne 1 : Prérequis du métier
+        val line1 = Component.translatable(
+            "gui.cobblemon_jei.category.pokemon_pasture.requirements",
+            recipe.requirementsDescription
+        ).string
+        guiGraphics.drawString(font, font.plainSubstrByWidth(line1, WIDTH - 16), 8, cardY + 4, 0xFFFFBE76.toInt(), false)
 
-            val toolNames = if (recipe.requiredTools.isNotEmpty()) {
-                recipe.requiredTools.joinToString(", ") { it.hoverName.string }
-            } else "-"
-            val line2 = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tool_required", toolNames).string
-            guiGraphics.drawString(font, font.plainSubstrByWidth(line2, WIDTH - 16), 8, cardY + 14, 0xFFE0E0E0.toInt(), false)
+        // Ligne 2 : Description de l'action
+        val line2 = recipe.actionDescription.string
+        guiGraphics.drawString(font, font.plainSubstrByWidth(line2, WIDTH - 16), 8, cardY + 16, 0xFFE0E0E0.toInt(), false)
 
-            val line3 = if (recipe.estimatedMinutes > 0.0) {
-                Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.interval", recipe.displayIntervalMinutes).string
-            } else {
-                Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.interaction_direct").string
-            }
-            guiGraphics.drawString(font, font.plainSubstrByWidth(line3, WIDTH - 16), 8, cardY + 24, 0xFFAAAAAA.toInt(), false)
-
-            val line4 = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.food_line").string
-            guiGraphics.drawString(font, font.plainSubstrByWidth(line4, WIDTH - 16), 8, cardY + 34, 0xFFFFA502.toInt(), false)
+        // Ligne 3 : Temps de recharge et note
+        val line3 = if (recipe.isContinuous) {
+            Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.desc_continuous").string
         } else {
-            val line1 = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.mode_passive").string
-            guiGraphics.drawString(font, font.plainSubstrByWidth(line1, WIDTH - 16), 8, cardY + 4, 0xFF7BED9F.toInt(), false)
-
-            val line2 = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.interval", recipe.displayIntervalMinutes).string
-            guiGraphics.drawString(font, font.plainSubstrByWidth(line2, WIDTH - 16), 8, cardY + 14, 0xFFFFD32A.toInt(), false)
-
-            val line3 = if (recipe.conditions.isNotEmpty()) {
-                Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.condition", recipe.conditions.joinToString(" • ")).string
-            } else {
-                Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.hint_hover").string
-            }
-            guiGraphics.drawString(font, font.plainSubstrByWidth(line3, WIDTH - 16), 8, cardY + 24, 0xFF888888.toInt(), false)
-
-            val line4 = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.food_line").string
-            guiGraphics.drawString(font, font.plainSubstrByWidth(line4, WIDTH - 16), 8, cardY + 34, 0xFFFFA502.toInt(), false)
+            Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.desc_cooldown", recipe.cooldownSeconds).string
         }
-    }
+        guiGraphics.drawString(font, font.plainSubstrByWidth(line3, WIDTH - 16), 8, cardY + 28, 0xFFAAAAAA.toInt(), false)
 
-    override fun getTooltipStrings(
-        recipe: PokemonPastureRecipe,
-        recipeSlotsView: IRecipeSlotsView,
-        mouseX: Double,
-        mouseY: Double
-    ): List<Component> {
-        val tooltips = mutableListOf<Component>()
-
-        // Tooltip sur la zone inférieure récapitulative
-        if (mouseY in 76.0..(HEIGHT - 5.0) && mouseX in 4.0..(WIDTH - 4.0)) {
-            val titleComp = recipe.harvestType.getTooltipTitleComponent()
-            tooltips.add(titleComp.copy().withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
-            tooltips.add(
-                Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tooltip.action", recipe.actionName)
-                    .withStyle(ChatFormatting.AQUA)
-            )
-
-            if (recipe.harvestType == PastureHarvestType.PASSIVE_DROP || recipe.estimatedMinutes > 0.0) {
-                tooltips.add(
-                    Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tooltip.interval", recipe.displayIntervalMinutes)
-                        .withStyle(ChatFormatting.GREEN)
-                )
-            }
-
-            if (recipe.requiredTools.isNotEmpty()) {
-                val names = recipe.requiredTools.joinToString(", ") { it.hoverName.string }
-                tooltips.add(
-                    Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tooltip.tool", names)
-                        .withStyle(ChatFormatting.YELLOW)
-                )
-            } else {
-                tooltips.add(
-                    Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tooltip.no_tool")
-                        .withStyle(ChatFormatting.GRAY)
-                )
-            }
-
-            for (cond in recipe.conditions) {
-                tooltips.add(
-                    Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tooltip.condition", cond)
-                        .withStyle(ChatFormatting.RED)
-                )
-            }
-
-            val foodLine = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.food_line")
-            tooltips.add(foodLine.copy().withStyle(ChatFormatting.GOLD))
-
-            if (recipe.specificFoodNames.isNotEmpty()) {
-                tooltips.add(
-                    Component.translatable(
-                        "gui.cobblemon_jei.category.pokemon_pasture.food_specific",
-                        recipe.specificFoodNames.joinToString(", ")
-                    ).withStyle(ChatFormatting.AQUA)
-                )
-            }
-
-            tooltips.add(
-                Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tooltip.how_to_feed")
-                    .withStyle(ChatFormatting.GREEN)
-            )
-
-            recipe.notes?.let {
-                tooltips.add(
-                    Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tooltip.note", it)
-                        .withStyle(ChatFormatting.DARK_GRAY)
-                )
-            }
-        }
-
-        return tooltips
+        // Ligne 4 : Mention mod
+        val line4 = Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.mod_footer").string
+        guiGraphics.drawString(font, font.plainSubstrByWidth(line4, WIDTH - 16), 8, cardY + 38, 0xFF747D8C.toInt(), false)
     }
 
     private fun drawSlotBorder(guiGraphics: GuiGraphics, x: Int, y: Int, borderColor: Int) {
@@ -335,22 +187,22 @@ class PokemonPastureRecipeCategory(
 
     private fun calculateOutputSlotPosition(index: Int, total: Int): Pair<Int, Int> {
         return when {
-            total <= 1 -> Pair(136, 34)
-            total == 2 -> Pair(122 + index * 24, 34)
+            total <= 1 -> Pair(126, 32)
+            total == 2 -> Pair(115 + index * 24, 32)
             total <= 4 -> {
                 val col = index % 2
                 val row = index / 2
-                Pair(122 + col * 24, 25 + row * 22)
+                Pair(115 + col * 24, 23 + row * 20)
             }
             total <= 6 -> {
                 val col = index % 3
                 val row = index / 3
-                Pair(110 + col * 22, 25 + row * 22)
+                Pair(106 + col * 20, 23 + row * 20)
             }
             else -> {
-                val col = index % 3
-                val row = (index / 3).coerceAtMost(1)
-                Pair(110 + col * 22, 25 + row * 22)
+                val col = index % 4
+                val row = (index / 4).coerceAtMost(1)
+                Pair(102 + col * 18, 23 + row * 20)
             }
         }
     }

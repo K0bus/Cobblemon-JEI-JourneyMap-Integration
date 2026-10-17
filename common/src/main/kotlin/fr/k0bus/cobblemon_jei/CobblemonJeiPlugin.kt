@@ -68,19 +68,26 @@ class CobblemonJeiPlugin : IModPlugin {
     }
 
     /**
-     * Enregistre les catégories de recette pour les apparitions et évolutions de Pokémon.
+     * Enregistre les catégories de recette pour les apparitions, évolutions, interactions de Pokémon
+     * et le travail au pâturage (si Cobbleworkers est installé).
      */
     override fun registerCategories(registration: IRecipeCategoryRegistration) {
         val guiHelper = registration.jeiHelpers.guiHelper
-        registration.addRecipeCategories(
+        val categories = mutableListOf<mezz.jei.api.recipe.category.IRecipeCategory<*>>(
             PokemonSpawnRecipeCategory(guiHelper),
             PokemonEvolutionRecipeCategory(guiHelper),
-            fr.k0bus.cobblemon_jei.recipe.PokemonPastureRecipeCategory(guiHelper)
+            fr.k0bus.cobblemon_jei.recipe.PokemonInteractionRecipeCategory(guiHelper)
         )
+
+        if (fr.k0bus.cobblemon_jei.compat.cobbleworkers.CobbleworkersCompat.isLoaded) {
+            categories.add(fr.k0bus.cobblemon_jei.recipe.PokemonPastureRecipeCategory(guiHelper))
+        }
+
+        registration.addRecipeCategories(*categories.toTypedArray())
     }
 
     /**
-     * Charge et enregistre les données de spawn, d'évolution et de pâturage de chaque Pokémon pour JEI.
+     * Charge et enregistre les données de spawn, d'évolution, d'interactions et de pâturage (Cobbleworkers).
      */
     override fun registerRecipes(registration: IRecipeRegistration) {
         val spawnRecipes = PokemonSpawnDataLoader.loadSpawnRecipes()
@@ -91,16 +98,22 @@ class CobblemonJeiPlugin : IModPlugin {
         logger.info("Cobblemon JEI: Enregistrement de ${evolutionRecipes.size} recettes d'évolution dans JEI.")
         registration.addRecipes(PokemonEvolutionRecipeCategory.RECIPE_TYPE, evolutionRecipes)
 
-        val pastureRecipes = fr.k0bus.cobblemon_jei.data.PokemonPastureDataLoader.loadPastureRecipes()
-        logger.info("Cobblemon JEI: Enregistrement de ${pastureRecipes.size} recettes de pâturage dans JEI.")
-        registration.addRecipes(fr.k0bus.cobblemon_jei.recipe.PokemonPastureRecipeCategory.RECIPE_TYPE, pastureRecipes)
+        val interactionRecipes = fr.k0bus.cobblemon_jei.data.PokemonInteractionDataLoader.loadInteractionRecipes()
+        logger.info("Cobblemon JEI: Enregistrement de ${interactionRecipes.size} recettes d'interactions Pokémon dans JEI.")
+        registration.addRecipes(fr.k0bus.cobblemon_jei.recipe.PokemonInteractionRecipeCategory.RECIPE_TYPE, interactionRecipes)
+
+        if (fr.k0bus.cobblemon_jei.compat.cobbleworkers.CobbleworkersCompat.isLoaded) {
+            val pastureRecipes = fr.k0bus.cobblemon_jei.data.CobbleworkersJobDataLoader.loadPastureRecipes()
+            logger.info("Cobblemon JEI: Enregistrement de ${pastureRecipes.size} métiers de pâturage (Cobbleworkers) dans JEI.")
+            registration.addRecipes(fr.k0bus.cobblemon_jei.recipe.PokemonPastureRecipeCategory.RECIPE_TYPE, pastureRecipes)
+        }
     }
 
     /**
      * Déclare les catalyseurs de recette dans JEI.
      */
     override fun registerRecipeCatalysts(registration: IRecipeCatalystRegistration) {
-        // Catalyseurs pour les spawns (boussole et Poké Ball permettent d'ouvrir la catégorie globale des apparitions)
+        // Catalyseurs pour les spawns (boussole et Poké Ball)
         registration.addRecipeCatalyst(
             ItemStack(Items.COMPASS),
             PokemonSpawnRecipeCategory.RECIPE_TYPE
@@ -112,17 +125,28 @@ class CobblemonJeiPlugin : IModPlugin {
             )
         } catch (_: Throwable) {}
 
-        // Catalyseur pour les recettes de pâturage (Le bloc de pâturage ouvre toutes les productions d'enclos)
-        try {
-            registration.addRecipeCatalyst(
-                ItemStack(com.cobblemon.mod.common.CobblemonBlocks.PASTURE),
-                fr.k0bus.cobblemon_jei.recipe.PokemonPastureRecipeCategory.RECIPE_TYPE
-            )
-        } catch (_: Throwable) {}
+        // Catalyseurs pour les interactions directes (cisailles, seau, brosse)
+        registration.addRecipeCatalyst(
+            ItemStack(Items.SHEARS),
+            fr.k0bus.cobblemon_jei.recipe.PokemonInteractionRecipeCategory.RECIPE_TYPE
+        )
+        registration.addRecipeCatalyst(
+            ItemStack(Items.BUCKET),
+            fr.k0bus.cobblemon_jei.recipe.PokemonInteractionRecipeCategory.RECIPE_TYPE
+        )
+        registration.addRecipeCatalyst(
+            ItemStack(Items.BRUSH),
+            fr.k0bus.cobblemon_jei.recipe.PokemonInteractionRecipeCategory.RECIPE_TYPE
+        )
 
-        // Note: Aucun catalyseur n'est enregistré pour PokemonEvolutionRecipeCategory.
-        // Les objets d'évolution (pierres, câble de liaison, etc.) sont des ingrédients INPUT du slot 2.
-        // Les enregistrer en tant que catalyseurs ferait afficher TOUTES les évolutions du jeu lors du "Use",
-        // alors que nous voulons n'afficher QUE les évolutions qui requièrent cet objet spécifique.
+        // Catalyseur pour les recettes de pâturage Cobbleworkers (Le bloc de pâturage)
+        if (fr.k0bus.cobblemon_jei.compat.cobbleworkers.CobbleworkersCompat.isLoaded) {
+            try {
+                registration.addRecipeCatalyst(
+                    ItemStack(com.cobblemon.mod.common.CobblemonBlocks.PASTURE),
+                    fr.k0bus.cobblemon_jei.recipe.PokemonPastureRecipeCategory.RECIPE_TYPE
+                )
+            } catch (_: Throwable) {}
+        }
     }
 }

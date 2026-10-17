@@ -48,3 +48,9 @@ modId="jade"
 type="optional"
 ordering="NONE"
 side="CLIENT"
+
+[[dependencies.cobblemon_jei]]
+modId="cobbleworkers"
+type="optional"
+ordering="NONE"
+side="CLIENT"
