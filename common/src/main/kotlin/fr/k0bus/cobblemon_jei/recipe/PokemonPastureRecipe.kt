@@ -62,6 +62,8 @@ data class PokemonPastureRecipe(
     val harvestType: PastureHarvestType,
     val actionTranslationKey: String,
     val requiredTools: List<ItemStack> = emptyList(),
+    val foodItems: List<ItemStack> = emptyList(),
+    val specificFoodNames: List<String> = emptyList(),
     val outputs: List<PastureDropItem> = emptyList(),
     val conditions: List<String> = emptyList(),
     val cooldownTicks: Int = 0,

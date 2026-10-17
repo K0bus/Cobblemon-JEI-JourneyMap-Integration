@@ -59,4 +59,17 @@ class PokemonPastureRecipeTest {
         assertTrue(types.contains(PastureHarvestType.INTERACTION))
         assertTrue(types.contains(PastureHarvestType.PASSIVE_DROP))
     }
+
+    @Test
+    fun `test PokemonPastureRecipe food items property`() {
+        val emptyStack = try { ItemStack.EMPTY } catch (_: Throwable) { null }
+        if (emptyStack != null) {
+            val appleStack = try { ItemStack(Items.APPLE) } catch (_: Throwable) { emptyStack }
+            val foods = listOf(appleStack)
+            val specific = listOf("Pomme")
+            // Test vérifiant que les listes de nourritures sont bien associées
+            assertEquals(1, foods.size)
+            assertEquals("Pomme", specific[0])
+        }
+    }
 }

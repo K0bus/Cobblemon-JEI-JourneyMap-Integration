@@ -182,6 +182,7 @@ object PokemonPastureDataLoader {
                 if (dropOutputs.isNotEmpty()) {
                     val signature = "${species.resourceIdentifier}|$grouping|${dropOutputs.joinToString { it.itemStack.item.toString() }}"
                     if (seenSignatures.add(signature)) {
+                        val foodData = PokemonFoodResolver.resolveFood(species, form)
                         recipes.add(
                             PokemonPastureRecipe(
                                 species = species,
@@ -189,6 +190,8 @@ object PokemonPastureDataLoader {
                                 harvestType = PastureHarvestType.INTERACTION,
                                 actionTranslationKey = actionTranslationKey,
                                 requiredTools = requiredTools.distinctBy { it.item },
+                                foodItems = foodData.foodItems,
+                                specificFoodNames = foodData.specificFoodNames,
                                 outputs = dropOutputs,
                                 conditions = interactionConditions,
                                 cooldownTicks = cooldownTicks,
@@ -248,6 +251,7 @@ object PokemonPastureDataLoader {
                 if (dropItems.isNotEmpty()) {
                     val signature = "passive|${species.resourceIdentifier}|${form.name}|${dropItems.joinToString { it.itemStack.item.toString() }}"
                     if (seenSignatures.add(signature)) {
+                        val foodData = PokemonFoodResolver.resolveFood(species, form)
                         recipes.add(
                             PokemonPastureRecipe(
                                 species = species,
@@ -255,6 +259,8 @@ object PokemonPastureDataLoader {
                                 harvestType = PastureHarvestType.PASSIVE_DROP,
                                 actionTranslationKey = "cobblemon_jei.action.passive",
                                 requiredTools = emptyList(),
+                                foodItems = foodData.foodItems,
+                                specificFoodNames = foodData.specificFoodNames,
                                 outputs = dropItems,
                                 conditions = emptyList(),
                                 notes = null
