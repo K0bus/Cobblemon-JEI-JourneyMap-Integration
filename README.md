@@ -89,6 +89,21 @@ It provides:
   - Animated progress indicator for asynchronous region scanning.
   - Live radar status (*"X target(s) in range"* / *"★ SHINY Detected!"*).
 
+### 6. 🌿 Jade Integration (Optional Soft-Dependency)
+- **Automatic Pastured Pokémon Detection**:
+  - Automatically identifies whether a Pokémon is tethered to a Pasture Block (`PokemonPastureBlockEntity`).
+- **Live Fullness Gauge (`PastureFullnessProvider`)**:
+  - Official Jade progress bar showing current fullness (`0` to `100`).
+  - Dynamic color gradients: emerald green when well-fed, amber when hungry (<30), and crimson red with `(Hungry)` notice when depleted.
+- **Next Drop / Metabolism Countdown (`PastureDropTimerProvider`)**:
+  - Real-time countdown timer before next pasture drop (`Xm Ys` or `Xs`).
+  - Dynamic cyan progress bar tracking metabolism cycle progress towards species rate.
+  - Paused notice in red when fullness reaches 0 (production halts until fed).
+- **Client & Server Synchronized (`PasturePokemonDataProvider`)**:
+  - Server-side data provider ensuring 100% precision in singleplayer, LAN, or dedicated servers.
+- **Configurable via Jade GUI**:
+  - Independent toggles for Fullness and Drop Timer in Jade's in-game config screen.
+
 ---
 
 ## 🛠️ Project Structure & Architecture

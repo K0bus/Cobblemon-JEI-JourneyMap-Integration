@@ -118,5 +118,11 @@
   "chat.cobblemon_jm.radar.shiny": "§6★ [色違いレーダー] §e%s §6★ 近くで色違いポケモンを発見！",
   "chat.cobblemon_jm.radar.nearby": "§b⚡ [Cobblemon レーダー] §f%s §aが近くに出現！",
   "gui.cobblemon_jei.category.pokemon_pasture.interval": "間隔: 約 %s 分（サーバー設定連動）",
-  "gui.cobblemon_jei.category.pokemon_pasture.tooltip.interval": "• 生産間隔: 約 %s 分（基礎速度/サーバー設定）"
+  "gui.cobblemon_jei.category.pokemon_pasture.tooltip.interval": "• 生産間隔: 約 %s 分（基礎速度/サーバー設定）",
+  "jade.cobblemon_jei.pasture_fullness": "満腹度: %d/%d",
+  "jade.cobblemon_jei.pasture_fullness_hungry": "満腹度: %d/%d (空腹)",
+  "jade.cobblemon_jei.pasture_drop_timer": "次のドロップ: %s",
+  "jade.cobblemon_jei.pasture_drop_paused": "次のドロップ: 一時停止中 (エサを与えてください)",
+  "config.jade.plugin_cobblemon_jei.pasture_fullness": "牧場のポケモンの満腹度",
+  "config.jade.plugin_cobblemon_jei.pasture_drop_timer": "牧場のポケモンのドロップタイマー"
 }

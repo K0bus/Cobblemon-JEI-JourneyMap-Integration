@@ -118,5 +118,11 @@
   "chat.cobblemon_jm.radar.shiny": "§6★ [Schillerndes Radar] §e%s §6★ SHINY in der Nähe entdeckt!",
   "chat.cobblemon_jm.radar.nearby": "§b⚡ [Cobblemon Radar] §f%s §ain der Nähe gesichtet!",
   "gui.cobblemon_jei.category.pokemon_pasture.interval": "Intervall: ~%s Min. (Servereinstellung)",
-  "gui.cobblemon_jei.category.pokemon_pasture.tooltip.interval": "• Intervall: ~%s Minuten (Stoffwechsel/Server)"
+  "gui.cobblemon_jei.category.pokemon_pasture.tooltip.interval": "• Intervall: ~%s Minuten (Stoffwechsel/Server)",
+  "jade.cobblemon_jei.pasture_fullness": "Sättigung: %d/%d",
+  "jade.cobblemon_jei.pasture_fullness_hungry": "Sättigung: %d/%d (Hungrig)",
+  "jade.cobblemon_jei.pasture_drop_timer": "Nächster Drop: %s",
+  "jade.cobblemon_jei.pasture_drop_paused": "Nächster Drop: Pausiert (Pokemon füttern)",
+  "config.jade.plugin_cobblemon_jei.pasture_fullness": "Sättigung des weidenden Pokémons",
+  "config.jade.plugin_cobblemon_jei.pasture_drop_timer": "Drop-Timer des weidenden Pokémons"
 }

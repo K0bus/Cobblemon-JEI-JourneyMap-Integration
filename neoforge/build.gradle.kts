@@ -30,7 +30,9 @@ dependencies {
     compileOnly("mezz.jei:jei-1.21.1-neoforge:$jeiVersion")
     runtimeOnly("mezz.jei:jei-1.21.1-neoforge:$jeiVersion")
     compileOnly("info.journeymap:journeymap-api-neoforge:2.0.0-1.21.1-SNAPSHOT")
+    compileOnly("maven.modrinth:jade:15.10.6+neoforge")
     testImplementation("info.journeymap:journeymap-api-neoforge:2.0.0-1.21.1-SNAPSHOT")
+    testImplementation("maven.modrinth:jade:15.10.6+neoforge")
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
     testImplementation(kotlin("reflect"))
 }

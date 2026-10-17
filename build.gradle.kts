@@ -51,6 +51,10 @@ subprojects {
             name = "JourneyMap"
             url = uri("https://jm.gserv.me/repository/maven-public")
         }
+        maven {
+            name = "Modrinth"
+            url = uri("https://api.modrinth.com/maven")
+        }
     }
 
     tasks.withType<ProcessResources>().configureEach {

@@ -118,5 +118,11 @@
   "chat.cobblemon_jm.radar.shiny": "§6★ [Shiny Sentry] §e%s §6★ SHINY detected nearby!",
   "chat.cobblemon_jm.radar.nearby": "§b⚡ [Cobblemon Radar] §f%s §aspotted nearby!",
   "gui.cobblemon_jei.category.pokemon_pasture.interval": "Interval: ~%s min (server setting)",
-  "gui.cobblemon_jei.category.pokemon_pasture.tooltip.interval": "• Interval: ~%s minutes (metabolism/server)"
+  "gui.cobblemon_jei.category.pokemon_pasture.tooltip.interval": "• Interval: ~%s minutes (metabolism/server)",
+  "jade.cobblemon_jei.pasture_fullness": "Fullness: %d/%d",
+  "jade.cobblemon_jei.pasture_fullness_hungry": "Fullness: %d/%d (Hungry)",
+  "jade.cobblemon_jei.pasture_drop_timer": "Next drop: %s",
+  "jade.cobblemon_jei.pasture_drop_paused": "Next drop: Paused (Feed Pokemon)",
+  "config.jade.plugin_cobblemon_jei.pasture_fullness": "Pastured Pokemon Fullness",
+  "config.jade.plugin_cobblemon_jei.pasture_drop_timer": "Pastured Pokemon Drop Timer"
 }

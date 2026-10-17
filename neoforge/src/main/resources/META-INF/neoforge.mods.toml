@@ -42,3 +42,9 @@ modId="journeymap"
 type="optional"
 ordering="NONE"
 side="CLIENT"
+
+[[dependencies.cobblemon_jei]]
+modId="jade"
+type="optional"
+ordering="NONE"
+side="CLIENT"

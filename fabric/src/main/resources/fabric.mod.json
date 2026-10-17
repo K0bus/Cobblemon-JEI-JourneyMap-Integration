@@ -16,6 +16,9 @@
   "entrypoints": {
     "jei_mod_plugin": [
       "fr.k0bus.cobblemon_jei.CobblemonJeiPlugin"
+    ],
+    "jade": [
+      "fr.k0bus.cobblemon_jei.compat.jade.CobblemonJadePlugin"
     ]
   },
   "depends": {

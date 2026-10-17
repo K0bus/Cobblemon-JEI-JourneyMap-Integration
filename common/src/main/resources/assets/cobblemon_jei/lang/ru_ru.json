@@ -118,5 +118,11 @@
   "chat.cobblemon_jm.radar.shiny": "§6★ [Шайни-радар] §e%s §6★ ШАЙНИ замечен поблизости!",
   "chat.cobblemon_jm.radar.nearby": "§b⚡ [Радар Cobblemon] §f%s §aзамечен поблизости!",
   "gui.cobblemon_jei.category.pokemon_pasture.interval": "Интервал: ~%s мин. (настройки сервера)",
-  "gui.cobblemon_jei.category.pokemon_pasture.tooltip.interval": "• Интервал: ~%s минут (метаболизм/сервер)"
+  "gui.cobblemon_jei.category.pokemon_pasture.tooltip.interval": "• Интервал: ~%s минут (метаболизм/сервер)",
+  "jade.cobblemon_jei.pasture_fullness": "Сытость: %d/%d",
+  "jade.cobblemon_jei.pasture_fullness_hungry": "Сытость: %d/%d (Голоден)",
+  "jade.cobblemon_jei.pasture_drop_timer": "Следующий дроп: %s",
+  "jade.cobblemon_jei.pasture_drop_paused": "Следующий дроп: На паузе (Покормите покемона)",
+  "config.jade.plugin_cobblemon_jei.pasture_fullness": "Сытость покемона на пастбище",
+  "config.jade.plugin_cobblemon_jei.pasture_drop_timer": "Таймер дропа покемона на пастбище"
 }

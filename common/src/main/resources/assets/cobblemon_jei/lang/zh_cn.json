@@ -118,5 +118,11 @@
   "chat.cobblemon_jm.radar.shiny": "§6★ [异色雷达] §e%s §6★ 附近发现异色宝可梦！",
   "chat.cobblemon_jm.radar.nearby": "§b⚡ [Cobblemon 雷达] §f%s §a在附近出现！",
   "gui.cobblemon_jei.category.pokemon_pasture.interval": "产出间隔：约 %s 分钟（服务器配置）",
-  "gui.cobblemon_jei.category.pokemon_pasture.tooltip.interval": "• 产出周期：约 %s 分钟（代谢速率/服务器）"
+  "gui.cobblemon_jei.category.pokemon_pasture.tooltip.interval": "• 产出周期：约 %s 分钟（代谢速率/服务器）",
+  "jade.cobblemon_jei.pasture_fullness": "饱食度: %d/%d",
+  "jade.cobblemon_jei.pasture_fullness_hungry": "饱食度: %d/%d (饥饿)",
+  "jade.cobblemon_jei.pasture_drop_timer": "下次掉落: %s",
+  "jade.cobblemon_jei.pasture_drop_paused": "下次掉落: 已暂停 (需要喂食宝可梦)",
+  "config.jade.plugin_cobblemon_jei.pasture_fullness": "牧场宝可梦饱食度",
+  "config.jade.plugin_cobblemon_jei.pasture_drop_timer": "牧场宝可梦掉落计时器"
 }
