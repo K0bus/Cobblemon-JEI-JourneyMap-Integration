@@ -63,12 +63,17 @@ class PokemonPastureRecipeCategory(
         recipe: PokemonPastureRecipe,
         focuses: IFocusGroup
     ) {
+        val hasTool = recipe.requiredTools.isNotEmpty()
+        val pokeSlotX = if (hasTool) 12 else 24
+        val foodSlotX = if (hasTool) 38 else 52
+        val toolSlotX = 64
+
         // Slot 1 : Pokémon en INPUT (recherchable via 'U' sur le Pokémon)
-        builder.addSlot(RecipeIngredientRole.INPUT, 12, 34)
+        builder.addSlot(RecipeIngredientRole.INPUT, pokeSlotX, 34)
             .addIngredient(PokemonSpeciesIngredient.TYPE, recipe.pokemonIngredient)
 
         // Slot 2 : Nourriture acceptée en INPUT (recherchable via 'U' sur la nourriture)
-        val foodSlot = builder.addSlot(RecipeIngredientRole.INPUT, 38, 34)
+        val foodSlot = builder.addSlot(RecipeIngredientRole.INPUT, foodSlotX, 34)
             .addIngredients(VanillaTypes.ITEM_STACK, recipe.foodItems)
 
         foodSlot.addTooltipCallback { _, tooltip ->
@@ -94,20 +99,10 @@ class PokemonPastureRecipeCategory(
             )
         }
 
-        // Slot 3 : Outil requis en INPUT ou Bloc de Pâturage en CATALYST
-        if (recipe.requiredTools.isNotEmpty()) {
-            builder.addSlot(RecipeIngredientRole.INPUT, 64, 34)
+        // Slot 3 : Outil requis en INPUT (uniquement si un outil est requis)
+        if (hasTool) {
+            builder.addSlot(RecipeIngredientRole.INPUT, toolSlotX, 34)
                 .addIngredients(VanillaTypes.ITEM_STACK, recipe.requiredTools)
-        } else {
-            val pastureStack = try { ItemStack(CobblemonBlocks.PASTURE) } catch (_: Throwable) { ItemStack(Items.HAY_BLOCK) }
-            val pastureSlot = builder.addSlot(RecipeIngredientRole.CATALYST, 64, 34)
-                .addItemStack(pastureStack)
-            pastureSlot.addTooltipCallback { _, tooltip ->
-                tooltip.add(
-                    Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tooltip.pasture_block")
-                        .withStyle(ChatFormatting.AQUA)
-                )
-            }
         }
 
         // Slots OUTPUT : Ressources produites (recherchables via 'R' sur les items)
@@ -186,11 +181,17 @@ class PokemonPastureRecipeCategory(
         val dropsLabelW = font.width(dropsLabel)
         guiGraphics.drawString(font, dropsLabel, 138 - dropsLabelW / 2, 23, 0xFF999999.toInt(), false)
 
+        val hasTool = recipe.requiredTools.isNotEmpty()
+        val pokeSlotX = if (hasTool) 12 else 24
+        val foodSlotX = if (hasTool) 38 else 52
+        val toolSlotX = 64
+
         // Cadres des slots d'entrée
-        drawSlotBorder(guiGraphics, 11, 33, 0xFF3D4050.toInt())
-        drawSlotBorder(guiGraphics, 37, 33, 0xFFFFA502.toInt())
-        val toolBorderColor = if (recipe.requiredTools.isNotEmpty()) 0xFFE1B12C.toInt() else 0xFF3D4050.toInt()
-        drawSlotBorder(guiGraphics, 63, 33, toolBorderColor)
+        drawSlotBorder(guiGraphics, pokeSlotX - 1, 33, 0xFF3D4050.toInt())
+        drawSlotBorder(guiGraphics, foodSlotX - 1, 33, 0xFFFFA502.toInt())
+        if (hasTool) {
+            drawSlotBorder(guiGraphics, toolSlotX - 1, 33, 0xFFE1B12C.toInt())
+        }
 
         // Flèche centrale stylisée vers la droite (X: 85 à 101, Y: 42)
         guiGraphics.fill(85, 42, 97, 44, 0xFF54A0FF.toInt())
