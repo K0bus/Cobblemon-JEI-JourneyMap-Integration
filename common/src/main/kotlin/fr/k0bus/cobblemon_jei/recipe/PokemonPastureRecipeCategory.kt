@@ -97,6 +97,10 @@ class PokemonPastureRecipeCategory(
                 Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.food_universal")
                     .withStyle(ChatFormatting.GRAY)
             )
+            tooltip.add(
+                Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.food_how_to")
+                    .withStyle(ChatFormatting.GREEN)
+            )
         }
 
         // Slot 3 : Outil requis en INPUT (uniquement si un outil est requis)
@@ -304,6 +308,11 @@ class PokemonPastureRecipeCategory(
                     ).withStyle(ChatFormatting.AQUA)
                 )
             }
+
+            tooltips.add(
+                Component.translatable("gui.cobblemon_jei.category.pokemon_pasture.tooltip.how_to_feed")
+                    .withStyle(ChatFormatting.GREEN)
+            )
 
             recipe.notes?.let {
                 tooltips.add(
