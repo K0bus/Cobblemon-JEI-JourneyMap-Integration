@@ -14,4 +14,7 @@ common/build/
 run/
 logs/
 */logs/
+.eclipse/
+*/.eclipse/
+
 

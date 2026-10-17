@@ -137,6 +137,13 @@ class CobblemonJourneyMapSearchScreen(
         }.bounds(centerX + 125, height - 34, 110, 20).build()
         addRenderableWidget(clearOverlayBtn)
 
+        // Bouton Pokédex Tracker
+        addRenderableWidget(
+            Button.builder(Component.literal("📖 Pokédex")) {
+                minecraft?.setScreen(fr.k0bus.cobblemon_jei.pokedex.CobblemonPokedexScreen(this))
+            }.bounds(width - 130, 8, 95, 20).build()
+        )
+
         // Bouton Fermer (en haut à droite)
         addRenderableWidget(
             Button.builder(Component.literal("✕")) {

@@ -76,7 +76,8 @@ class CobblemonJeiPlugin : IModPlugin {
         val categories = mutableListOf<mezz.jei.api.recipe.category.IRecipeCategory<*>>(
             PokemonSpawnRecipeCategory(guiHelper),
             PokemonEvolutionRecipeCategory(guiHelper),
-            fr.k0bus.cobblemon_jei.recipe.PokemonInteractionRecipeCategory(guiHelper)
+            fr.k0bus.cobblemon_jei.recipe.PokemonInteractionRecipeCategory(guiHelper),
+            fr.k0bus.cobblemon_jei.recipe.PokemonDropRecipeCategory(guiHelper)
         )
 
         if (fr.k0bus.cobblemon_jei.compat.cobbleworkers.CobbleworkersCompat.isLoaded) {
@@ -87,7 +88,7 @@ class CobblemonJeiPlugin : IModPlugin {
     }
 
     /**
-     * Charge et enregistre les données de spawn, d'évolution, d'interactions et de pâturage (Cobbleworkers).
+     * Charge et enregistre les données de spawn, d'évolution, d'interactions, de butins et de pâturage (Cobbleworkers).
      */
     override fun registerRecipes(registration: IRecipeRegistration) {
         val spawnRecipes = PokemonSpawnDataLoader.loadSpawnRecipes()
@@ -101,6 +102,10 @@ class CobblemonJeiPlugin : IModPlugin {
         val interactionRecipes = fr.k0bus.cobblemon_jei.data.PokemonInteractionDataLoader.loadInteractionRecipes()
         logger.info("Cobblemon JEI: Enregistrement de ${interactionRecipes.size} recettes d'interactions Pokémon dans JEI.")
         registration.addRecipes(fr.k0bus.cobblemon_jei.recipe.PokemonInteractionRecipeCategory.RECIPE_TYPE, interactionRecipes)
+
+        val dropRecipes = fr.k0bus.cobblemon_jei.data.PokemonDropDataLoader.loadDropRecipes()
+        logger.info("Cobblemon JEI: Enregistrement de ${dropRecipes.size} recettes de butins Pokémon dans JEI.")
+        registration.addRecipes(fr.k0bus.cobblemon_jei.recipe.PokemonDropRecipeCategory.RECIPE_TYPE, dropRecipes)
 
         if (fr.k0bus.cobblemon_jei.compat.cobbleworkers.CobbleworkersCompat.isLoaded) {
             val pastureRecipes = fr.k0bus.cobblemon_jei.data.CobbleworkersJobDataLoader.loadPastureRecipes()
@@ -137,6 +142,24 @@ class CobblemonJeiPlugin : IModPlugin {
         registration.addRecipeCatalyst(
             ItemStack(Items.BRUSH),
             fr.k0bus.cobblemon_jei.recipe.PokemonInteractionRecipeCategory.RECIPE_TYPE
+        )
+
+        // Catalyseurs pour les butins de Pokémon vaincus (épées, arc)
+        registration.addRecipeCatalyst(
+            ItemStack(Items.DIAMOND_SWORD),
+            fr.k0bus.cobblemon_jei.recipe.PokemonDropRecipeCategory.RECIPE_TYPE
+        )
+        registration.addRecipeCatalyst(
+            ItemStack(Items.IRON_SWORD),
+            fr.k0bus.cobblemon_jei.recipe.PokemonDropRecipeCategory.RECIPE_TYPE
+        )
+        registration.addRecipeCatalyst(
+            ItemStack(Items.NETHERITE_SWORD),
+            fr.k0bus.cobblemon_jei.recipe.PokemonDropRecipeCategory.RECIPE_TYPE
+        )
+        registration.addRecipeCatalyst(
+            ItemStack(Items.BOW),
+            fr.k0bus.cobblemon_jei.recipe.PokemonDropRecipeCategory.RECIPE_TYPE
         )
 
         // Catalyseur pour les recettes de pâturage Cobbleworkers (Le bloc de pâturage)

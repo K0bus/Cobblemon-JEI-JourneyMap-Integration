@@ -30,6 +30,9 @@ It provides:
   - Spawn weights, estimated rarity buckets, and level ranges.
 - **Evolution Tree Cards**:
   - Level thresholds, evolution stones and items (linking cords, held items), trade conditions, friendship levels, and required time-of-day windows.
+- **Pokémon Defeat Drops (Loot Tables)**:
+  - View all item drops obtained by defeating wild Pokémon, with quantities, exact drop percentages, roll counts, and evolution item tags.
+
 
 ---
 
@@ -89,7 +92,30 @@ It provides:
   - Animated progress indicator for asynchronous region scanning.
   - Live radar status (*"X target(s) in range"* / *"★ SHINY Detected!"*).
 
-### 6. 🌿 Jade Integration (Optional Soft-Dependency)
+---
+
+### 6. 📖 Complete Pokédex & Evolution Tracker (Bindable Key: `P`)
+- **Bindable Shortcut**: Open the full Pokédex Tracker screen with a single customizable keystroke (default: `P` or accessible via JourneyMap toolbar).
+- **Dual-Pane Interactive Interface**:
+  - **Left Responsive Grid**:
+    - Browse all 1000+ Cobblemon species with visual status indicators: 🟢 **Caught** (with Pokéball badge), 🟠 **Encountered** (seen only), ⚪ **Missing / Undiscovered** (silhouette).
+    - Real-time search filter by Pokémon name, National Dex #, or elemental types.
+  - **Tabs**:
+    - **All Pokémon**: Complete National Dex view with completion statistics.
+    - **Missing Pokémon**: Filter solely undiscovered/uncaught species to target your next hunts.
+    - **Pending Evolutions**: Comprehensive roadmap of all evolutions leading to missing Pokédex entries.
+- **Smart PC & Inventory Evolution Matcher**:
+  - Automatically scans your **Party, PC Boxes, and Player Inventory**.
+  - Highlights evolutions that are **immediately feasible with what you have in your PC**:
+    - ⭐ **Ready to Evolve!**: You have the base Pokémon in your PC/Party, required items (stones, linking cables) in your inventory, and level/friendship prerequisites fulfilled.
+    - ⏳ **In PC Storage**: Base Pokémon is in your PC/Party, clearly showing what is missing (e.g., *"Thunder Stone (Missing)"*, *"Level 36 required (Current: 30)"*).
+    - ❓ **Base Pokémon Needed**: Evolution target missing because the pre-evolution hasn't been captured yet.
+- **Detailed Inspection Panel**:
+  - Large scaled model/sprite preview, elemental types, Pokédex status.
+  - Exact storage locations (e.g., *"In PC: Box 1 (Lv. 42)"* or *"In Party (Slot 2)"*).
+  - Evolution line preview and one-click *"View on JourneyMap"* button.
+
+### 7. 🌿 Jade Integration (Optional Soft-Dependency)
 - **Automatic Pastured Pokémon Detection**:
   - Automatically identifies whether a Pokémon is tethered to a Pasture Block (`PokemonPastureBlockEntity`).
 - **Live Fullness Gauge (`PastureFullnessProvider`)**:
