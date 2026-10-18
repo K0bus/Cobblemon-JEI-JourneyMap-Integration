@@ -3,7 +3,9 @@ package fr.k0bus.cobblemon_jei.pokedex
 import com.cobblemon.mod.common.CobblemonItems
 import com.cobblemon.mod.common.api.Priority
 import com.cobblemon.mod.common.api.moves.Moves
+import com.cobblemon.mod.common.api.pokedex.PokedexEntryProgress
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
+import com.cobblemon.mod.common.client.CobblemonClient
 import com.cobblemon.mod.common.pokemon.abilities.HiddenAbility
 import com.cobblemon.mod.common.pokemon.FormData
 import com.cobblemon.mod.common.pokemon.Gender
@@ -45,6 +47,7 @@ class CobblemonPokedexScreen(
 
     enum class RightPanelTab(val label: String, val tooltip: String) {
         DESCRIPTION("Infos", "Description & Morphologie"),
+        FORMS("Formes", "Formes & Variantes régionales"),
         ABILITIES("Talents", "Talents & Capacités spéciales"),
         STATS("Stats", "Statistiques de base & EV"),
         EVOLUTIONS("Évos", "Lignée évolutive (Source & Destination)"),
@@ -272,36 +275,21 @@ class CobblemonPokedexScreen(
         val row2H = 13
         val row1Y = panelY + 74
         val row2Y = panelY + 89
+        val tabW = (tabsW - 3 * gap) / 4
 
         return when (tab) {
-            RightPanelTab.DESCRIPTION -> {
-                val w = (tabsW - 3 * gap) / 4
-                intArrayOf(x0, row1Y, w, row1H)
-            }
-            RightPanelTab.ABILITIES -> {
-                val w = (tabsW - 3 * gap) / 4
-                intArrayOf(x0 + w + gap, row1Y, w, row1H)
-            }
+            RightPanelTab.DESCRIPTION -> intArrayOf(x0, row1Y, tabW, row1H)
+            RightPanelTab.FORMS -> intArrayOf(x0 + tabW + gap, row1Y, tabW, row1H)
+            RightPanelTab.ABILITIES -> intArrayOf(x0 + (tabW + gap) * 2, row1Y, tabW, row1H)
             RightPanelTab.STATS -> {
-                val w = (tabsW - 3 * gap) / 4
-                intArrayOf(x0 + (w + gap) * 2, row1Y, w, row1H)
-            }
-            RightPanelTab.EVOLUTIONS -> {
-                val w = (tabsW - 3 * gap) / 4
-                val x = x0 + (w + gap) * 3
+                val x = x0 + (tabW + gap) * 3
                 intArrayOf(x, row1Y, (x0 + tabsW) - x, row1H)
             }
-            RightPanelTab.DROPS -> {
-                val w = (tabsW - 2 * gap) / 3
-                intArrayOf(x0, row2Y, w, row2H)
-            }
-            RightPanelTab.PASTURE -> {
-                val w = (tabsW - 2 * gap) / 3
-                intArrayOf(x0 + w + gap, row2Y, w, row2H)
-            }
+            RightPanelTab.EVOLUTIONS -> intArrayOf(x0, row2Y, tabW, row2H)
+            RightPanelTab.DROPS -> intArrayOf(x0 + tabW + gap, row2Y, tabW, row2H)
+            RightPanelTab.PASTURE -> intArrayOf(x0 + (tabW + gap) * 2, row2Y, tabW, row2H)
             RightPanelTab.SPAWNS -> {
-                val w = (tabsW - 2 * gap) / 3
-                val x = x0 + (w + gap) * 2
+                val x = x0 + (tabW + gap) * 3
                 intArrayOf(x, row2Y, (x0 + tabsW) - x, row2H)
             }
         }
@@ -685,16 +673,23 @@ class CobblemonPokedexScreen(
                 guiGraphics.renderItem(srcStack, startX + 6, cardY + 8)
             }
             val srcName = goal.sourceSpecies.translatedName.string
+            val formNameStr = if (goal.sourceForm != goal.sourceSpecies.standardForm && goal.sourceForm.name.isNotBlank() && goal.sourceForm.name != "normal") {
+                " (${goal.sourceForm.name.replaceFirstChar(Char::titlecase)})"
+            } else ""
             val genderBadge = when (goal.requiredGender) {
                 Gender.FEMALE -> " §d♀§r"
                 Gender.MALE -> " §9♂§r"
                 else -> ""
             }
-            guiGraphics.drawString(font, srcName + genderBadge, startX + 26, cardY + 8, 0xFFE0E0E0.toInt(), false)
+            guiGraphics.drawString(font, srcName + formNameStr + genderBadge, startX + 26, cardY + 8, 0xFFE0E0E0.toInt(), false)
 
-            val locText = if (goal.hasSourceInPC) {
-                if (!goal.hasGenderMatch) "§c✕ Mauvais sexe (0/${goal.ownedSourcePokemons.size})§r"
-                else "§a✔ ${goal.sourceLocationSummary}§r"
+            val locText = if (!goal.hasFormMatch) {
+                val fName = goal.sourceForm.name.replaceFirstChar(Char::titlecase)
+                "§c✕ Mauvaise forme (0 $fName)§r"
+            } else if (!goal.hasGenderMatch) {
+                "§c✕ Mauvais sexe (0/${goal.ownedSourcePokemons.size})§r"
+            } else if (goal.hasSourceInPC) {
+                "§a✔ ${goal.sourceLocationSummary}§r"
             } else {
                 "§7✕ Non possédé§r"
             }
@@ -785,13 +780,32 @@ class CobblemonPokedexScreen(
         val feasText = when (goal.feasibility) {
             EvolutionFeasibility.READY_TO_EVOLVE -> "⭐ Tout est prêt ! Évolution faisable dès maintenant."
             EvolutionFeasibility.CAN_EVOLVE_WITH_PC -> {
-                if (!goal.hasGenderMatch) "⏳ Pokémon présent mais aucun spécimen du sexe requis !"
+                if (!goal.hasFormMatch) "⏳ Pokémon présent mais pas sous la forme requise !"
+                else if (!goal.hasGenderMatch) "⏳ Pokémon présent mais aucun spécimen du sexe requis !"
                 else if (goal.moveStatus == MoveRequirementStatus.TM_MISSING) "⏳ Pokémon présent, mais la CT requise est manquante."
                 else "⏳ Pokémon présent dans votre PC/équipe, prérequis manquants."
             }
-            EvolutionFeasibility.MISSING_BASE_POKEMON -> "❌ Vous devez d'abord capturer le Pokémon de base."
+            EvolutionFeasibility.MISSING_BASE_POKEMON -> {
+                if (!goal.hasFormMatch) {
+                    val fName = goal.sourceForm.name.replaceFirstChar(Char::titlecase)
+                    "❌ Vous devez capturer la forme spécifique : $fName."
+                } else {
+                    "❌ Vous devez d'abord capturer le Pokémon de base."
+                }
+            }
         }
         tooltip.add(Component.literal(feasText).withStyle(if (goal.feasibility == EvolutionFeasibility.READY_TO_EVOLVE) ChatFormatting.GREEN else ChatFormatting.GOLD))
+
+        // Section Forme requise
+        if (goal.sourceForm != goal.sourceSpecies.standardForm && goal.sourceForm.name.isNotBlank() && goal.sourceForm.name != "normal") {
+            tooltip.add(Component.empty())
+            val fName = goal.sourceForm.name.replaceFirstChar(Char::titlecase)
+            if (goal.hasFormMatch) {
+                tooltip.add(Component.literal("Forme requise : $fName (✔ Spécimen valide en stock)").withStyle(ChatFormatting.GREEN))
+            } else {
+                tooltip.add(Component.literal("Forme requise : $fName (✕ Aucun spécimen de cette forme en stock !)").withStyle(ChatFormatting.RED))
+            }
+        }
 
         // Section Sexe requis
         if (goal.requiredGender != null) {
@@ -1007,6 +1021,7 @@ class CobblemonPokedexScreen(
 
         val finalY = when (currentRightPanelTab) {
             RightPanelTab.DESCRIPTION -> renderTabDescription(guiGraphics, sp, currentTracked, contentX, curY, contentW)
+            RightPanelTab.FORMS -> renderTabForms(guiGraphics, sp, currentTracked, contentX, curY, contentW)
             RightPanelTab.ABILITIES -> renderTabAbilities(guiGraphics, sp, contentX, curY, contentW)
             RightPanelTab.STATS -> renderTabStats(guiGraphics, sp, contentX, curY, contentW)
             RightPanelTab.DROPS -> renderTabDrops(guiGraphics, sp, contentX, curY, contentW)
@@ -1128,6 +1143,117 @@ class CobblemonPokedexScreen(
         }
 
         return y + 4
+    }
+
+    private fun renderTabForms(guiGraphics: GuiGraphics, sp: Species, currentTracked: TrackedPokemon?, contentX: Int, startY: Int, contentW: Int): Int {
+        var y = startY
+
+        // Récupérer toutes les formes de l'espèce
+        val allForms = mutableListOf<FormData>()
+        allForms.add(sp.standardForm)
+        for (f in sp.forms) {
+            if (f != sp.standardForm && allForms.none { it.name.equals(f.name, ignoreCase = true) }) {
+                allForms.add(f)
+            }
+        }
+
+        guiGraphics.drawString(font, "§e§lFormes & Variantes (${allForms.size})§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        y += 13
+
+        val allRecipes = PokemonEvolutionDataLoader.loadEvolutionRecipes()
+
+        for (form in allForms) {
+            val isStandard = (form == sp.standardForm || form.name.isBlank() || form.name.equals("normal", ignoreCase = true))
+            val formTitle = if (isStandard) {
+                "Forme Standard"
+            } else {
+                "Forme de ${form.name.replaceFirstChar(Char::titlecase)}"
+            }
+
+            val cardY = y
+            val cardH = 46
+
+            // Carte de fond
+            guiGraphics.fill(contentX, cardY, contentX + contentW, cardY + cardH, 0xFF151922.toInt())
+            guiGraphics.fill(contentX, cardY, contentX + contentW, cardY + 1, 0xFF282D3C.toInt())
+            guiGraphics.fill(contentX, cardY + cardH - 1, contentX + contentW, cardY + cardH, 0xFF282D3C.toInt())
+            guiGraphics.fill(contentX, cardY, contentX + 1, cardY + cardH, 0xFF282D3C.toInt())
+            guiGraphics.fill(contentX + contentW - 1, cardY, contentX + contentW, cardY + cardH, 0xFF282D3C.toInt())
+
+            // Sprite de la forme
+            val stack = getItemStack(sp, form)
+            if (!stack.isEmpty) {
+                guiGraphics.renderItem(stack, contentX + 4, cardY + 6)
+            }
+
+            // Titre et Aspects
+            var headerX = contentX + 24
+            guiGraphics.drawString(font, "§f§l$formTitle§r", headerX, cardY + 6, 0xFFFFFFFF.toInt(), false)
+            headerX += font.width("§f§l$formTitle§r") + 4
+
+            if (form.aspects.isNotEmpty()) {
+                val aspectsStr = "§8[${form.aspects.joinToString(", ")}]§r"
+                guiGraphics.drawString(font, aspectsStr, headerX, cardY + 7, 0xFFAAAAAA.toInt(), false)
+            }
+
+            // Statut de capture / possession
+            val ownedCount = currentTracked?.ownedInstances?.count { PokemonTrackerService.isFormMatch(it.pokemon, form, sp) } ?: 0
+            val formRecord = try {
+                val specRecord = CobblemonClient.clientPokedexData.speciesRecords[sp.resourceIdentifier]
+                specRecord?.getFormRecord(form.name.lowercase().ifBlank { "normal" })
+                    ?: specRecord?.getFormRecord(form.name.lowercase())
+                    ?: specRecord?.getFormRecord("")
+            } catch (_: Throwable) { null }
+            val isDexCaught = formRecord?.knowledge == PokedexEntryProgress.CAUGHT
+            val isDexSeen = formRecord?.knowledge == PokedexEntryProgress.ENCOUNTERED
+
+            val statusText = when {
+                ownedCount > 0 -> "§a✔ Possédé ($ownedCount)§r"
+                isDexCaught -> "§a✔ Capturé§r"
+                isDexSeen -> "§6👁 Vu (Pokédex)§r"
+                else -> "§c✕ Non découvert§r"
+            }
+            val statusColor = when {
+                ownedCount > 0 || isDexCaught -> 0xFF2ECC71.toInt()
+                isDexSeen -> 0xFFE67E22.toInt()
+                else -> 0xFFE74C3C.toInt()
+            }
+            val statusW = font.width(statusText)
+            guiGraphics.drawString(font, statusText, contentX + contentW - statusW - 6, cardY + 6, statusColor, false)
+
+            // Types élémentaires
+            var typeX = contentX + 24
+            val primColor = CobblemonOverlayManager.getElementColor(form.primaryType.name)
+            val primName = form.primaryType.displayName.string.uppercase()
+            val primW = font.width(primName) + 6
+            guiGraphics.fill(typeX, cardY + 18, typeX + primW, cardY + 28, primColor)
+            guiGraphics.drawString(font, primName, typeX + 3, cardY + 19, 0xFFFFFFFF.toInt(), true)
+            typeX += primW + 4
+
+            form.secondaryType?.let { secType ->
+                val secColor = CobblemonOverlayManager.getElementColor(secType.name)
+                val secName = secType.displayName.string.uppercase()
+                val secW = font.width(secName) + 6
+                guiGraphics.fill(typeX, cardY + 18, typeX + secW, cardY + 28, secColor)
+                guiGraphics.drawString(font, secName, typeX + 3, cardY + 19, 0xFFFFFFFF.toInt(), true)
+            }
+
+            // Évolutions de cette forme
+            val formEvos = allRecipes.filter { it.sourceSpecies == sp && (it.sourceForm == form || (it.sourceForm.name.isNotBlank() && it.sourceForm.name.equals(form.name, true))) }
+            val evoText = if (formEvos.isNotEmpty()) {
+                val targets = formEvos.map { it.targetSpecies.translatedName.string }.distinct()
+                "§7Évolue en : §e${targets.joinToString(", ")}§r"
+            } else if (allForms.size > 1) {
+                "§8✕ Aucune évolution possible pour cette forme§r"
+            } else {
+                "§8• Aucune évolution connue§r"
+            }
+            guiGraphics.drawString(font, evoText, contentX + 24, cardY + 32, 0xFFCCCCCC.toInt(), false)
+
+            y += cardH + 4
+        }
+
+        return y + 2
     }
 
     private fun renderTabAbilities(guiGraphics: GuiGraphics, sp: Species, contentX: Int, startY: Int, contentW: Int): Int {
@@ -1407,11 +1533,14 @@ class CobblemonPokedexScreen(
         } else {
             for (pre in preEvos) {
                 val preSp = pre.sourceSpecies
-                val stack = getItemStack(preSp)
+                val stack = getItemStack(preSp, pre.sourceForm)
                 if (!stack.isEmpty) {
                     guiGraphics.renderItem(stack, contentX + 2, y)
                 }
-                guiGraphics.drawString(font, "➔ §f§l${preSp.translatedName.string}§r", contentX + 20, y + 4, 0xFFFFFFFF.toInt(), false)
+                val preFormStr = if (pre.sourceForm != preSp.standardForm && pre.sourceForm.name.isNotBlank() && pre.sourceForm.name != "normal") {
+                    " (${pre.sourceForm.name.replaceFirstChar(Char::titlecase)})"
+                } else ""
+                guiGraphics.drawString(font, "➔ §f§l${preSp.translatedName.string}$preFormStr§r", contentX + 20, y + 4, 0xFFFFFFFF.toInt(), false)
                 rightPanelClickablePokemon.add(Triple(intArrayOf(contentX + 2, y, contentW - 4, 18), preSp, true))
                 y += 18
 
@@ -1421,8 +1550,10 @@ class CobblemonPokedexScreen(
                     y += 9
                 }
 
-                val ownedCount = allTracked.find { it.species == preSp }?.ownedCount ?: 0
-                val resTxt = if (ownedCount > 0) "  §a✔ En stock dans le PC/Équipe ($ownedCount)§r" else "  §c✕ Aucun en réserve§r"
+                val ownedCount = allTracked.find { it.species == preSp }?.ownedInstances?.count {
+                    PokemonTrackerService.isFormMatch(it.pokemon, pre.sourceForm, preSp)
+                } ?: 0
+                val resTxt = if (ownedCount > 0) "  §a✔ En stock dans le PC/Équipe ($ownedCount)§r" else "  §c✕ Aucun spécimen valide en réserve§r"
                 guiGraphics.drawString(font, resTxt, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
                 y += 13
             }
@@ -1441,11 +1572,17 @@ class CobblemonPokedexScreen(
         } else {
             for (next in nextEvos) {
                 val tgtSp = next.targetSpecies
-                val stack = getItemStack(tgtSp)
+                val stack = getItemStack(tgtSp, next.targetForm)
                 if (!stack.isEmpty) {
                     guiGraphics.renderItem(stack, contentX + 2, y)
                 }
-                guiGraphics.drawString(font, "➔ §f§l${tgtSp.translatedName.string}§r", contentX + 20, y + 4, 0xFFFFFFFF.toInt(), false)
+                val srcFormReqStr = if (next.sourceForm != sp.standardForm && next.sourceForm.name.isNotBlank() && next.sourceForm.name != "normal") {
+                    " [Forme: ${next.sourceForm.name.replaceFirstChar(Char::titlecase)}]"
+                } else ""
+                val tgtFormStr = if (next.targetForm != tgtSp.standardForm && next.targetForm.name.isNotBlank() && next.targetForm.name != "normal") {
+                    " (${next.targetForm.name.replaceFirstChar(Char::titlecase)})"
+                } else ""
+                guiGraphics.drawString(font, "➔ §f§l${tgtSp.translatedName.string}$tgtFormStr$srcFormReqStr§r", contentX + 20, y + 4, 0xFFFFFFFF.toInt(), false)
                 rightPanelClickablePokemon.add(Triple(intArrayOf(contentX + 2, y, contentW - 4, 18), tgtSp, false))
                 y += 18
 
@@ -1453,6 +1590,16 @@ class CobblemonPokedexScreen(
                 for (l in condLines) {
                     guiGraphics.drawString(font, l, contentX + 2, y, 0xFFE0E0E0.toInt(), false)
                     y += 9
+                }
+
+                val currentTracked = allTracked.find { it.species == sp }
+                val hasReqForm = currentTracked?.ownedInstances?.any {
+                    PokemonTrackerService.isFormMatch(it.pokemon, next.sourceForm, sp)
+                } ?: false
+
+                if (!hasReqForm && (currentTracked?.ownedCount ?: 0) > 0 && next.sourceForm != sp.standardForm && next.sourceForm.name.isNotBlank() && next.sourceForm.name != "normal") {
+                    guiGraphics.drawString(font, "  §c⚠ Nécessite la forme ${next.sourceForm.name.replaceFirstChar(Char::titlecase)} !§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+                    y += 10
                 }
 
                 val isCaught = allTracked.find { it.species == tgtSp }?.isCaught == true

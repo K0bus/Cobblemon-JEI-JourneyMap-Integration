@@ -511,7 +511,7 @@ object PokemonEvolutionDataLoader {
                     val evolutions = if (form == species.standardForm) {
                         if (form.evolutions.isNotEmpty()) form.evolutions else species.evolutions
                     } else {
-                        if (form.evolutions.isNotEmpty()) form.evolutions else species.evolutions
+                        form.evolutions
                     }
 
                     for (evo in evolutions) {

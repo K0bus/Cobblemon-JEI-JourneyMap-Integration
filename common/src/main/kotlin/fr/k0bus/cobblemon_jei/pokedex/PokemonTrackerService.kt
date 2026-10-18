@@ -101,6 +101,8 @@ data class EvolutionGoal(
     val targetStatus: PokedexStatus,
     val requiredGender: Gender? = null,
     val hasGenderMatch: Boolean = true,
+    val requiredForm: FormData? = null,
+    val hasFormMatch: Boolean = true,
     val requiredMove: String? = null,
     val requiredMoveType: String? = null,
     val moveStatus: MoveRequirementStatus = MoveRequirementStatus.NOT_REQUIRED,
@@ -109,7 +111,7 @@ data class EvolutionGoal(
     val useMoveCount: Int? = null,
     val specialActionSummary: String? = null
 ) {
-    val hasSourceInPC: Boolean get() = ownedSourcePokemons.isNotEmpty()
+    val hasSourceInPC: Boolean get() = hasFormMatch && ownedSourcePokemons.isNotEmpty()
     val hasAllRequiredItems: Boolean get() = missingItems.isEmpty()
 
     val sourceLocationSummary: String get() = if (ownedSourcePokemons.isEmpty()) {
@@ -415,6 +417,48 @@ object PokemonTrackerService {
         )
     }
 
+    /**
+     * Vérifie si un Pokémon possédé correspond à la forme requise par une recette d'évolution ou un filtre.
+     */
+    fun isFormMatch(pokemon: Pokemon, requiredForm: FormData, species: Species): Boolean {
+        if (species.forms.size <= 1) return true
+
+        val isRequiredStandard = requiredForm == species.standardForm ||
+                requiredForm.name.isBlank() ||
+                requiredForm.name.equals("normal", ignoreCase = true) ||
+                requiredForm.name.equals("standard", ignoreCase = true)
+
+        val isPokemonStandard = pokemon.form == species.standardForm ||
+                pokemon.form.name.isBlank() ||
+                pokemon.form.name.equals("normal", ignoreCase = true) ||
+                pokemon.form.name.equals("standard", ignoreCase = true)
+
+        if (isRequiredStandard) {
+            if (isPokemonStandard) {
+                val hasRegionalAspect = pokemon.aspects.any { asp ->
+                    val a = asp.lowercase()
+                    a == "hisui" || a == "galar" || a == "alola" || a == "paldea"
+                }
+                return !hasRegionalAspect
+            }
+            return false
+        } else {
+            if (pokemon.form == requiredForm) return true
+            val reqName = requiredForm.name.lowercase()
+            val pokeFormName = pokemon.form.name.lowercase()
+            if (pokeFormName.isNotBlank() && (pokeFormName == reqName || pokeFormName.contains(reqName) || reqName.contains(pokeFormName))) {
+                return true
+            }
+            if (requiredForm.aspects.isNotEmpty() && requiredForm.aspects.any { pokemon.aspects.contains(it) }) {
+                return true
+            }
+            if (pokemon.aspects.any { it.equals(reqName, ignoreCase = true) }) {
+                return true
+            }
+            return false
+        }
+    }
+
     private fun evaluateEvolutionRecipe(
         recipe: PokemonEvolutionRecipe,
         trackedMap: Map<String, TrackedPokemon>,
@@ -428,16 +472,31 @@ object PokemonTrackerService {
         val sourceTracked = trackedMap[sourceKey]
         val allOwnedSources = sourceTracked?.ownedInstances ?: emptyList()
 
-        // 1. Filtrage par sexe
+        // 1. Filtrage par forme (ex: Qwilfish Hisui vs Johto standard)
+        val validFormSources = allOwnedSources.filter { isFormMatch(it.pokemon, recipe.sourceForm, recipe.sourceSpecies) }
+        val requiresSpecificForm = recipe.sourceSpecies.forms.size > 1
+        val hasFormMatch = if (requiresSpecificForm) {
+            if (allOwnedSources.isEmpty()) true else validFormSources.isNotEmpty()
+        } else {
+            true
+        }
+
+        val baseSources = if (requiresSpecificForm && allOwnedSources.isNotEmpty()) validFormSources else allOwnedSources
+
+        // 2. Filtrage par sexe
         val requiredGender = recipe.requiredGender
         val validGenderSources = if (requiredGender != null) {
-            allOwnedSources.filter { it.pokemon.gender == requiredGender }
+            baseSources.filter { it.pokemon.gender == requiredGender }
         } else {
-            allOwnedSources
+            baseSources
         }
-        val hasGenderMatch = if (requiredGender != null) validGenderSources.isNotEmpty() else true
+        val hasGenderMatch = if (requiredGender != null) {
+            if (baseSources.isEmpty()) true else validGenderSources.isNotEmpty()
+        } else {
+            true
+        }
 
-        // 2. Analyse des objets requis
+        // 3. Analyse des objets requis
         val missingItems = mutableListOf<ItemStack>()
         for (reqStack in recipe.requiredItems) {
             val hasInInventory = inventoryItems.any { invStack ->
@@ -452,7 +511,7 @@ object PokemonTrackerService {
         }
         val hasAllItems = missingItems.isEmpty()
 
-        // 3. Analyse du niveau et du bonheur
+        // 4. Analyse du niveau et du bonheur
         val (detectedLevel, detectedFriendship) = inspectEvolutionConditions(recipe)
         val minLevel = recipe.minLevel ?: detectedLevel
         val minFriendship = recipe.minFriendship ?: detectedFriendship
@@ -469,7 +528,7 @@ object PokemonTrackerService {
             true
         }
 
-        // 4. Analyse des Capacités / Moves & CTs
+        // 5. Analyse des Capacités / Moves & CTs
         val requiredMove = recipe.requiredMove
         val requiredMoveType = recipe.requiredMoveType
         var moveStatus = MoveRequirementStatus.NOT_REQUIRED
@@ -545,12 +604,13 @@ object PokemonTrackerService {
             else -> false
         }
 
-        // 5. Actions / Compteurs spéciaux
+        // 6. Actions / Compteurs spéciaux
         val specialActionSummary = buildSpecialActionSummary(recipe)
 
-        // 6. Faisabilité globale
+        // 7. Faisabilité globale
         val feasibility = when {
             allOwnedSources.isEmpty() -> EvolutionFeasibility.MISSING_BASE_POKEMON
+            !hasFormMatch -> EvolutionFeasibility.MISSING_BASE_POKEMON // Spécimen possédé mais pas de la forme requise
             !hasGenderMatch -> EvolutionFeasibility.CAN_EVOLVE_WITH_PC // Spécimens présents mais pas du bon sexe
             hasAllItems && isLevelMet && isFriendshipMet && isMoveMet -> EvolutionFeasibility.READY_TO_EVOLVE
             else -> EvolutionFeasibility.CAN_EVOLVE_WITH_PC
@@ -563,7 +623,7 @@ object PokemonTrackerService {
             targetForm = recipe.targetForm,
             recipe = recipe,
             feasibility = feasibility,
-            ownedSourcePokemons = if (hasGenderMatch) validGenderSources else allOwnedSources,
+            ownedSourcePokemons = if (hasFormMatch && hasGenderMatch) validGenderSources else if (hasFormMatch) validFormSources else allOwnedSources,
             requiredItems = recipe.requiredItems,
             missingItems = missingItems,
             minLevel = minLevel,
@@ -575,6 +635,8 @@ object PokemonTrackerService {
             targetStatus = targetStatus,
             requiredGender = requiredGender,
             hasGenderMatch = hasGenderMatch,
+            requiredForm = recipe.sourceForm,
+            hasFormMatch = hasFormMatch,
             requiredMove = requiredMove,
             requiredMoveType = requiredMoveType,
             moveStatus = moveStatus,
