@@ -185,6 +185,11 @@
   "gui.cobblemon_jei.pokedex.tab.missing": "Missing Pokémon",
   "gui.cobblemon_jei.pokedex.tab.evolutions": "Pending Evolutions",
   "gui.cobblemon_jei.pokedex.search.hint": "Search (name, #, type)...",
+  "gui.cobblemon_jei.pokedex.filter.button": "Filters",
+  "gui.cobblemon_jei.pokedex.filter.title": "Pokédex Filters",
+  "gui.cobblemon_jei.pokedex.filter.reset": "Clear All",
+  "gui.cobblemon_jei.pokedex.filter.apply": "Apply & Close",
+  "gui.cobblemon_jei.pokedex.filter.biome_search": "Search biome...",
   "gui.cobblemon_jei.notification.caught": "Caught!",
   "gui.cobblemon_jei.notification.scanned": "Scanned!"
 }
