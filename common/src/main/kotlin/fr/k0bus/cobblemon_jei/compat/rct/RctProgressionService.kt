@@ -7,7 +7,7 @@ import kotlin.math.max
 /**
  * Service gérant le suivi de la progression du joueur dans Radical Cobblemon Trainers.
  * Détecte les dresseurs vaincus, la série en cours, le cap de niveau actuel
- * et calcule la disposition de l'arbre graphique (nœuds et arêtes).
+ * et calcule la disposition de l'arbre graphique de manière hautement optimisée.
  */
 object RctProgressionService {
 
@@ -17,8 +17,8 @@ object RctProgressionService {
     private val defeatedTrainers = mutableSetOf<String>()
     private val manualOverrides = mutableMapOf<String, Boolean>()
 
-    private var activeSeriesId: String? = null
     private var selectedSeriesId: String = "radicalred"
+    private var onlyKeyTrainers: Boolean = true
 
     init {
         refresh()
@@ -51,6 +51,12 @@ object RctProgressionService {
         selectedSeriesId = id
     }
 
+    fun isOnlyKeyTrainers(): Boolean = onlyKeyTrainers
+
+    fun setOnlyKeyTrainers(value: Boolean) {
+        onlyKeyTrainers = value
+    }
+
     fun isTrainerDefeated(trainerId: String): Boolean {
         return defeatedTrainers.contains(trainerId)
     }
@@ -65,14 +71,6 @@ object RctProgressionService {
         }
     }
 
-    fun markAllDefeated(seriesId: String) {
-        val trainers = RctDataLoader.getTrainersForSeries(seriesId)
-        for (t in trainers) {
-            manualOverrides[t.id] = true
-            defeatedTrainers.add(t.id)
-        }
-    }
-
     fun resetProgress(seriesId: String) {
         val trainers = RctDataLoader.getTrainersForSeries(seriesId)
         for (t in trainers) {
@@ -82,7 +80,7 @@ object RctProgressionService {
     }
 
     /**
-     * Analyse les advancements reçus par le joueur connecté.
+     * Analyse rapide des advancements reçus par le joueur connecté en O(1) par succès.
      */
     private fun detectDefeatedFromAdvancements() {
         try {
@@ -92,6 +90,11 @@ object RctProgressionService {
             val advManager = conn.advancements
 
             val allTrainers = RctDataLoader.getAllTrainers()
+            if (allTrainers.isEmpty()) return
+
+            val trainerIdSet = allTrainers.map { it.id }.toHashSet()
+            val trainerIdentityMap = allTrainers.filter { it.identity.isNotBlank() }
+                .associateBy({ it.identity.lowercase() }, { it.id })
 
             val progressField = advManager.javaClass.declaredFields.firstOrNull {
                 java.util.Map::class.java.isAssignableFrom(it.type)
@@ -110,10 +113,18 @@ object RctProgressionService {
                                 val idStr = loc?.toString() ?: ""
 
                                 if (idStr.contains("rctmod", ignoreCase = true)) {
-                                    for (trainer in allTrainers) {
-                                        if (idStr.contains(trainer.id, ignoreCase = true) ||
-                                            (trainer.identity.isNotBlank() && idStr.contains(trainer.identity, ignoreCase = true))) {
-                                            defeatedTrainers.add(trainer.id)
+                                    val path = idStr.substringAfterLast('/')
+                                    val extractedId = path.removePrefix("defeat_")
+                                    if (trainerIdSet.contains(extractedId)) {
+                                        defeatedTrainers.add(extractedId)
+                                    } else if (trainerIdentityMap.containsKey(extractedId.lowercase())) {
+                                        defeatedTrainers.add(trainerIdentityMap[extractedId.lowercase()]!!)
+                                    } else {
+                                        for (trainer in allTrainers) {
+                                            if (path.contains(trainer.id, ignoreCase = true)) {
+                                                defeatedTrainers.add(trainer.id)
+                                                break
+                                            }
                                         }
                                     }
                                 }
@@ -130,7 +141,7 @@ object RctProgressionService {
     /**
      * Construit le graphe 2D complet pour la série sélectionnée.
      */
-    fun buildTreeGraph(seriesId: String): RctTreeGraph {
+    fun buildTreeGraph(seriesId: String, keyTrainersOnly: Boolean = onlyKeyTrainers): RctTreeGraph {
         refresh()
 
         val series = RctDataLoader.getSeries(seriesId) ?: RctSeries(
@@ -138,14 +149,38 @@ object RctProgressionService {
             title = seriesId.replaceFirstChar { it.uppercase() }
         )
 
-        val trainers = RctDataLoader.getTrainersForSeries(seriesId)
-        val trainerMap = trainers.associateBy { it.id }
+        val rawTrainers = RctDataLoader.getTrainersForSeries(seriesId)
+        val allTrainersMap = rawTrainers.associateBy { it.id }
+
+        // Si le mod contient un volume massif de dresseurs (> 50 comme Radical Red avec 1500+ dresseurs),
+        // on filtre intelligemment sur les dresseurs clés de progression par défaut pour une lisibilité et des FPS parfaits.
+        val trainers = if (keyTrainersOnly && rawTrainers.size > 50) {
+            val keySet = HashSet<String>()
+            for (t in rawTrainers) {
+                if (!t.optional ||
+                    t.requiredDefeats.isNotEmpty() ||
+                    t.type in listOf("leader", "boss", "rival", "elite_four", "champion", "gym_leader")) {
+                    keySet.add(t.id)
+                }
+            }
+            // Inclut également les prérequis directs
+            for (t in rawTrainers) {
+                if (keySet.contains(t.id)) {
+                    for (group in t.requiredDefeats) {
+                        keySet.addAll(group)
+                    }
+                }
+            }
+            rawTrainers.filter { keySet.contains(it.id) }
+        } else {
+            rawTrainers
+        }
 
         // 1. Détermination du statut de chaque dresseur
         val nodeMap = mutableMapOf<String, RctTreeNode>()
         for (trainer in trainers) {
             val isDefeated = isTrainerDefeated(trainer.id)
-            val isAvailable = !isDefeated && isTrainerAvailable(trainer, trainerMap)
+            val isAvailable = !isDefeated && isTrainerAvailable(trainer, allTrainersMap)
 
             val status = when {
                 isDefeated -> RctProgressionStatus.DEFEATED
@@ -186,7 +221,6 @@ object RctProgressionService {
 
         var maxTotalHeight = 0.0
 
-        // Calcul de la hauteur max parmi tous les rangs
         val rankHeights = ranks.mapValues { (_, nodes) ->
             nodes.size * cardH + (nodes.size - 1).coerceAtLeast(0) * rowGap
         }
@@ -195,7 +229,6 @@ object RctProgressionService {
         for ((rank, nodesInRank) in ranks) {
             val colX = startX + rank * (cardW + colGap)
 
-            // Tri au sein du rang : obligatoires d'abord, puis par niveau
             val sortedNodes = nodesInRank.sortedWith(
                 compareBy<RctTreeNode> { it.trainer.optional }
                     .thenBy { it.trainer.computedLevelCap }
@@ -238,10 +271,10 @@ object RctProgressionService {
         }
 
         // 6. Calcul des statistiques et du Cap de niveau du joueur
-        val defeatedInSeries = nodeMap.values.filter { it.status == RctProgressionStatus.DEFEATED }
+        val defeatedInSeries = rawTrainers.filter { isTrainerDefeated(it.id) }
         val playerCap = maxOf(
             series.initialLevelCap,
-            defeatedInSeries.map { it.trainer.computedLevelCap }.maxOrNull() ?: series.initialLevelCap
+            defeatedInSeries.map { it.computedLevelCap }.maxOrNull() ?: series.initialLevelCap
         )
 
         return RctTreeGraph(
@@ -251,7 +284,7 @@ object RctProgressionService {
             totalWidth = totalWidth,
             totalHeight = totalHeight,
             defeatedCount = defeatedInSeries.size,
-            totalCount = nodeMap.size,
+            totalCount = rawTrainers.size,
             playerLevelCap = playerCap
         )
     }
@@ -259,11 +292,8 @@ object RctProgressionService {
     private fun isTrainerAvailable(trainer: RctTrainer, trainerMap: Map<String, RctTrainer>): Boolean {
         if (trainer.requiredDefeats.isEmpty()) return true
 
-        // Forme CNF : chaque sous-liste est un OU, l'ensemble est un ET.
-        // Chaque sous-liste doit contenir au moins 1 dresseur vaincu.
         for (innerList in trainer.requiredDefeats) {
             val anyDefeatedInGroup = innerList.any { reqId ->
-                // Si le dresseur prérequis n'existe pas dans le map, on le considère validé
                 !trainerMap.containsKey(reqId) || isTrainerDefeated(reqId)
             }
             if (!anyDefeatedInGroup) return false
@@ -277,7 +307,7 @@ object RctProgressionService {
 
         fun getRank(id: String): Int {
             if (memo.containsKey(id)) return memo[id]!!
-            if (visiting.contains(id)) return 0 // Détection de cycle de sécurité
+            if (visiting.contains(id)) return 0
 
             visiting.add(id)
             val node = nodeMap[id]
