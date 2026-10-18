@@ -191,5 +191,8 @@
   "gui.cobblemon_jei.pokedex.filter.apply": "Appliquer & Fermer",
   "gui.cobblemon_jei.pokedex.filter.biome_search": "Rechercher un biome...",
   "gui.cobblemon_jei.notification.caught": "Capturé !",
-  "gui.cobblemon_jei.notification.scanned": "Analysé !"
+  "gui.cobblemon_jei.notification.scanned": "Analysé !",
+  "key.cobblemon_jei.toggle_leaderboard_hud": "Afficher/Masquer le Classement HUD",
+  "gui.cobblemon_jei.leaderboard.title": "Classement des Joueurs",
+  "gui.cobblemon_jei.leaderboard.button": "Classement des Joueurs"
 }

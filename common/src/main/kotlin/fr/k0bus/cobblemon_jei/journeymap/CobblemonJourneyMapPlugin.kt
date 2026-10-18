@@ -30,6 +30,7 @@ class CobblemonJourneyMapPlugin : IClientPlugin {
 
         var currentThemeButton: IThemeButton? = null
         var currentFullscreen: IFullscreen? = null
+        var clientApi: IClientAPI? = null
 
         /**
          * Met à jour dynamiquement l'état, l'intitulé et l'infobulle du bouton JourneyMap
@@ -73,6 +74,7 @@ class CobblemonJourneyMapPlugin : IClientPlugin {
     override fun getModId(): String = MOD_ID
 
     override fun initialize(api: IClientAPI) {
+        clientApi = api
         logger.info("Cobblemon JourneyMap Plugin: Initialisation réussie.")
         CobblemonOverlayManager.initialize(api)
         try {

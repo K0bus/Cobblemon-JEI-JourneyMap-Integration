@@ -191,5 +191,8 @@
   "gui.cobblemon_jei.pokedex.filter.apply": "Apply & Close",
   "gui.cobblemon_jei.pokedex.filter.biome_search": "Search biome...",
   "gui.cobblemon_jei.notification.caught": "Caught!",
-  "gui.cobblemon_jei.notification.scanned": "Scanned!"
+  "gui.cobblemon_jei.notification.scanned": "Scanned!",
+  "key.cobblemon_jei.toggle_leaderboard_hud": "Toggle Leaderboard HUD",
+  "gui.cobblemon_jei.leaderboard.title": "Player Leaderboards",
+  "gui.cobblemon_jei.leaderboard.button": "Player Leaderboards"
 }

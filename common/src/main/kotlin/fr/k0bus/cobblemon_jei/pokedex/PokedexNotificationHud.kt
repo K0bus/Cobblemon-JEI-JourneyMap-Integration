@@ -61,6 +61,16 @@ object PokedexNotificationHud {
     private var isSnapshotInitialized = false
     private val clientKnowledgeSnapshot = mutableMapOf<ResourceLocation, PokedexEntryProgress>()
     private var tickCounter = 0
+    private var worldJoinTime = 0L
+
+    private fun isReadyForNotifications(): Boolean {
+        val mc = Minecraft.getInstance()
+        if (mc.player == null || mc.level == null) return false
+        if (!isSnapshotInitialized) return false
+        if (worldJoinTime <= 0L) return false
+        val elapsed = System.currentTimeMillis() - worldJoinTime
+        return elapsed >= 5000L
+    }
 
     /**
      * Initialisation des écouteurs d'événements Cobblemon.
@@ -68,6 +78,7 @@ object PokedexNotificationHud {
     fun init() {
         try {
             CobblemonEvents.POKEMON_CAPTURED.subscribe { event ->
+                if (!isReadyForNotifications()) return@subscribe
                 notify(
                     NotificationType.CAPTURED,
                     event.pokemon.species,
@@ -78,6 +89,7 @@ object PokedexNotificationHud {
             }
 
             CobblemonEvents.POKEMON_SCANNED.subscribe { event ->
+                if (!isReadyForNotifications()) return@subscribe
                 val p = event.scannedPokemonEntityData.pokemon
                 notify(
                     NotificationType.SCANNED,
@@ -90,14 +102,26 @@ object PokedexNotificationHud {
 
             CobblemonEvents.POKEDEX_DATA_CHANGED_POST.subscribe { event ->
                 val p = event.dataSource.pokemon
-                val type = if (event.knowledge == PokedexEntryProgress.CAUGHT) NotificationType.CAPTURED else NotificationType.SCANNED
-                notify(
-                    type,
-                    p.species,
-                    p.form,
-                    p.shiny,
-                    event.playerUUID
-                )
+                val resId = p.species.resourceIdentifier
+                val newKnowledge = event.knowledge
+
+                if (!isReadyForNotifications()) {
+                    clientKnowledgeSnapshot[resId] = newKnowledge
+                    return@subscribe
+                }
+
+                val prevKnowledge = clientKnowledgeSnapshot[resId]
+                if (prevKnowledge == null || newKnowledge.ordinal > prevKnowledge.ordinal) {
+                    clientKnowledgeSnapshot[resId] = newKnowledge
+                    val type = if (newKnowledge == PokedexEntryProgress.CAUGHT) NotificationType.CAPTURED else NotificationType.SCANNED
+                    notify(
+                        type,
+                        p.species,
+                        p.form,
+                        p.shiny,
+                        event.playerUUID
+                    )
+                }
             }
 
             logger.info("Cobblemon JEI: PokedexNotificationHud initialisé avec succès.")
@@ -116,6 +140,9 @@ object PokedexNotificationHud {
         shiny: Boolean,
         targetPlayerUuid: UUID? = null
     ) {
+        if (!isReadyForNotifications()) {
+            return
+        }
         val mc = Minecraft.getInstance()
         val localPlayer = mc.player ?: return
         if (targetPlayerUuid != null && targetPlayerUuid != localPlayer.uuid) {
@@ -187,28 +214,35 @@ object PokedexNotificationHud {
      */
     fun tick() {
         tickCounter++
-        if (tickCounter % 10 != 0) return
-
         val mc = Minecraft.getInstance()
-        if (mc.player == null) {
+        if (mc.player == null || mc.level == null) {
+            worldJoinTime = 0L
             isSnapshotInitialized = false
             clientKnowledgeSnapshot.clear()
             return
         }
+        if (worldJoinTime == 0L) {
+            worldJoinTime = System.currentTimeMillis()
+        }
+
+        if (tickCounter % 10 != 0) return
 
         try {
             val dexData = CobblemonClient.clientPokedexData
+            val isInitialGracePeriod = System.currentTimeMillis() - worldJoinTime < 5000L
 
-            if (!isSnapshotInitialized) {
-                // Première capture de référence pour éviter les faux positifs lors de la connexion
+            if (!isSnapshotInitialized || isInitialGracePeriod) {
+                // Remplissage silencieux du snapshot de référence durant la connexion (aucun son)
                 dexData.speciesRecords.forEach { (resId, rec) ->
                     clientKnowledgeSnapshot[resId] = rec.getKnowledge()
                 }
-                isSnapshotInitialized = true
+                if (dexData.speciesRecords.isNotEmpty()) {
+                    isSnapshotInitialized = true
+                }
                 return
             }
 
-            // Détection des nouveaux enregistrements dans le Pokédex client
+            // Détection des nouveaux enregistrements dans le Pokédex client (en jeu actif uniquement)
             for ((resId, rec) in dexData.speciesRecords) {
                 val currentKnowledge = rec.getKnowledge()
                 val prevKnowledge = clientKnowledgeSnapshot[resId]

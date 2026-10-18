@@ -24,6 +24,7 @@ public class CobblemonJeiNeoForge {
         try {
             modBus.addListener((net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent event) -> {
                 event.register(fr.k0bus.cobblemon_jei.pokedex.CobblemonKeyBindings.INSTANCE.getOPEN_POKEDEX_KEY());
+                event.register(fr.k0bus.cobblemon_jei.pokedex.CobblemonKeyBindings.INSTANCE.getTOGGLE_LEADERBOARD_HUD_KEY());
             });
 
             net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.ClientTickEvent.Post event) -> {
@@ -34,10 +35,22 @@ public class CobblemonJeiNeoForge {
                         mc.setScreen(new fr.k0bus.cobblemon_jei.pokedex.CobblemonPokedexScreen(null));
                     }
                 }
+                while (fr.k0bus.cobblemon_jei.pokedex.CobblemonKeyBindings.INSTANCE.getTOGGLE_LEADERBOARD_HUD_KEY().consumeClick()) {
+                    fr.k0bus.cobblemon_jei.leaderboard.CobblemonLeaderboardHud.INSTANCE.cycleOrToggle();
+                }
+            });
+
+            net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.RenderGuiLayerEvent.Pre event) -> {
+                if (net.neoforged.neoforge.client.gui.VanillaGuiLayers.SCOREBOARD_SIDEBAR.equals(event.getName())) {
+                    if (fr.k0bus.cobblemon_jei.leaderboard.CobblemonLeaderboardHud.INSTANCE.shouldHideVanillaSidebar()) {
+                        event.setCanceled(true);
+                    }
+                }
             });
 
             net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.RenderGuiEvent.Post event) -> {
                 fr.k0bus.cobblemon_jei.pokedex.PokedexNotificationHud.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
+                fr.k0bus.cobblemon_jei.leaderboard.CobblemonLeaderboardHud.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
             });
 
             fr.k0bus.cobblemon_jei.pokedex.PokedexNotificationHud.INSTANCE.init();

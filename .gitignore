@@ -16,5 +16,4 @@ logs/
 */logs/
 .eclipse/
 */.eclipse/
-
-
+/dist/

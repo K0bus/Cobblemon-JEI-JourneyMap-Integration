@@ -317,6 +317,15 @@ class CobblemonPokedexScreen(
         quickResetFilterBtn.tooltip = Tooltip.create(Component.literal("Réinitialiser tous les filtres"))
         addRenderableWidget(quickResetFilterBtn)
 
+        // Bouton Classement (uniquement si disponible sur le serveur)
+        if (fr.k0bus.cobblemon_jei.leaderboard.CobblemonScoreboardService.isAvailable()) {
+            val leaderboardBtn = Button.builder(Component.literal("🏆")) {
+                minecraft?.setScreen(fr.k0bus.cobblemon_jei.leaderboard.CobblemonLeaderboardScreen(this))
+            }.bounds(width - 48, topY, 20, tabHeight).build()
+            leaderboardBtn.tooltip = Tooltip.create(Component.literal("Classement des Joueurs"))
+            addRenderableWidget(leaderboardBtn)
+        }
+
         // Bouton Fermer
         val closeBtn = Button.builder(Component.literal("✕")) {
             onClose()

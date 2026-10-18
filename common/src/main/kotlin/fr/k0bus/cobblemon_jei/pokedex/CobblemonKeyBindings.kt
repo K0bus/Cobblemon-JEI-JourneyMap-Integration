@@ -21,4 +21,15 @@ object CobblemonKeyBindings {
         GLFW.GLFW_KEY_P,
         KEY_CATEGORY
     )
+
+    /**
+     * Touche bindable pour afficher/masquer ou cycler les classements du scoreboard custom HUD.
+     * Par défaut assignée à la touche 'F8'.
+     */
+    val TOGGLE_LEADERBOARD_HUD_KEY: KeyMapping = KeyMapping(
+        "key.cobblemon_jei.toggle_leaderboard_hud",
+        InputConstants.Type.KEYSYM,
+        GLFW.GLFW_KEY_F8,
+        KEY_CATEGORY
+    )
 }
