@@ -28,7 +28,7 @@ Le radar fonctionne sous deux modes complémentaires exécutés en parallèle :
 | **Périmètre Horizontal (XZ)** | 160 blocs | Couvre l'intégralité de la bulle d'apparition client Cobblemon standard. |
 | **Périmètre Vertical (Y)** | 64 blocs | Détection en profondeur (grottes) et en altitude. |
 | **Entité cible** | `PokemonEntity` | Entités vivantes non retirées (`entity.isAlive && !entity.isRemoved`). |
-| **Validation Shiny** | `pokemon.shiny && pokemon.isWild()` | Les Pokémon des dresseurs/joueurs ne déclenchent pas la sentinelle sauvage. |
+| **Filtrage Strict (Radar & Shiny)** | `isWildAndCatchable(entity)` | **Uniquement sauvages et capturables** : exclut formellement les Pokémon possédés/suivis (`ownerUUID`, `isTame`), les Pokémon en pâturage (`tethering`, `tetheringId`), portés sur l'épaule/montures (`isPassenger`, `vehicle`), et incapturables (`isUncatchable()`, `UNBATTLEABLE`). |
 
 ---
 

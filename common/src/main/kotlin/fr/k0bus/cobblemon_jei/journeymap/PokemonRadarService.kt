@@ -3,6 +3,7 @@ package fr.k0bus.cobblemon_jei.journeymap
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.cobblemon.mod.common.pokemon.FormData
 import com.cobblemon.mod.common.pokemon.Species
+import com.cobblemon.mod.common.pokemon.properties.UncatchableProperty
 import journeymap.api.v2.client.IClientAPI
 import journeymap.api.v2.client.display.Context
 import journeymap.api.v2.client.display.MarkerOverlay
@@ -169,10 +170,48 @@ object PokemonRadarService {
     }
 
     /**
+     * Vérifie scrupuleusement si une entité [PokemonEntity] est sauvage, capturable et n'appartient
+     * à aucun joueur ou système (exclut les Pokémon de pâturage, de suivi, portés sur l'épaule, montures ou apprivoisés).
+     */
+    fun isWildAndCatchable(entity: PokemonEntity): Boolean {
+        if (!entity.isAlive || entity.isRemoved) return false
+
+        val pokemon = entity.pokemon
+
+        // 1. Doit être un Pokémon sauvage (non stocké dans une Party/PC)
+        if (!pokemon.isWild()) return false
+        if (pokemon.isPlayerOwned()) return false
+
+        // 2. Ne doit pas appartenir à un dresseur / joueur (suivi, sorti de ball, apprivoisé)
+        if (entity.ownerUUID != null || pokemon.getOwnerUUID() != null) return false
+        if (entity.isTame) return false
+        if (pokemon.getOwnerPlayer() != null) return false
+
+        // 3. Ne doit pas être un Pokémon de pâturage (Pasture block)
+        if (entity.tethering != null || pokemon.tetheringId != null) return false
+
+        // 4. Ne doit pas être monté, conduit ou porté sur l'épaule (passager ou véhicule)
+        if (entity.isPassenger || entity.vehicle != null || entity.passengers.isNotEmpty()) return false
+
+        // 5. Doit être capturable selon Cobblemon
+        if (entity.isUncatchable() || pokemon.isUncatchable()) return false
+        try {
+            if (!UncatchableProperty.isCatchable(entity)) return false
+        } catch (_: Throwable) {}
+
+        // 6. Ne doit pas être inattaquable / incapturable (ex: PNJ, cinématiques)
+        try {
+            if (entity.entityData.get(PokemonEntity.UNBATTLEABLE)) return false
+        } catch (_: Throwable) {}
+
+        return true
+    }
+
+    /**
      * Effectue le scan des entités `PokemonEntity` dans le monde client et synchronise les marqueurs.
-     * Détecte :
-     * 1. TOUS les Pokémon Shiny sauvages dans le périmètre (Sentinelle globale).
-     * 2. Les Pokémon de l'espèce traquée (si un overlay est actif).
+     * Détecte uniquement les Pokémon sauvages et capturables :
+     * 1. TOUS les Pokémon Shiny sauvages et capturables dans le périmètre (Sentinelle globale).
+     * 2. Les Pokémon de l'espèce traquée sauvages et capturables (si un overlay est actif).
      */
     private fun scanWorld(
         mc: Minecraft,
@@ -198,7 +237,9 @@ object PokemonRadarService {
         try {
             val entities = level.getEntitiesOfClass(PokemonEntity::class.java, boundingBox)
             for (entity in entities) {
-                if (!entity.isAlive || entity.isRemoved) continue
+                // Filtrer rigoureusement : UNIQUEMENT les Pokémon sauvages et capturables
+                // (exclut pâturages, Pokémon de suivi, dresseurs, uncatchable, etc.)
+                if (!isWildAndCatchable(entity)) continue
 
                 val pokemon = entity.pokemon
                 val species = pokemon.species
@@ -206,13 +247,13 @@ object PokemonRadarService {
                 val isShiny = pokemon.shiny
 
                 // Vérifier si cette entité doit être suivie par le radar :
-                // Cas A : C'est un Shiny sauvage -> Sentinelle permanente activée !
+                // Cas A : C'est un Shiny sauvage capturable -> Sentinelle permanente activée !
                 // Cas B : C'est le Pokémon actuellement ciblé par l'overlay de recherche
                 val matchesTarget = targetSpecies != null &&
                         species.name.equals(targetSpecies.name, ignoreCase = true) &&
                         (targetForm == null || form.name.equals(targetForm.name, ignoreCase = true))
 
-                val isGlobalShiny = isShiny && pokemon.isWild()
+                val isGlobalShiny = isShiny
 
                 if (!isGlobalShiny && !matchesTarget) {
                     continue
