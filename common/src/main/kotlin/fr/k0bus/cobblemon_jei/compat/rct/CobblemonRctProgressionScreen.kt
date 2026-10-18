@@ -2,6 +2,7 @@ package fr.k0bus.cobblemon_jei.compat.rct
 
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
 import com.cobblemon.mod.common.item.PokemonItem
+import fr.k0bus.cobblemon_jei.journeymap.CobblemonOverlayManager
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Button
@@ -10,9 +11,12 @@ import net.minecraft.client.gui.components.PlayerFaceRenderer
 import net.minecraft.client.gui.components.Tooltip
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 import org.lwjgl.glfw.GLFW
 import java.text.Normalizer
 import kotlin.math.max
@@ -272,9 +276,6 @@ class CobblemonRctProgressionScreen(
         pose.translate(panX.toFloat(), panY.toFloat(), 0f)
         pose.scale(zoom.toFloat(), zoom.toFloat(), 1.0f)
 
-        // Rendu des bandes de colonnes/jalons en arrière-plan
-        renderColumnMilestones(guiGraphics, visibleMinX, visibleMaxX, visibleMinY, visibleMaxY)
-
         // Rendu des arêtes (filtrées par visibilité)
         graph?.edges?.let { edges ->
             for (edge in edges) {
@@ -333,23 +334,6 @@ class CobblemonRctProgressionScreen(
         // 10. Tooltip de survol d'un nœud
         if (hoveredNode != null && !isDetailDrawerOpen) {
             renderNodeTooltip(guiGraphics, hoveredNode!!, mouseX, mouseY)
-        }
-    }
-
-    /**
-     * Rendu très léger des colonnes de jalons de l'arbre.
-     */
-    private fun renderColumnMilestones(guiGraphics: GuiGraphics, minX: Double, maxX: Double, minY: Double, maxY: Double) {
-        val g = graph ?: return
-        val maxRank = g.nodes.maxOfOrNull { it.rank } ?: 0
-        val colStep = 230.0
-        val startX = 60.0
-
-        for (r in 0..maxRank) {
-            val cx = startX + r * colStep
-            if (cx + 145.0 < minX || cx > maxX) continue
-            // Bande verticale très subtile pour structurer l'arbre visuellement
-            guiGraphics.fill((cx - 10).toInt(), (minY - 20).toInt(), (cx + 155).toInt(), (maxY + 20).toInt(), 0x08FFFFFF)
         }
     }
 
@@ -595,6 +579,7 @@ class CobblemonRctProgressionScreen(
 
         var curY = (contentY - detailScrollOffset).toInt()
 
+        // 1. Avatar et En-tête Dresseur
         val avatarSize = 44
         val avatarX = panelX + 14
         guiGraphics.fill(avatarX - 1, curY - 1, avatarX + avatarSize + 1, curY + avatarSize + 1, 0xFF282D3C.toInt())
@@ -613,20 +598,24 @@ class CobblemonRctProgressionScreen(
 
         curY += avatarSize + 14
 
-        val toggleBtnW = panelW - 28
-        val toggleBtnH = 18
-        val toggleBtnX = panelX + 14
-        val isDefeated = (node.status == RctProgressionStatus.DEFEATED)
+        // 2. Bannière de statut RCT (Lecture seule, synchronisée avec RCT)
+        val statusBannerW = panelW - 28
+        val statusBannerH = 20
+        val statusBannerX = panelX + 14
 
-        val toggleBg = if (isDefeated) 0xFF27AE60.toInt() else 0xFF2C3240.toInt()
-        val toggleText = if (isDefeated) "✓ Dresseur Vaincu (Annuler)" else "Marquer comme Vaincu"
+        val (statusBg, statusBorder, statusText) = when (node.status) {
+            RctProgressionStatus.DEFEATED -> Triple(0xFF1E3A2B.toInt(), 0xFF2ECC71.toInt(), "✓ DRESSEUR VAINCU")
+            RctProgressionStatus.AVAILABLE -> Triple(0xFF3E3618.toInt(), 0xFFF1C40F.toInt(), "⚔ OBJECTIF ACTUEL (Prêt)")
+            RctProgressionStatus.LOCKED -> Triple(0xFF232733.toInt(), 0xFF7F8C8D.toInt(), "🔒 VERROUILLÉ (Prérequis manquants)")
+        }
 
-        guiGraphics.fill(toggleBtnX, curY, toggleBtnX + toggleBtnW, curY + toggleBtnH, toggleBg)
-        guiGraphics.fill(toggleBtnX, curY, toggleBtnX + toggleBtnW, curY + 1, 0x44FFFFFF)
-        guiGraphics.drawCenteredString(font, toggleText, toggleBtnX + toggleBtnW / 2, curY + 5, 0xFFFFFFFF.toInt())
+        guiGraphics.fill(statusBannerX, curY, statusBannerX + statusBannerW, curY + statusBannerH, statusBg)
+        guiGraphics.fill(statusBannerX, curY, statusBannerX + 3, curY + statusBannerH, statusBorder)
+        guiGraphics.drawString(font, statusText, statusBannerX + 8, curY + 6, statusBorder, true)
 
-        curY += toggleBtnH + 12
+        curY += statusBannerH + 10
 
+        // 3. Cap de niveau
         val capBannerH = 26
         guiGraphics.fill(panelX + 14, curY, panelX + panelW - 14, curY + capBannerH, 0xFF1C2230.toInt())
         guiGraphics.fill(panelX + 14, curY, panelX + 17, curY + capBannerH, getCapBadgeColor(t.computedLevelCap))
@@ -635,8 +624,94 @@ class CobblemonRctProgressionScreen(
         guiGraphics.drawString(font, "Nv. ${t.computedLevelCap}", panelX + 22, curY + 14, 0xFFF1C40F.toInt(), true)
         guiGraphics.drawString(font, "(Maximum toléré)", panelX + 70, curY + 14, 0xFF7F8C8D.toInt(), false)
 
-        curY += capBannerH + 14
+        curY += capBannerH + 12
 
+        // 4. Objet favoris du dresseur (Signature item)
+        guiGraphics.drawString(font, "OBJET FAVORI DU DRESSEUR", panelX + 14, curY, 0xFFFFFFFF.toInt(), true)
+        guiGraphics.fill(panelX + 14, curY + 10, panelX + panelW - 14, curY + 11, 0xFF282D3C.toInt())
+        curY += 15
+
+        if (!t.signatureItem.isNullOrBlank()) {
+            val itemRes = ResourceLocation.tryParse(t.signatureItem)
+            val itemObj = if (itemRes != null) BuiltInRegistries.ITEM.get(itemRes) else Items.AIR
+            val itemStack = if (itemObj != Items.AIR) ItemStack(itemObj) else ItemStack.EMPTY
+
+            val itemBoxSize = 24
+            val itemBoxX = panelX + 14
+            val itemBoxY = curY
+            guiGraphics.fill(itemBoxX, itemBoxY, itemBoxX + itemBoxSize, itemBoxY + itemBoxSize, 0xFF0D0F14.toInt())
+            guiGraphics.fill(itemBoxX, itemBoxY, itemBoxX + itemBoxSize, itemBoxY + 1, 0xFF282D3C.toInt())
+
+            if (!itemStack.isEmpty) {
+                guiGraphics.renderItem(itemStack, itemBoxX + 4, itemBoxY + 4)
+            } else {
+                guiGraphics.drawString(font, "✦", itemBoxX + 8, itemBoxY + 7, 0xFFF1C40F.toInt(), false)
+            }
+
+            val itemTextX = itemBoxX + itemBoxSize + 8
+            val rawName = if (!itemStack.isEmpty) itemStack.hoverName.string else t.signatureItem.substringAfter(':').replace('_', ' ').replaceFirstChar { it.uppercase() }
+            val truncItemName = font.plainSubstrByWidth(rawName, panelW - (itemBoxSize + 30))
+            guiGraphics.drawString(font, truncItemName, itemTextX, curY + 2, 0xFFFFFFFF.toInt(), false)
+            guiGraphics.drawString(font, "§7${t.signatureItem}§r", itemTextX, curY + 13, 0xFF7F8C8D.toInt(), false)
+            curY += itemBoxSize + 10
+        } else {
+            guiGraphics.drawString(font, "Aucun objet spécifique", panelX + 18, curY, 0xFF7F8C8D.toInt(), false)
+            curY += 16
+        }
+
+        // 5. Conditions & Prérequis de Spawn
+        guiGraphics.drawString(font, "CONDITIONS D'APPARITION (SPAWN)", panelX + 14, curY, 0xFFFFFFFF.toInt(), true)
+        guiGraphics.fill(panelX + 14, curY + 10, panelX + panelW - 14, curY + 11, 0xFF282D3C.toInt())
+        curY += 15
+
+        val canSpawnNow = (node.status != RctProgressionStatus.LOCKED)
+        val spawnStatusText = if (canSpawnNow) "✓ Éligible à l'apparition" else "✗ Bloqué (Prérequis non satisfaits)"
+        val spawnStatusColor = if (canSpawnNow) 0xFF2ECC71.toInt() else 0xFFE74C3C.toInt()
+        guiGraphics.drawString(font, spawnStatusText, panelX + 14, curY, spawnStatusColor, true)
+        curY += 12
+
+        val weightPct = "${(t.spawnWeightFactor * 100).toInt()}%"
+        guiGraphics.drawString(font, "Poids de spawn : §f$weightPct§r", panelX + 14, curY, 0xFFA0AABF.toInt(), false)
+        curY += 12
+
+        val biomesWhite = if (t.biomeTagWhitelist.isNotEmpty()) {
+            t.biomeTagWhitelist.joinToString(", ") { "#${it.removePrefix("#")}" }
+        } else {
+            "Tous les biomes autorisés"
+        }
+        val biomesWhiteTrunc = font.plainSubstrByWidth("Biomes : $biomesWhite", panelW - 28)
+        guiGraphics.drawString(font, "§aBiomes : §f$biomesWhiteTrunc§r", panelX + 14, curY, 0xFFFFFFFF.toInt(), false)
+        curY += 12
+
+        if (t.biomeTagBlacklist.isNotEmpty()) {
+            val biomesBlack = t.biomeTagBlacklist.joinToString(", ") { "#${it.removePrefix("#")}" }
+            val biomesBlackTrunc = font.plainSubstrByWidth("Interdits : $biomesBlack", panelW - 28)
+            guiGraphics.drawString(font, "§cInterdits : §7$biomesBlackTrunc§r", panelX + 14, curY, 0xFFFFFFFF.toInt(), false)
+            curY += 12
+        }
+
+        if (t.requiredDefeats.isNotEmpty()) {
+            guiGraphics.drawString(font, "Dresseurs préalables requis :", panelX + 14, curY, 0xFFF1C40F.toInt(), false)
+            curY += 11
+            for (group in t.requiredDefeats) {
+                val anyBeaten = group.any { RctProgressionService.isTrainerDefeated(it) }
+                val prefix = if (anyBeaten) "§a✓ " else "§c✗ "
+                val names = group.joinToString(" §7ou§r ") { reqId ->
+                    val reqTrainer = RctDataLoader.getTrainer(reqId)
+                    val isBeaten = RctProgressionService.isTrainerDefeated(reqId)
+                    val color = if (isBeaten) "§a" else "§c"
+                    "$color${reqTrainer?.name ?: reqId}§r"
+                }
+                val line = "$prefix$names"
+                val truncLine = font.plainSubstrByWidth(line, panelW - 32)
+                guiGraphics.drawString(font, truncLine, panelX + 18, curY, 0xFFFFFFFF.toInt(), false)
+                curY += 11
+            }
+        }
+
+        curY += 8
+
+        // 6. Équipe Adverse (avec noms Cobblemon traduits et badges de types)
         val teamTitle = "ÉQUIPE ADVERSE (${t.team.size} Pokémon)"
         guiGraphics.drawString(font, teamTitle, panelX + 14, curY, 0xFFFFFFFF.toInt(), true)
         guiGraphics.fill(panelX + 14, curY + 10, panelX + panelW - 14, curY + 11, 0xFF282D3C.toInt())
@@ -644,7 +719,7 @@ class CobblemonRctProgressionScreen(
         curY += 16
 
         for (pokemon in t.team) {
-            val cardH = 38
+            val cardH = 46
             val cardW = panelW - 28
             val cardX = panelX + 14
 
@@ -653,35 +728,74 @@ class CobblemonRctProgressionScreen(
             guiGraphics.fill(cardX, curY, cardX + 1, curY + cardH, 0xFF242A38.toInt())
 
             val stack = getPokemonStack(pokemon.species, pokemon.aspects, pokemon.shiny)
-            val spriteBoxSize = 28
+            val spriteBoxSize = 34
             val spriteX = cardX + 5
-            val spriteY = curY + 5
+            val spriteY = curY + 6
 
             guiGraphics.fill(spriteX, spriteY, spriteX + spriteBoxSize, spriteY + spriteBoxSize, 0xFF0D0F14.toInt())
             if (!stack.isEmpty) {
-                guiGraphics.renderItem(stack, spriteX + 6, spriteY + 6)
+                guiGraphics.renderItem(stack, spriteX + 9, spriteY + 9)
             } else {
-                guiGraphics.drawString(font, "●", spriteX + 10, spriteY + 10, 0xFF888888.toInt(), false)
+                guiGraphics.drawString(font, "●", spriteX + 13, spriteY + 13, 0xFF888888.toInt(), false)
             }
 
-            val pokeName = pokemon.nickname ?: pokemon.species.substringAfter(':').replaceFirstChar { it.uppercase() }
+            val cleanSpecies = pokemon.species.substringAfter(':').lowercase()
+            val cobbleSpecies = PokemonSpecies.getByName(cleanSpecies)
+                ?: ResourceLocation.tryParse(pokemon.species.lowercase())?.let { PokemonSpecies.getByIdentifier(it) }
+
+            val translatedName = cobbleSpecies?.translatedName?.string
+                ?: pokemon.species.substringAfter(':').replace('_', ' ').replaceFirstChar { it.uppercase() }
+
+            val pokeDisplayName = if (!pokemon.nickname.isNullOrBlank()) {
+                "${pokemon.nickname} ($translatedName)"
+            } else {
+                translatedName
+            }
+
             val infoX = spriteX + spriteBoxSize + 8
 
-            guiGraphics.drawString(font, pokeName, infoX, curY + 6, 0xFFFFFFFF.toInt(), false)
-            guiGraphics.drawString(font, "Nv. ${pokemon.level}", infoX, curY + 16, 0xFF2ECC71.toInt(), false)
+            // Ligne 1 : Nom traduit
+            val truncName = font.plainSubstrByWidth(pokeDisplayName, cardW - (spriteBoxSize + 16))
+            guiGraphics.drawString(font, truncName, infoX, curY + 5, 0xFFFFFFFF.toInt(), false)
 
+            // Ligne 2 : Niveau + Badges de Types colorés selon Cobblemon
+            val lvlText = "Nv. ${pokemon.level}"
+            guiGraphics.drawString(font, lvlText, infoX, curY + 18, 0xFF2ECC71.toInt(), false)
+
+            var typeBadgeX = infoX + font.width(lvlText) + 8
+            val primType = cobbleSpecies?.standardForm?.primaryType
+            if (primType != null) {
+                val tName = primType.displayName.string.uppercase()
+                val tColor = CobblemonOverlayManager.getElementColor(primType.name)
+                val badgeW = font.width(tName) + 6
+                guiGraphics.fill(typeBadgeX, curY + 17, typeBadgeX + badgeW, curY + 27, tColor)
+                guiGraphics.drawString(font, tName, typeBadgeX + 3, curY + 18, 0xFFFFFFFF.toInt(), false)
+                typeBadgeX += badgeW + 4
+            }
+
+            val secType = cobbleSpecies?.standardForm?.secondaryType
+            if (secType != null) {
+                val tName = secType.displayName.string.uppercase()
+                val tColor = CobblemonOverlayManager.getElementColor(secType.name)
+                val badgeW = font.width(tName) + 6
+                guiGraphics.fill(typeBadgeX, curY + 17, typeBadgeX + badgeW, curY + 27, tColor)
+                guiGraphics.drawString(font, tName, typeBadgeX + 3, curY + 18, 0xFFFFFFFF.toInt(), false)
+            }
+
+            // Ligne 3 : Talent & Objet tenu
             val detailParts = mutableListOf<String>()
-            if (pokemon.ability != null) detailParts.add(pokemon.ability.substringAfter(':'))
-            if (pokemon.heldItem != null) detailParts.add("@${pokemon.heldItem.substringAfter(':')}")
+            if (pokemon.ability != null) detailParts.add(pokemon.ability.substringAfter(':').replace('_', ' '))
+            if (pokemon.heldItem != null) detailParts.add("@${pokemon.heldItem.substringAfter(':').replace('_', ' ')}")
             val subText = detailParts.joinToString(" | ")
             if (subText.isNotBlank()) {
                 val truncSub = font.plainSubstrByWidth(subText, cardW - (spriteBoxSize + 16))
-                guiGraphics.drawString(font, truncSub, infoX, curY + 26, 0xFF7F8C8D.toInt(), false)
+                guiGraphics.drawString(font, truncSub, infoX, curY + 31, 0xFF7F8C8D.toInt(), false)
             }
 
-            curY += cardH + 4
+            curY += cardH + 5
         }
 
+        // 7. Objets en Sac
         if (t.bag.isNotEmpty()) {
             curY += 8
             guiGraphics.drawString(font, "OBJETS EN SAC", panelX + 14, curY, 0xFFFFFFFF.toInt(), true)
@@ -734,22 +848,6 @@ class CobblemonRctProgressionScreen(
                 mouseY in closeBtnY.toDouble()..(closeBtnY + 16).toDouble()) {
                 isDetailDrawerOpen = false
                 Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
-                return true
-            }
-
-            val toggleBtnX = width - 240 + 14
-            val toggleBtnY = headerH + 10 + 44 + 14 - detailScrollOffset
-            val toggleBtnW = 240 - 28
-            val toggleBtnH = 18
-
-            if (mouseX >= toggleBtnX && mouseX <= toggleBtnX + toggleBtnW &&
-                mouseY >= toggleBtnY && mouseY <= toggleBtnY + toggleBtnH) {
-                selectedNode?.let { node ->
-                    RctProgressionService.toggleTrainerDefeated(node.trainer.id)
-                    reloadGraph()
-                    selectedNode = graph?.nodes?.firstOrNull { it.trainer.id == node.trainer.id }
-                    Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.2f))
-                }
                 return true
             }
 

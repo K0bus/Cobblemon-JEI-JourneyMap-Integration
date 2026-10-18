@@ -13,9 +13,8 @@ object RctProgressionService {
 
     private val logger = LoggerFactory.getLogger("CobblemonJEI/RctProgression")
 
-    // Dresseurs marqués vaincus (automatiquement via advancements ou manuellement)
+    // Dresseurs marqués vaincus (interrogés directement auprès du mod RCT et advancements)
     private val defeatedTrainers = mutableSetOf<String>()
-    private val manualOverrides = mutableMapOf<String, Boolean>()
 
     private var selectedSeriesId: String = "radicalred"
     private var onlyKeyTrainers: Boolean = true
@@ -25,18 +24,16 @@ object RctProgressionService {
     }
 
     /**
-     * Rafraîchit les données de progression depuis le client Minecraft et les succès.
+     * Rafraîchit les données de progression en interrogeant directement le mod RCT et les succès.
      */
     fun refresh() {
         RctDataLoader.ensureLoaded()
 
-        // 1. Détection via les Advancements Minecraft
-        detectDefeatedFromAdvancements()
+        // 1. Interrogation directe du mod RCT (PlayerState client et serveur interne)
+        detectDefeatedFromRctMod()
 
-        // 2. Application des overrides manuels du joueur
-        for ((id, defeated) in manualOverrides) {
-            if (defeated) defeatedTrainers.add(id) else defeatedTrainers.remove(id)
-        }
+        // 2. Détection complémentaire via les Advancements Minecraft
+        detectDefeatedFromAdvancements()
 
         // 3. Choix de la série par défaut
         val allSeries = RctDataLoader.getAllSeries()
@@ -61,10 +58,9 @@ object RctProgressionService {
         return defeatedTrainers.contains(trainerId)
     }
 
-    fun toggleTrainerDefeated(trainerId: String) {
-        val nowDefeated = !isTrainerDefeated(trainerId)
-        manualOverrides[trainerId] = nowDefeated
-        if (nowDefeated) {
+    @org.jetbrains.annotations.VisibleForTesting
+    fun setTrainerDefeatedForTesting(trainerId: String, defeated: Boolean) {
+        if (defeated) {
             defeatedTrainers.add(trainerId)
         } else {
             defeatedTrainers.remove(trainerId)
@@ -74,8 +70,88 @@ object RctProgressionService {
     fun resetProgress(seriesId: String) {
         val trainers = RctDataLoader.getTrainersForSeries(seriesId)
         for (t in trainers) {
-            manualOverrides[t.id] = false
             defeatedTrainers.remove(t.id)
+        }
+    }
+
+    /**
+     * Interroge directement les structures du mod Radical Cobblemon Trainers (RCT).
+     */
+    private fun detectDefeatedFromRctMod() {
+        try {
+            val mc = Minecraft.getInstance()
+            val player = mc.player ?: return
+
+            // 1. Appel du PlayerState côté client RCT
+            try {
+                val playerStateClass = Class.forName("com.gitlab.srcmc.rctmod.api.data.sync.PlayerState")
+                val getMethod = playerStateClass.getMethod("get", net.minecraft.world.entity.player.Player::class.java)
+                val playerState = getMethod.invoke(null, player)
+                if (playerState != null) {
+                    val defeatedMethod = playerState.javaClass.getMethod("getDefeatedTrainerIds")
+                    val set = defeatedMethod.invoke(playerState) as? Set<*>
+                    if (set != null) {
+                        for (item in set) {
+                            if (item is String) defeatedTrainers.add(item)
+                        }
+                    }
+
+                    // Récupère la série active du joueur dans RCT
+                    try {
+                        val currentSeriesMethod = playerState.javaClass.getMethod("getCurrentSeries")
+                        val activeSeries = currentSeriesMethod.invoke(playerState) as? String
+                        if (!activeSeries.isNullOrBlank() && RctDataLoader.getSeries(activeSeries) != null) {
+                            selectedSeriesId = activeSeries
+                        }
+                    } catch (_: Throwable) {}
+                }
+            } catch (_: Throwable) {}
+
+            // 2. Si serveur intégré (Singleplayer), interroger directement le serveur interne
+            try {
+                val singleplayer = mc.singleplayerServer
+                if (singleplayer != null) {
+                    val serverPlayer = singleplayer.playerList.getPlayer(player.uuid)
+                    if (serverPlayer != null) {
+                        try {
+                            val playerStateClass = Class.forName("com.gitlab.srcmc.rctmod.api.data.sync.PlayerState")
+                            val getMethod = playerStateClass.getMethod("get", net.minecraft.world.entity.player.Player::class.java)
+                            val serverState = getMethod.invoke(null, serverPlayer)
+                            if (serverState != null) {
+                                val defeatedMethod = serverState.javaClass.getMethod("getDefeatedTrainerIds")
+                                val set = defeatedMethod.invoke(serverState) as? Set<*>
+                                if (set != null) {
+                                    for (item in set) {
+                                        if (item is String) defeatedTrainers.add(item)
+                                    }
+                                }
+                            }
+                        } catch (_: Throwable) {}
+
+                        try {
+                            val dataClass = Class.forName("com.gitlab.srcmc.rctmod.api.data.save.TrainerPlayerData")
+                            val forPlayerMethod = dataClass.getMethod("forPlayer", net.minecraft.world.entity.player.Player::class.java)
+                            val playerData = forPlayerMethod.invoke(null, serverPlayer)
+                            if (playerData != null) {
+                                val dataDefeatedMethod = playerData.javaClass.getMethod("getDefeatedTrainerIds")
+                                val set = dataDefeatedMethod.invoke(playerData) as? Set<*>
+                                if (set != null) {
+                                    for (item in set) {
+                                        if (item is String) defeatedTrainers.add(item)
+                                    }
+                                }
+                                val seriesMethod = playerData.javaClass.getMethod("getCurrentSeries")
+                                val s = seriesMethod.invoke(playerData) as? String
+                                if (!s.isNullOrBlank() && RctDataLoader.getSeries(s) != null) {
+                                    selectedSeriesId = s
+                                }
+                            }
+                        } catch (_: Throwable) {}
+                    }
+                }
+            } catch (_: Throwable) {}
+        } catch (e: Throwable) {
+            logger.debug("Erreur interrogation directe mod RCT: {}", e.message)
         }
     }
 

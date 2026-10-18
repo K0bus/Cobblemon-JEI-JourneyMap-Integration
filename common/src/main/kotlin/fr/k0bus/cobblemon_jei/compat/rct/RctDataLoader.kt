@@ -15,6 +15,10 @@ private data class RawMobConfig(
     val optional: Boolean = false,
     val maxTrainerWins: Int = -1,
     val maxTrainerDefeats: Int = 1,
+    val signatureItem: String? = null,
+    val biomeTagWhitelist: List<String> = emptyList(),
+    val biomeTagBlacklist: List<String> = emptyList(),
+    val spawnWeightFactor: Float = 1.0f,
     val series: List<String> = emptyList(),
     val requiredDefeats: List<List<String>> = emptyList(),
     val requiredSeries: List<List<String>> = emptyList()
@@ -199,6 +203,14 @@ object RctDataLoader {
         val optional = obj.get("optional")?.asBoolean ?: false
         val maxWins = obj.get("maxTrainerWins")?.asInt ?: -1
         val maxDefeats = obj.get("maxTrainerDefeats")?.asInt ?: 1
+        val signatureItem = obj.get("signatureItem")?.asString
+        val spawnWeightFactor = obj.get("spawnWeightFactor")?.asFloat ?: 1.0f
+
+        val biomeWhitelist = mutableListOf<String>()
+        obj.getAsJsonArray("biomeTagWhitelist")?.forEach { if (!it.isJsonNull) biomeWhitelist.add(it.asString) }
+
+        val biomeBlacklist = mutableListOf<String>()
+        obj.getAsJsonArray("biomeTagBlacklist")?.forEach { if (!it.isJsonNull) biomeBlacklist.add(it.asString) }
 
         val series = mutableListOf<String>()
         obj.getAsJsonArray("series")?.forEach { series.add(it.asString) }
@@ -223,6 +235,10 @@ object RctDataLoader {
             optional = optional,
             maxTrainerWins = maxWins,
             maxTrainerDefeats = maxDefeats,
+            signatureItem = signatureItem,
+            biomeTagWhitelist = biomeWhitelist,
+            biomeTagBlacklist = biomeBlacklist,
+            spawnWeightFactor = spawnWeightFactor,
             series = series,
             requiredDefeats = reqDefeats,
             requiredSeries = reqSeries
@@ -323,6 +339,10 @@ object RctDataLoader {
                         optional = mobConfig.optional,
                         maxTrainerWins = mobConfig.maxTrainerWins,
                         maxTrainerDefeats = mobConfig.maxTrainerDefeats,
+                        signatureItem = mobConfig.signatureItem,
+                        biomeTagWhitelist = mobConfig.biomeTagWhitelist,
+                        biomeTagBlacklist = mobConfig.biomeTagBlacklist,
+                        spawnWeightFactor = mobConfig.spawnWeightFactor,
                         textureLocation = texture
                     )
                 }
@@ -407,7 +427,9 @@ object RctDataLoader {
                 RctPokemon("geodude", level = 12, moveset = listOf("rockthrow", "tackle")),
                 RctPokemon("vulpix", level = 13, moveset = listOf("ember", "quickattack")),
                 RctPokemon("onix", level = 14, moveset = listOf("rocktomb", "bind", "slam"), heldItem = "sitrus_berry")
-            )
+            ),
+            signatureItem = "cobblemon:hard_stone",
+            biomes = listOf("is_mountain", "is_cave", "is_plateau")
         )
 
         addFallbackTrainer(
@@ -422,7 +444,9 @@ object RctDataLoader {
                 RctPokemon("pidgeotto", level = 22),
                 RctPokemon("kadabra", level = 23),
                 RctPokemon("charmeleon", level = 24)
-            )
+            ),
+            signatureItem = "cobblemon:silk_scarf",
+            biomes = listOf("is_plains", "is_forest")
         )
 
         addFallbackTrainer(
@@ -437,7 +461,9 @@ object RctDataLoader {
                 RctPokemon("frogadier", level = 25, ability = "protean"),
                 RctPokemon("togetic", level = 26),
                 RctPokemon("starmie", level = 27, heldItem = "life_orb", moveset = listOf("scald", "psyshock", "recover"))
-            )
+            ),
+            signatureItem = "cobblemon:mystic_water",
+            biomes = listOf("is_beach", "is_ocean", "is_river")
         )
 
         addFallbackTrainer(
@@ -686,7 +712,10 @@ object RctDataLoader {
         cap: Int,
         req: List<List<String>>,
         optional: Boolean,
-        team: List<RctPokemon>
+        team: List<RctPokemon>,
+        signatureItem: String? = null,
+        biomes: List<String> = emptyList(),
+        blacklistBiomes: List<String> = listOf("is_void", "is_nether", "is_end")
     ) {
         trainersCache[id] = RctTrainer(
             id = id,
@@ -698,6 +727,9 @@ object RctDataLoader {
             series = series,
             optional = optional,
             team = team,
+            signatureItem = signatureItem,
+            biomeTagWhitelist = biomes,
+            biomeTagBlacklist = blacklistBiomes,
             textureLocation = resolveTextureLocation(id)
         )
     }

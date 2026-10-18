@@ -57,7 +57,7 @@ class RctProgressionTest {
         assertEquals(15, graph.playerLevelCap)
 
         // Simule la victoire contre Brock
-        RctProgressionService.toggleTrainerDefeated("leader_brock_019e")
+        RctProgressionService.setTrainerDefeatedForTesting("leader_brock_019e", true)
         val graphAfterBrock = RctProgressionService.buildTreeGraph("radicalred")
 
         val brockAfter = graphAfterBrock.nodes.first { it.trainer.id == "leader_brock_019e" }

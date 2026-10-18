@@ -45,6 +45,10 @@ data class RctTrainer(
     val optional: Boolean = false,
     val maxTrainerWins: Int = -1,
     val maxTrainerDefeats: Int = 1,
+    val signatureItem: String? = null,
+    val biomeTagWhitelist: List<String> = emptyList(),
+    val biomeTagBlacklist: List<String> = emptyList(),
+    val spawnWeightFactor: Float = 1.0f,
     val textureLocation: ResourceLocation = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/entity/player/wide/steve.png")
 )
 
