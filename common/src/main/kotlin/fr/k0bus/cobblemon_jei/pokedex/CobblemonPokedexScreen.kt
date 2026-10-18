@@ -6,9 +6,11 @@ import com.cobblemon.mod.common.api.moves.Moves
 import com.cobblemon.mod.common.api.pokedex.PokedexEntryProgress
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
 import com.cobblemon.mod.common.client.CobblemonClient
+import com.cobblemon.mod.common.item.PokemonItem
 import com.cobblemon.mod.common.pokemon.abilities.HiddenAbility
 import com.cobblemon.mod.common.pokemon.FormData
 import com.cobblemon.mod.common.pokemon.Gender
+import com.cobblemon.mod.common.pokemon.Pokemon
 import com.cobblemon.mod.common.pokemon.Species
 import fr.k0bus.cobblemon_jei.compat.cobbleworkers.CobbleworkersCompat
 import fr.k0bus.cobblemon_jei.data.CobbleworkersJobDataLoader
@@ -24,7 +26,9 @@ import net.minecraft.client.gui.components.Button
 import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.components.Tooltip
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.network.chat.Component
+import net.minecraft.sounds.SoundEvents
 import net.minecraft.world.item.ItemStack
 import org.lwjgl.glfw.GLFW
 import kotlin.math.max
@@ -84,8 +88,32 @@ class CobblemonPokedexScreen(
     private var filteredGoals: List<EvolutionGoal> = emptyList()
     private var selectedGoal: EvolutionGoal? = null
 
-    // Cache d'items
-    private val itemStackCache = mutableMapOf<Pair<Species, FormData?>, ItemStack>()
+    // Cache d'items (incluant la forme et le statut Shiny)
+    private val itemStackCache = mutableMapOf<Triple<Species, FormData?, Boolean>, ItemStack>()
+
+    // Gestion de l'affichage Shiny dans l'onglet Formes
+    private var globalShinyForms: Boolean = false
+    private val individualShinyForms = mutableSetOf<String>()
+    private var shinyHeaderButtonRect: IntArray? = null
+    private val shinyCardButtonRects = mutableListOf<Pair<IntArray, FormData>>()
+
+    private fun isFormShiny(form: FormData): Boolean {
+        val key = form.name.lowercase()
+        return if (globalShinyForms) {
+            !individualShinyForms.contains(key)
+        } else {
+            individualShinyForms.contains(key)
+        }
+    }
+
+    private fun toggleFormShiny(form: FormData) {
+        val key = form.name.lowercase()
+        if (individualShinyForms.contains(key)) {
+            individualShinyForms.remove(key)
+        } else {
+            individualShinyForms.add(key)
+        }
+    }
 
     // Scroll de la zone gauche
     private var scrollOffset: Double = 0.0
@@ -102,10 +130,16 @@ class CobblemonPokedexScreen(
     // Dimensions des cartes d'évolution
     private val evoCardHeight = 46
 
-    private fun getItemStack(species: Species, form: FormData? = null): ItemStack {
-        return itemStackCache.computeIfAbsent(Pair(species, form)) {
+    private fun getItemStack(species: Species, form: FormData? = null, shiny: Boolean = false): ItemStack {
+        return itemStackCache.computeIfAbsent(Triple(species, form, shiny)) {
             try {
-                PokemonSpeciesIngredient(species, form ?: species.standardForm).itemStack
+                val pokemon = Pokemon().apply {
+                    this.species = species
+                    this.form = form ?: species.standardForm
+                    this.level = 1
+                    this.shiny = shiny
+                }
+                PokemonItem.from(pokemon, 1)
             } catch (_: Throwable) {
                 ItemStack.EMPTY
             }
@@ -1021,7 +1055,7 @@ class CobblemonPokedexScreen(
 
         val finalY = when (currentRightPanelTab) {
             RightPanelTab.DESCRIPTION -> renderTabDescription(guiGraphics, sp, currentTracked, contentX, curY, contentW)
-            RightPanelTab.FORMS -> renderTabForms(guiGraphics, sp, currentTracked, contentX, curY, contentW)
+            RightPanelTab.FORMS -> renderTabForms(guiGraphics, sp, currentTracked, contentX, curY, contentW, mouseX, mouseY)
             RightPanelTab.ABILITIES -> renderTabAbilities(guiGraphics, sp, contentX, curY, contentW)
             RightPanelTab.STATS -> renderTabStats(guiGraphics, sp, contentX, curY, contentW)
             RightPanelTab.DROPS -> renderTabDrops(guiGraphics, sp, contentX, curY, contentW)
@@ -1057,9 +1091,28 @@ class CobblemonPokedexScreen(
         val btnText = if (CobblemonOverlayManager.activeSpecies == sp) "✔ Actif sur carte" else "🗺 Voir sur JourneyMap"
         guiGraphics.drawCenteredString(font, btnText, panelX + panelW / 2, btnY + 4, 0xFFFFFFFF.toInt())
 
-        // Tooltip de survol d'onglet
+        // Tooltip de survol d'onglet et éléments interactifs
         if (hoveredTabTooltip != null) {
             guiGraphics.renderTooltip(font, Component.literal(hoveredTabTooltip), mouseX, mouseY)
+        } else if (currentRightPanelTab == RightPanelTab.FORMS) {
+            shinyHeaderButtonRect?.let { (bx, by, bw, bh) ->
+                if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
+                    val tt = if (globalShinyForms) "Désactiver le mode Chromatique (Shiny)" else "Activer le mode Chromatique (Shiny) pour toutes les formes"
+                    guiGraphics.renderTooltip(font, Component.literal(tt), mouseX, mouseY)
+                }
+            }
+            if (mouseX >= panelX && mouseX <= panelX + panelW && mouseY >= contentY && mouseY <= contentY + contentH) {
+                for ((rect, form) in shinyCardButtonRects) {
+                    val (bx, by, bw, bh) = rect
+                    if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
+                        val isSh = isFormShiny(form)
+                        val fName = if (form == sp.standardForm || form.name.isBlank()) "Forme Standard" else "Forme de ${form.name.replaceFirstChar(Char::titlecase)}"
+                        val tt = if (isSh) "Cliquer pour afficher la version normale ($fName)" else "Cliquer pour afficher la version Shiny ($fName)"
+                        guiGraphics.renderTooltip(font, Component.literal(tt), mouseX, mouseY)
+                        break
+                    }
+                }
+            }
         }
     }
 
@@ -1145,8 +1198,18 @@ class CobblemonPokedexScreen(
         return y + 4
     }
 
-    private fun renderTabForms(guiGraphics: GuiGraphics, sp: Species, currentTracked: TrackedPokemon?, contentX: Int, startY: Int, contentW: Int): Int {
+    private fun renderTabForms(
+        guiGraphics: GuiGraphics,
+        sp: Species,
+        currentTracked: TrackedPokemon?,
+        contentX: Int,
+        startY: Int,
+        contentW: Int,
+        mouseX: Int,
+        mouseY: Int
+    ): Int {
         var y = startY
+        shinyCardButtonRects.clear()
 
         // Récupérer toutes les formes de l'espèce
         val allForms = mutableListOf<FormData>()
@@ -1158,7 +1221,31 @@ class CobblemonPokedexScreen(
         }
 
         guiGraphics.drawString(font, "§e§lFormes & Variantes (${allForms.size})§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
-        y += 13
+
+        // Bouton global Shiny dans l'en-tête
+        val shinyBtnW = 54
+        val shinyBtnH = 12
+        val shinyBtnX = contentX + contentW - shinyBtnW
+        val shinyBtnY = y - 1
+        shinyHeaderButtonRect = intArrayOf(shinyBtnX, shinyBtnY, shinyBtnW, shinyBtnH)
+
+        val isHeaderHovered = mouseX >= shinyBtnX && mouseX <= shinyBtnX + shinyBtnW && mouseY >= shinyBtnY && mouseY <= shinyBtnY + shinyBtnH
+        val headerBg = when {
+            globalShinyForms -> if (isHeaderHovered) 0xFFD4AC0D.toInt() else 0xFFB7950B.toInt()
+            isHeaderHovered -> 0xFF353C4D.toInt()
+            else -> 0xFF1D212E.toInt()
+        }
+        val headerBorder = if (globalShinyForms) 0xFFF1C40F.toInt() else 0xFF3D465E.toInt()
+        val headerText = if (globalShinyForms) "§6★ Shiny§r" else "§7☆ Shiny§r"
+
+        guiGraphics.fill(shinyBtnX, shinyBtnY, shinyBtnX + shinyBtnW, shinyBtnY + shinyBtnH, headerBg)
+        guiGraphics.fill(shinyBtnX, shinyBtnY, shinyBtnX + shinyBtnW, shinyBtnY + 1, headerBorder)
+        guiGraphics.fill(shinyBtnX, shinyBtnY + shinyBtnH - 1, shinyBtnX + shinyBtnW, shinyBtnY + shinyBtnH, headerBorder)
+        guiGraphics.fill(shinyBtnX, shinyBtnY, shinyBtnX + 1, shinyBtnY + shinyBtnH, headerBorder)
+        guiGraphics.fill(shinyBtnX + shinyBtnW - 1, shinyBtnY, shinyBtnX + shinyBtnW, shinyBtnY + shinyBtnH, headerBorder)
+        guiGraphics.drawCenteredString(font, headerText, shinyBtnX + shinyBtnW / 2, shinyBtnY + 2, 0xFFFFFFFF.toInt())
+
+        y += 14
 
         val allRecipes = PokemonEvolutionDataLoader.loadEvolutionRecipes()
 
@@ -1170,59 +1257,124 @@ class CobblemonPokedexScreen(
                 "Forme de ${form.name.replaceFirstChar(Char::titlecase)}"
             }
 
+            val isShiny = isFormShiny(form)
             val cardY = y
             val cardH = 46
 
-            // Carte de fond
-            guiGraphics.fill(contentX, cardY, contentX + contentW, cardY + cardH, 0xFF151922.toInt())
-            guiGraphics.fill(contentX, cardY, contentX + contentW, cardY + 1, 0xFF282D3C.toInt())
-            guiGraphics.fill(contentX, cardY + cardH - 1, contentX + contentW, cardY + cardH, 0xFF282D3C.toInt())
-            guiGraphics.fill(contentX, cardY, contentX + 1, cardY + cardH, 0xFF282D3C.toInt())
-            guiGraphics.fill(contentX + contentW - 1, cardY, contentX + contentW, cardY + cardH, 0xFF282D3C.toInt())
+            // Carte de fond (avec teinte dorée subtile si shiny)
+            val cardBg = if (isShiny) 0xFF1A1812.toInt() else 0xFF151922.toInt()
+            val cardBorder = if (isShiny) 0xFF8E6E1A.toInt() else 0xFF282D3C.toInt()
 
-            // Sprite de la forme
-            val stack = getItemStack(sp, form)
-            if (!stack.isEmpty) {
-                guiGraphics.renderItem(stack, contentX + 4, cardY + 6)
+            guiGraphics.fill(contentX, cardY, contentX + contentW, cardY + cardH, cardBg)
+            guiGraphics.fill(contentX, cardY, contentX + contentW, cardY + 1, cardBorder)
+            guiGraphics.fill(contentX, cardY + cardH - 1, contentX + contentW, cardY + cardH, cardBorder)
+            guiGraphics.fill(contentX, cardY, contentX + 1, cardY + cardH, cardBorder)
+            guiGraphics.fill(contentX + contentW - 1, cardY, contentX + contentW, cardY + cardH, cardBorder)
+
+            // Zone Sprite + Étoile Shiny cliquable
+            val spriteX = contentX + 4
+            val spriteY = cardY + 6
+            val toggleBox = intArrayOf(contentX + 2, cardY + 4, 20, 36)
+            shinyCardButtonRects.add(Pair(toggleBox, form))
+
+            val isSpriteHovered = mouseX >= toggleBox[0] && mouseX <= toggleBox[0] + toggleBox[2] &&
+                    mouseY >= toggleBox[1] && mouseY <= toggleBox[1] + toggleBox[3]
+
+            if (isSpriteHovered) {
+                guiGraphics.fill(toggleBox[0], toggleBox[1], toggleBox[0] + toggleBox[2], toggleBox[1] + toggleBox[3], 0x33F1C40F.toInt())
+                guiGraphics.fill(toggleBox[0], toggleBox[1], toggleBox[0] + toggleBox[2], toggleBox[1] + 1, 0xFFF1C40F.toInt())
+                guiGraphics.fill(toggleBox[0], toggleBox[1] + toggleBox[3] - 1, toggleBox[0] + toggleBox[2], toggleBox[1] + toggleBox[3], 0xFFF1C40F.toInt())
+                guiGraphics.fill(toggleBox[0], toggleBox[1], toggleBox[0] + 1, toggleBox[1] + toggleBox[3], 0xFFF1C40F.toInt())
+                guiGraphics.fill(toggleBox[0] + toggleBox[2] - 1, toggleBox[1], toggleBox[0] + toggleBox[2], toggleBox[1] + toggleBox[3], 0xFFF1C40F.toInt())
             }
 
+            // Sprite de la forme (Normal ou Shiny selon l'état)
+            val stack = getItemStack(sp, form, isShiny)
+            if (!stack.isEmpty) {
+                guiGraphics.renderItem(stack, spriteX, spriteY)
+            }
+
+            // Petit badge étoile sous le sprite
+            val starTxt = if (isShiny) "§e★§r" else "§8☆§r"
+            guiGraphics.drawCenteredString(font, starTxt, spriteX + 8, spriteY + 18, 0xFFFFFFFF.toInt())
+
             // Titre et Aspects
-            var headerX = contentX + 24
-            guiGraphics.drawString(font, "§f§l$formTitle§r", headerX, cardY + 6, 0xFFFFFFFF.toInt(), false)
-            headerX += font.width("§f§l$formTitle§r") + 4
+            var headerX = contentX + 26
+            val titlePrefix = if (isShiny) "§6★ §f§l" else "§f§l"
+            guiGraphics.drawString(font, "$titlePrefix$formTitle§r", headerX, cardY + 6, 0xFFFFFFFF.toInt(), false)
+            headerX += font.width("$titlePrefix$formTitle§r") + 4
 
             if (form.aspects.isNotEmpty()) {
                 val aspectsStr = "§8[${form.aspects.joinToString(", ")}]§r"
                 guiGraphics.drawString(font, aspectsStr, headerX, cardY + 7, 0xFFAAAAAA.toInt(), false)
             }
 
-            // Statut de capture / possession
-            val ownedCount = currentTracked?.ownedInstances?.count { PokemonTrackerService.isFormMatch(it.pokemon, form, sp) } ?: 0
+            // Statut de capture / possession (en tenant compte de Shiny si activé)
             val formRecord = try {
                 val specRecord = CobblemonClient.clientPokedexData.speciesRecords[sp.resourceIdentifier]
                 specRecord?.getFormRecord(form.name.lowercase().ifBlank { "normal" })
                     ?: specRecord?.getFormRecord(form.name.lowercase())
                     ?: specRecord?.getFormRecord("")
             } catch (_: Throwable) { null }
-            val isDexCaught = formRecord?.knowledge == PokedexEntryProgress.CAUGHT
-            val isDexSeen = formRecord?.knowledge == PokedexEntryProgress.ENCOUNTERED
 
-            val statusText = when {
-                ownedCount > 0 -> "§a✔ Possédé ($ownedCount)§r"
-                isDexCaught -> "§a✔ Capturé§r"
-                isDexSeen -> "§6👁 Vu (Pokédex)§r"
-                else -> "§c✕ Non découvert§r"
+            val statusText: String
+            val statusColor: Int
+
+            if (isShiny) {
+                val ownedShinyCount = currentTracked?.ownedInstances?.count {
+                    it.pokemon.shiny && PokemonTrackerService.isFormMatch(it.pokemon, form, sp)
+                } ?: 0
+                val isDexShinyCaught = formRecord?.hasSeenShinyState(true) == true && (formRecord.knowledge == PokedexEntryProgress.CAUGHT)
+                val isDexShinySeen = formRecord?.hasSeenShinyState(true) == true
+
+                when {
+                    ownedShinyCount > 0 -> {
+                        statusText = "§6★ Possédé ($ownedShinyCount)§r"
+                        statusColor = 0xFFF1C40F.toInt()
+                    }
+                    isDexShinyCaught -> {
+                        statusText = "§6★ Capturé Shiny§r"
+                        statusColor = 0xFFF1C40F.toInt()
+                    }
+                    isDexShinySeen -> {
+                        statusText = "§e👁 Vu Shiny (Pokédex)§r"
+                        statusColor = 0xFFE67E22.toInt()
+                    }
+                    else -> {
+                        statusText = "§c✕ Non découvert Shiny§r"
+                        statusColor = 0xFFE74C3C.toInt()
+                    }
+                }
+            } else {
+                val ownedCount = currentTracked?.ownedInstances?.count { PokemonTrackerService.isFormMatch(it.pokemon, form, sp) } ?: 0
+                val isDexCaught = formRecord?.knowledge == PokedexEntryProgress.CAUGHT
+                val isDexSeen = formRecord?.knowledge == PokedexEntryProgress.ENCOUNTERED
+
+                when {
+                    ownedCount > 0 -> {
+                        statusText = "§a✔ Possédé ($ownedCount)§r"
+                        statusColor = 0xFF2ECC71.toInt()
+                    }
+                    isDexCaught -> {
+                        statusText = "§a✔ Capturé§r"
+                        statusColor = 0xFF2ECC71.toInt()
+                    }
+                    isDexSeen -> {
+                        statusText = "§6👁 Vu (Pokédex)§r"
+                        statusColor = 0xFFE67E22.toInt()
+                    }
+                    else -> {
+                        statusText = "§c✕ Non découvert§r"
+                        statusColor = 0xFFE74C3C.toInt()
+                    }
+                }
             }
-            val statusColor = when {
-                ownedCount > 0 || isDexCaught -> 0xFF2ECC71.toInt()
-                isDexSeen -> 0xFFE67E22.toInt()
-                else -> 0xFFE74C3C.toInt()
-            }
+
             val statusW = font.width(statusText)
             guiGraphics.drawString(font, statusText, contentX + contentW - statusW - 6, cardY + 6, statusColor, false)
 
             // Types élémentaires
-            var typeX = contentX + 24
+            var typeX = contentX + 26
             val primColor = CobblemonOverlayManager.getElementColor(form.primaryType.name)
             val primName = form.primaryType.displayName.string.uppercase()
             val primW = font.width(primName) + 6
@@ -1248,7 +1400,7 @@ class CobblemonPokedexScreen(
             } else {
                 "§8• Aucune évolution connue§r"
             }
-            guiGraphics.drawString(font, evoText, contentX + 24, cardY + 32, 0xFFCCCCCC.toInt(), false)
+            guiGraphics.drawString(font, evoText, contentX + 26, cardY + 32, 0xFFCCCCCC.toInt(), false)
 
             y += cardH + 4
         }
@@ -1630,6 +1782,29 @@ class CobblemonPokedexScreen(
         val contentH = (panelY + panelH - 26) - contentY
         val scrollTrackX = panelX + panelW - 5
 
+        // Clics dans l'onglet Formes (Toggle Shiny global ou par carte)
+        if (currentRightPanelTab == RightPanelTab.FORMS) {
+            shinyHeaderButtonRect?.let { (bx, by, bw, bh) ->
+                if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
+                    globalShinyForms = !globalShinyForms
+                    individualShinyForms.clear()
+                    Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.2f))
+                    return true
+                }
+            }
+
+            if (mouseX >= panelX && mouseX <= panelX + panelW && mouseY >= contentY && mouseY <= contentY + contentH) {
+                for ((rect, form) in shinyCardButtonRects) {
+                    val (bx, by, bw, bh) = rect
+                    if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
+                        toggleFormShiny(form)
+                        Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+                        return true
+                    }
+                }
+            }
+        }
+
         // Clic sur la barre de défilement du panneau droit
         if (rightPanelMaxScroll > 0 && mouseX >= scrollTrackX - 3 && mouseX <= scrollTrackX + 5 && mouseY >= contentY && mouseY <= contentY + contentH) {
             isDraggingRightScrollbar = true
@@ -1646,6 +1821,7 @@ class CobblemonPokedexScreen(
                     val found = allTracked.find { it.species == clickedSp }
                     if (found != null) {
                         selectedTracked = found
+                        individualShinyForms.clear()
                         rightPanelScrollOffset = 0.0
                         return true
                     }
@@ -1683,6 +1859,7 @@ class CobblemonPokedexScreen(
                     val goal = filteredGoals[index]
                     selectedGoal = goal
                     selectedTracked = allTracked.find { it.species == goal.targetSpecies }
+                    individualShinyForms.clear()
                     rightPanelScrollOffset = 0.0
                     return true
                 }
@@ -1695,6 +1872,7 @@ class CobblemonPokedexScreen(
                     val index = row * cols + col
                     if (index in filteredTracked.indices) {
                         selectedTracked = filteredTracked[index]
+                        individualShinyForms.clear()
                         rightPanelScrollOffset = 0.0
                         return true
                     }
