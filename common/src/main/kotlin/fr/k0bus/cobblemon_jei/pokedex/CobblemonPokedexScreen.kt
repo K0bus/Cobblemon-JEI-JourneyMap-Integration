@@ -472,10 +472,13 @@ class CobblemonPokedexScreen(
 
         super.render(guiGraphics, mouseX, mouseY, partialTick)
 
+        val contentMouseX = if (isZoomModalOpen) -1000 else mouseX
+        val contentMouseY = if (isZoomModalOpen) -1000 else mouseY
+
         // Rendu des zones principales
-        renderLeftContent(guiGraphics, mouseX, mouseY)
-        renderRightPanel(guiGraphics, mouseX, mouseY)
-        renderBottomProgressBar(guiGraphics, mouseX, mouseY, stats)
+        renderLeftContent(guiGraphics, contentMouseX, contentMouseY)
+        renderRightPanel(guiGraphics, contentMouseX, contentMouseY)
+        renderBottomProgressBar(guiGraphics, contentMouseX, contentMouseY, stats)
 
         // Rendu de la visionneuse Grand Format (au-dessus de tout)
         renderZoomModal(guiGraphics, mouseX, mouseY)
@@ -1870,6 +1873,11 @@ class CobblemonPokedexScreen(
     private fun renderZoomModal(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         if (!isZoomModalOpen) return
 
+        guiGraphics.flush()
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate(0f, 0f, 400f)
+
         val currentTracked = selectedTracked ?: allTracked.firstOrNull() ?: return
         val sp = currentTracked.species
         val allForms = getSpeciesForms(sp)
@@ -1925,7 +1933,6 @@ class CobblemonPokedexScreen(
         // Modèle 3D rendu en grand format (Scale 5.0f -> 80x80px)
         val zoomStack = getItemStack(sp, activeZoomForm, zoomModalShiny)
         if (!zoomStack.isEmpty) {
-            val pose = guiGraphics.pose()
             pose.pushPose()
             val modelScale = 5.0f
             val modelRenderSize = 16f * modelScale
@@ -2033,6 +2040,9 @@ class CobblemonPokedexScreen(
         guiGraphics.fill(bottomCloseX, bottomCloseY, bottomCloseX + 1, bottomCloseY + bottomCloseH, bCloseBorder)
         guiGraphics.fill(bottomCloseX + bottomCloseW - 1, bottomCloseY, bottomCloseX + bottomCloseW, bottomCloseY + bottomCloseH, bCloseBorder)
         guiGraphics.drawCenteredString(font, "§7Fermer (Échap)§r", bottomCloseX + bottomCloseW / 2, bottomCloseY + 3, 0xFFFFFFFF.toInt())
+
+        guiGraphics.flush()
+        pose.popPose()
     }
 
     private fun handleZoomModalClick(mouseX: Double, mouseY: Double) {
