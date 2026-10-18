@@ -317,6 +317,20 @@ class CobblemonPokedexScreen(
         quickResetFilterBtn.tooltip = Tooltip.create(Component.literal("Réinitialiser tous les filtres"))
         addRenderableWidget(quickResetFilterBtn)
 
+        // Bouton Radical Cobblemon Trainers (si le mod RCT est disponible ou séries chargées)
+        if (fr.k0bus.cobblemon_jei.compat.rct.RctCompat.isAvailable()) {
+            val rctBtnX = if (fr.k0bus.cobblemon_jei.leaderboard.CobblemonScoreboardService.isAvailable()) {
+                width - 72
+            } else {
+                width - 48
+            }
+            val rctBtn = Button.builder(Component.literal("⚔")) {
+                minecraft?.setScreen(fr.k0bus.cobblemon_jei.compat.rct.CobblemonRctProgressionScreen(this))
+            }.bounds(rctBtnX, topY, 20, tabHeight).build()
+            rctBtn.tooltip = Tooltip.create(Component.literal("Arbre de Progression Radical Trainers"))
+            addRenderableWidget(rctBtn)
+        }
+
         // Bouton Classement (uniquement si disponible sur le serveur)
         if (fr.k0bus.cobblemon_jei.leaderboard.CobblemonScoreboardService.isAvailable()) {
             val leaderboardBtn = Button.builder(Component.literal("🏆")) {

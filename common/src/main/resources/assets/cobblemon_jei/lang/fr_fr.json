@@ -194,5 +194,7 @@
   "gui.cobblemon_jei.notification.scanned": "Analysé !",
   "key.cobblemon_jei.toggle_leaderboard_hud": "Afficher/Masquer le Classement HUD",
   "gui.cobblemon_jei.leaderboard.title": "Classement des Joueurs",
-  "gui.cobblemon_jei.leaderboard.button": "Classement des Joueurs"
+  "gui.cobblemon_jei.leaderboard.button": "Classement des Joueurs",
+  "gui.cobblemon_jei.rct.title": "Radical Cobblemon Trainers - Arbre de Progression",
+  "gui.cobblemon_jei.rct.button": "Radical Trainers"
 }

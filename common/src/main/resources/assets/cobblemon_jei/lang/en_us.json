@@ -194,5 +194,7 @@
   "gui.cobblemon_jei.notification.scanned": "Scanned!",
   "key.cobblemon_jei.toggle_leaderboard_hud": "Toggle Leaderboard HUD",
   "gui.cobblemon_jei.leaderboard.title": "Player Leaderboards",
-  "gui.cobblemon_jei.leaderboard.button": "Player Leaderboards"
+  "gui.cobblemon_jei.leaderboard.button": "Player Leaderboards",
+  "gui.cobblemon_jei.rct.title": "Radical Cobblemon Trainers - Progression Tree",
+  "gui.cobblemon_jei.rct.button": "Radical Trainers"
 }

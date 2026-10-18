@@ -132,6 +132,28 @@ It provides:
 
 ---
 
+### 8. ⚔️ Radical Cobblemon Trainers Integration (Progression Tree & Level Caps)
+- **Dedicated Progression Tree Screen (`CobblemonRctProgressionScreen`)**:
+  - Accessible directly via the `⚔` button in the Pokédex header.
+  - Interactive 2D graph canvas with smooth mouse pan & zoom controls and target auto-centering.
+- **Series & Story Mode Management**:
+  - Full support for multi-series progression (Radical Red, Unbound, BDSP, custom datapack series).
+  - Series switcher displaying titles, difficulties (1-10), and overall completion stats.
+- **Visual Trainer Nodes with Skins & Badges**:
+  - Renders authentic 2D player skin avatars for every opponent trainer (`PlayerFaceRenderer`).
+  - Tiered color-coded Level Cap badges (`Cap: Nv. XX`).
+  - Directed requirement connectors showing duel dependencies (`requiredDefeats`).
+- **Real-Time Player Progression Status**:
+  - 🟢 **Defeated**: Already beaten by the player, with green checkmark badge.
+  - 🟡 **Available**: Unlocked next target to defeat, with animated golden pulse.
+  - ⚫ **Locked**: Prerequisite milestone trainers not yet defeated.
+- **Side Detail Inspection Drawer**:
+  - Deep-dive into opponent trainer profiles: Trainer title, battle format, and item bag.
+  - Complete opponent Pokémon roster cards with species sprite, levels, abilities, movesets, and held items.
+  - Manual defeat toggle to track progress in singleplayer or servers.
+
+---
+
 ## 🛠️ Project Structure & Architecture
 
 ```

@@ -120,11 +120,15 @@ object CobblemonDataScanner {
                 if (entry.isBlank()) continue
                 val file = File(entry)
                 if (file.exists()) {
-                    if (file.isFile && file.name.contains("cobblemon", ignoreCase = true) &&
+                    if (file.isFile && (file.name.contains("cobblemon", ignoreCase = true) ||
+                        file.name.contains("rct", ignoreCase = true) ||
+                        file.name.contains("radical", ignoreCase = true)) &&
                         (file.name.endsWith(".jar") || file.name.endsWith(".zip"))
                     ) {
                         scanZipFile(file, subPath, seen, consumer)
-                    } else if (file.isDirectory && file.path.contains("cobblemon", ignoreCase = true)) {
+                    } else if (file.isDirectory && (file.path.contains("cobblemon", ignoreCase = true) ||
+                            file.path.contains("rct", ignoreCase = true) ||
+                            file.path.contains("radical", ignoreCase = true))) {
                         scanDirectory(file, subPath, seen, consumer)
                     }
                 }
