@@ -1,7 +1,16 @@
 package fr.k0bus.cobblemon_jei.pokedex
 
+import com.cobblemon.mod.common.CobblemonItems
+import com.cobblemon.mod.common.api.Priority
+import com.cobblemon.mod.common.api.moves.Moves
+import com.cobblemon.mod.common.api.pokemon.stats.Stats
+import com.cobblemon.mod.common.pokemon.abilities.HiddenAbility
 import com.cobblemon.mod.common.pokemon.FormData
+import com.cobblemon.mod.common.pokemon.Gender
 import com.cobblemon.mod.common.pokemon.Species
+import fr.k0bus.cobblemon_jei.compat.cobbleworkers.CobbleworkersCompat
+import fr.k0bus.cobblemon_jei.data.CobbleworkersJobDataLoader
+import fr.k0bus.cobblemon_jei.data.PokemonDropDataLoader
 import fr.k0bus.cobblemon_jei.data.PokemonEvolutionDataLoader
 import fr.k0bus.cobblemon_jei.data.PokemonSpawnDataLoader
 import fr.k0bus.cobblemon_jei.ingredient.PokemonSpeciesIngredient
@@ -34,8 +43,27 @@ class CobblemonPokedexScreen(
         EVOLUTIONS("gui.cobblemon_jei.pokedex.tab.evolutions")
     }
 
+    enum class RightPanelTab(val label: String, val tooltip: String) {
+        DESCRIPTION("Infos", "Description & Morphologie"),
+        ABILITIES("Talents", "Talents & Capacités spéciales"),
+        STATS("Stats", "Statistiques de base & EV"),
+        EVOLUTIONS("Évos", "Lignée évolutive (Source & Destination)"),
+        DROPS("Butin", "Objets lâchés à la défaite"),
+        PASTURE("Pâturage", "Métiers au pâturage (Cobbleworkers)"),
+        SPAWNS("Zones", "Zones d'apparition sauvage")
+    }
+
     private var currentTab: Tab = Tab.ALL
     private var onlyPcFeasibleEvolutions: Boolean = false
+
+    // Onglet et défilement du panneau droit
+    private var currentRightPanelTab: RightPanelTab = RightPanelTab.DESCRIPTION
+    private var rightPanelScrollOffset: Double = 0.0
+    private var rightPanelMaxScroll: Double = 0.0
+    private var isDraggingRightScrollbar: Boolean = false
+    private var dragStartRightMouseY: Double = 0.0
+    private var dragStartRightScroll: Double = 0.0
+    private val rightPanelClickablePokemon = mutableListOf<Triple<IntArray, Species, Boolean>>()
 
     // Éléments d'interface
     private lateinit var searchBox: EditBox
@@ -90,7 +118,7 @@ class CobblemonPokedexScreen(
             selectedTracked = allTracked.firstOrNull()
         }
 
-        val topY = 28
+        val topY = 26
         val tabWidth = 110
         val tabHeight = 18
 
@@ -126,10 +154,12 @@ class CobblemonPokedexScreen(
         togglePcEvolutionsBtn.visible = (currentTab == Tab.EVOLUTIONS)
         addRenderableWidget(togglePcEvolutionsBtn)
 
-        // Champ de recherche
-        val searchX = width - 380
-        val searchWidth = 160
-        searchBox = EditBox(font, searchX, topY, searchWidth, tabHeight, Component.literal(""))
+        // Champ de recherche : sur une nouvelle ligne sous les boutons, occupant toute la largeur de la liste des Pokémon
+        val searchX = 12
+        val searchY = 48
+        val searchWidth = max(180, width - 215)
+        val searchHeight = 18
+        searchBox = EditBox(font, searchX, searchY, searchWidth, searchHeight, Component.literal(""))
         searchBox.setHint(Component.translatable("gui.cobblemon_jei.pokedex.search.hint"))
         searchBox.setResponder { applyFilters() }
         addRenderableWidget(searchBox)
@@ -219,10 +249,71 @@ class CobblemonPokedexScreen(
 
     private fun getLeftAreaBounds(): IntArray {
         val x = 12
-        val y = 52
+        val y = 73
         val w = max(180, width - 215)
-        val h = max(100, height - y - 10)
+        val h = max(80, height - y - 26)
         return intArrayOf(x, y, w, h)
+    }
+
+    private fun getRightPanelBounds(): IntArray {
+        val panelX = width - 200
+        val panelY = 73
+        val panelW = 192
+        val panelH = max(80, height - panelY - 26)
+        return intArrayOf(panelX, panelY, panelW, panelH)
+    }
+
+    private fun getRightPanelTabRect(tab: RightPanelTab): IntArray {
+        val (panelX, panelY, panelW, _) = getRightPanelBounds()
+        val x0 = panelX + 6
+        val tabsW = panelW - 12
+        val gap = 2
+        val row1H = 13
+        val row2H = 13
+        val row1Y = panelY + 74
+        val row2Y = panelY + 89
+
+        return when (tab) {
+            RightPanelTab.DESCRIPTION -> {
+                val w = (tabsW - 3 * gap) / 4
+                intArrayOf(x0, row1Y, w, row1H)
+            }
+            RightPanelTab.ABILITIES -> {
+                val w = (tabsW - 3 * gap) / 4
+                intArrayOf(x0 + w + gap, row1Y, w, row1H)
+            }
+            RightPanelTab.STATS -> {
+                val w = (tabsW - 3 * gap) / 4
+                intArrayOf(x0 + (w + gap) * 2, row1Y, w, row1H)
+            }
+            RightPanelTab.EVOLUTIONS -> {
+                val w = (tabsW - 3 * gap) / 4
+                val x = x0 + (w + gap) * 3
+                intArrayOf(x, row1Y, (x0 + tabsW) - x, row1H)
+            }
+            RightPanelTab.DROPS -> {
+                val w = (tabsW - 2 * gap) / 3
+                intArrayOf(x0, row2Y, w, row2H)
+            }
+            RightPanelTab.PASTURE -> {
+                val w = (tabsW - 2 * gap) / 3
+                intArrayOf(x0 + w + gap, row2Y, w, row2H)
+            }
+            RightPanelTab.SPAWNS -> {
+                val w = (tabsW - 2 * gap) / 3
+                val x = x0 + (w + gap) * 2
+                intArrayOf(x, row2Y, (x0 + tabsW) - x, row2H)
+            }
+        }
+    }
+
+    private fun truncateString(str: String, maxW: Int): String {
+        if (font.width(str) <= maxW) return str
+        var s = str
+        while (s.isNotEmpty() && font.width("$s…") > maxW) {
+            s = s.dropLast(1)
+        }
+        return "$s…"
     }
 
     private fun recomputeMaxScroll() {
@@ -243,9 +334,9 @@ class CobblemonPokedexScreen(
         // Fond sombre moderne
         guiGraphics.fill(0, 0, width, height, 0xE8101217.toInt())
 
-        // Bande supérieure d'en-tête
-        guiGraphics.fill(0, 0, width, 50, 0xFF14171E.toInt())
-        guiGraphics.fill(0, 49, width, 50, 0xFF282D3C.toInt())
+        // Bande supérieure d'en-tête (englobe le titre, les boutons d'onglets et la barre de recherche)
+        guiGraphics.fill(0, 0, width, 70, 0xFF14171E.toInt())
+        guiGraphics.fill(0, 69, width, 70, 0xFF282D3C.toInt())
 
         // Titre et statistiques globales
         val stats = PokemonTrackerService.getStats()
@@ -260,6 +351,115 @@ class CobblemonPokedexScreen(
         // Rendu des zones principales
         renderLeftContent(guiGraphics, mouseX, mouseY)
         renderRightPanel(guiGraphics, mouseX, mouseY)
+        renderBottomProgressBar(guiGraphics, mouseX, mouseY, stats)
+    }
+
+    private fun renderBottomProgressBar(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, stats: PokedexTrackerStats) {
+        val total = max(1, stats.totalSpecies)
+        val caught = stats.caughtCount
+        val seenOnly = stats.encounteredCount
+        val totalSeen = caught + seenOnly
+
+        val caughtPct = (caught.toDouble() / total) * 100.0
+        val seenOnlyPct = (seenOnly.toDouble() / total) * 100.0
+        val totalSeenPct = (totalSeen.toDouble() / total) * 100.0
+        val missingPct = (stats.missingCount.toDouble() / total) * 100.0
+
+        val footerY = height - 23
+        val barX = 14
+        val barW = max(50, width - 28)
+        val barH = 5
+        val barY = footerY + 15
+        val textY = footerY + 4
+
+        // 1. Fond et bordure du bandeau inférieur
+        guiGraphics.fill(0, footerY, width, height, 0xFF14171E.toInt())
+        guiGraphics.fill(0, footerY, width, footerY + 1, 0xFF282D3C.toInt())
+
+        // 2. Chiffres & icônes sans texte superflu
+        var curX = 14
+
+        // Icône Pokéball + Valeur Capturé (Vert)
+        val pokeStack = try {
+            ItemStack(CobblemonItems.POKE_BALL)
+        } catch (_: Throwable) {
+            ItemStack.EMPTY
+        }
+
+        if (!pokeStack.isEmpty) {
+            val pose = guiGraphics.pose()
+            pose.pushPose()
+            pose.translate(curX.toFloat(), (textY - 2).toFloat(), 0f)
+            pose.scale(0.68f, 0.68f, 1.0f)
+            guiGraphics.renderItem(pokeStack, 0, 0)
+            pose.popPose()
+            curX += 13
+        } else {
+            guiGraphics.drawString(font, "●", curX, textY, 0xFF2ECC71.toInt(), false)
+            curX += 9
+        }
+
+        val caughtStr = "§a§l$caught§r §7(${String.format("%.1f", caughtPct)}%)§r"
+        guiGraphics.drawString(font, caughtStr, curX, textY, 0xFFFFFFFF.toInt(), false)
+        curX += font.width(caughtStr) + 16
+
+        // Icône Œil + Vus uniquement + Somme (Total vus)
+        val eyeIcon = "§6👁§r"
+        guiGraphics.drawString(font, eyeIcon, curX, textY, 0xFFFFFFFF.toInt(), false)
+        curX += font.width(eyeIcon) + 4
+
+        val encStr = "§6§l$seenOnly§r §8(§7Total: §e§l$totalSeen§r §7- ${String.format("%.1f", totalSeenPct)}%§8)§r"
+        guiGraphics.drawString(font, encStr, curX, textY, 0xFFFFFFFF.toInt(), false)
+
+        // Valeurs à droite : Total et Non découverts
+        val totalStr = "§8/§r §f§l${stats.totalSpecies}§r §7(100%)§r"
+        val totalX = width - 14 - font.width(totalStr)
+        guiGraphics.drawString(font, totalStr, totalX, textY, 0xFFFFFFFF.toInt(), false)
+
+        val missingStr = "§c✕ §l${stats.missingCount}§r §7(${String.format("%.1f", missingPct)}%)§r"
+        val missingX = totalX - font.width(missingStr) - 14
+        if (missingX > curX + font.width(encStr) + 16) {
+            guiGraphics.drawString(font, missingStr, missingX, textY, 0xFFFFFFFF.toInt(), false)
+        }
+
+        // 3. Barre de progression à 2 segments (Capturé: Vert / Vu: Orange)
+        guiGraphics.fill(barX - 1, barY - 1, barX + barW + 1, barY + barH + 1, 0xFF282D3C.toInt())
+        guiGraphics.fill(barX, barY, barX + barW, barY + barH, 0xFF141720.toInt())
+
+        var caughtW = ((caught.toDouble() / total) * barW).toInt()
+        var encW = ((seenOnly.toDouble() / total) * barW).toInt()
+
+        if (caught > 0 && caughtW == 0) caughtW = 1
+        if (seenOnly > 0 && encW == 0) encW = 1
+        if (caughtW + encW > barW) {
+            encW = max(0, barW - caughtW)
+        }
+
+        // Segment vert (Capturé)
+        if (caughtW > 0) {
+            guiGraphics.fill(barX, barY, barX + caughtW, barY + barH, 0xFF2ECC71.toInt())
+            guiGraphics.fill(barX, barY, barX + caughtW, barY + 1, 0xFF55FF55.toInt())
+        }
+
+        // Segment orange (Vu uniquement)
+        if (encW > 0) {
+            val encStartX = barX + caughtW
+            guiGraphics.fill(encStartX, barY, encStartX + encW, barY + barH, 0xFFE67E22.toInt())
+            guiGraphics.fill(encStartX, barY, encStartX + encW, barY + 1, 0xFFFFAA00.toInt())
+        }
+
+        // 4. Infobulle au survol
+        if (mouseX >= barX && mouseX <= barX + barW && mouseY >= footerY && mouseY <= height) {
+            val tooltip = listOf(
+                Component.literal("§e§lProgression globale du Pokédex§r"),
+                Component.literal("§a✔ Capturés : §f$caught §7(${String.format("%.1f", caughtPct)}%)§r"),
+                Component.literal("§6👁 Vus uniquement : §f$seenOnly §7(${String.format("%.1f", seenOnlyPct)}%)§r"),
+                Component.literal("§e👁+✔ Total vus (Vus + Capturés) : §f$totalSeen §7(${String.format("%.1f", totalSeenPct)}%)§r"),
+                Component.literal("§c✕ Non découverts : §f${stats.missingCount} §7(${String.format("%.1f", missingPct)}%)§r"),
+                Component.literal("§8Total d'espèces possibles : §f${stats.totalSpecies}§r")
+            )
+            guiGraphics.renderComponentTooltip(font, tooltip, mouseX, mouseY)
+        }
     }
 
     private fun renderLeftContent(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
@@ -485,9 +685,19 @@ class CobblemonPokedexScreen(
                 guiGraphics.renderItem(srcStack, startX + 6, cardY + 8)
             }
             val srcName = goal.sourceSpecies.translatedName.string
-            guiGraphics.drawString(font, srcName, startX + 26, cardY + 8, 0xFFE0E0E0.toInt(), false)
+            val genderBadge = when (goal.requiredGender) {
+                Gender.FEMALE -> " §d♀§r"
+                Gender.MALE -> " §9♂§r"
+                else -> ""
+            }
+            guiGraphics.drawString(font, srcName + genderBadge, startX + 26, cardY + 8, 0xFFE0E0E0.toInt(), false)
 
-            val locText = if (goal.hasSourceInPC) "§a✔ ${goal.sourceLocationSummary}§r" else "§7✕ Non possédé§r"
+            val locText = if (goal.hasSourceInPC) {
+                if (!goal.hasGenderMatch) "§c✕ Mauvais sexe (0/${goal.ownedSourcePokemons.size})§r"
+                else "§a✔ ${goal.sourceLocationSummary}§r"
+            } else {
+                "§7✕ Non possédé§r"
+            }
             guiGraphics.drawString(font, locText, startX + 26, cardY + 20, 0xFFAAAAAA.toInt(), false)
 
             // 2. Flèche d'évolution et conditions au centre
@@ -506,13 +716,36 @@ class CobblemonPokedexScreen(
                 }
             }
 
+            // Badge Capacité / Move
+            val moveBadge = if (goal.requiredMove != null) {
+                val mvName = Moves.getByName(goal.requiredMove)?.displayName?.string ?: goal.requiredMove
+                when (goal.moveStatus) {
+                    MoveRequirementStatus.KNOWN -> "§a⚡ $mvName§r"
+                    MoveRequirementStatus.RELEARNABLE -> "§a⚡ $mvName (Menu)§r"
+                    MoveRequirementStatus.TM_IN_INVENTORY -> "§e⚡ CT $mvName (Sac)§r"
+                    MoveRequirementStatus.TM_MISSING -> "§c⚡ CT $mvName (Manquante)§r"
+                    MoveRequirementStatus.LEVEL_UP -> "§6⚡ $mvName (Niv. ${goal.moveLearnLevel})§r"
+                    else -> "§c⚡ $mvName§r"
+                }
+            } else null
+
+            // Badge Action spéciale (Pas, Combat, etc.)
+            val specialActionBadge = if (goal.stepsRequired != null) {
+                "§b🚶 ${goal.stepsRequired} pas§r"
+            } else if (goal.useMoveCount != null && goal.requiredMove != null) {
+                val mvName = Moves.getByName(goal.requiredMove)?.displayName?.string ?: goal.requiredMove
+                "§6⚔ $mvName (${goal.useMoveCount}x)§r"
+            } else null
+
             // Résumé texte de la condition
-            val conditionStr = goal.requirementsSummary
-            val shortCond = if (conditionStr.length > 28) conditionStr.substring(0, 26) + "…" else conditionStr
+            val conditionStr = moveBadge ?: specialActionBadge ?: goal.requirementsSummary
+            val shortCond = if (conditionStr.length > 34) conditionStr.substring(0, 32) + "…" else conditionStr
             guiGraphics.drawString(font, shortCond, reqItemX + 2, cardY + 10, 0xFFCCCCCC.toInt(), false)
 
             val levelSummary = if (goal.minLevel != null) {
                 if (goal.isLevelMet) "§aNiv. ${goal.minLevel} atteint§r" else "§cNiv. ${goal.minLevel} requis§r"
+            } else if (goal.requiredGender != null) {
+                if (goal.hasGenderMatch) "§aSexe requis validé§r" else "§cSpécimen ${if (goal.requiredGender == Gender.FEMALE) "Femelle ♀" else "Mâle ♂"} requis§r"
             } else {
                 goal.recipe.evolutionVariant
             }
@@ -551,16 +784,87 @@ class CobblemonPokedexScreen(
 
         val feasText = when (goal.feasibility) {
             EvolutionFeasibility.READY_TO_EVOLVE -> "⭐ Tout est prêt ! Évolution faisable dès maintenant."
-            EvolutionFeasibility.CAN_EVOLVE_WITH_PC -> "⏳ Pokémon présent dans votre PC/équipe, prérequis manquants."
+            EvolutionFeasibility.CAN_EVOLVE_WITH_PC -> {
+                if (!goal.hasGenderMatch) "⏳ Pokémon présent mais aucun spécimen du sexe requis !"
+                else if (goal.moveStatus == MoveRequirementStatus.TM_MISSING) "⏳ Pokémon présent, mais la CT requise est manquante."
+                else "⏳ Pokémon présent dans votre PC/équipe, prérequis manquants."
+            }
             EvolutionFeasibility.MISSING_BASE_POKEMON -> "❌ Vous devez d'abord capturer le Pokémon de base."
         }
         tooltip.add(Component.literal(feasText).withStyle(if (goal.feasibility == EvolutionFeasibility.READY_TO_EVOLVE) ChatFormatting.GREEN else ChatFormatting.GOLD))
+
+        // Section Sexe requis
+        if (goal.requiredGender != null) {
+            tooltip.add(Component.empty())
+            val gName = if (goal.requiredGender == Gender.FEMALE) "Femelle ♀" else "Mâle ♂"
+            if (goal.hasGenderMatch) {
+                tooltip.add(Component.literal("Sexe requis : $gName (✔ Spécimen valide en stock)").withStyle(ChatFormatting.GREEN))
+            } else {
+                tooltip.add(Component.literal("Sexe requis : $gName (✕ Aucun spécimen de ce sexe en stock !)").withStyle(ChatFormatting.RED))
+            }
+        }
+
+        // Section Capacité / Move / CT
+        if (goal.requiredMove != null) {
+            tooltip.add(Component.empty())
+            val mvName = Moves.getByName(goal.requiredMove)?.displayName?.string ?: goal.requiredMove
+            tooltip.add(Component.literal("Capacité requise : ").withStyle(ChatFormatting.GRAY).append(Component.literal(mvName).withStyle(ChatFormatting.WHITE)))
+            val moveExpl = when (goal.moveStatus) {
+                MoveRequirementStatus.KNOWN -> Component.literal(" ✔ Déjà apprise par votre Pokémon").withStyle(ChatFormatting.GREEN)
+                MoveRequirementStatus.RELEARNABLE -> Component.literal(" ✔ Réapprenable immédiatement (menu des capacités du Pokémon)").withStyle(ChatFormatting.GREEN)
+                MoveRequirementStatus.TM_IN_INVENTORY -> Component.literal(" ✔ CT possédée dans votre inventaire (prêt à apprendre)").withStyle(ChatFormatting.YELLOW)
+                MoveRequirementStatus.TM_MISSING -> Component.literal(" ✕ CT manquante (vous devez trouver ou fabriquer la CT : $mvName)").withStyle(ChatFormatting.RED)
+                MoveRequirementStatus.LEVEL_UP -> Component.literal(" ⏳ S'apprend par montée de niveau (Niveau ${goal.moveLearnLevel})").withStyle(ChatFormatting.GOLD)
+                else -> Component.literal(" ✕ Capacité non apprise").withStyle(ChatFormatting.RED)
+            }
+            tooltip.add(moveExpl)
+        } else if (goal.requiredMoveType != null) {
+            tooltip.add(Component.empty())
+            tooltip.add(Component.literal("Capacité requise de type : ").withStyle(ChatFormatting.GRAY).append(Component.literal(goal.requiredMoveType.replaceFirstChar { it.uppercase() }).withStyle(ChatFormatting.LIGHT_PURPLE)))
+            if (goal.moveStatus == MoveRequirementStatus.KNOWN) {
+                tooltip.add(Component.literal(" ✔ Capacité du type requis déjà connue").withStyle(ChatFormatting.GREEN))
+            } else {
+                tooltip.add(Component.literal(" ✕ Aucune capacité de ce type connue").withStyle(ChatFormatting.RED))
+            }
+        }
+
+        // Actions & Compteurs spéciaux
+        if (goal.specialActionSummary != null) {
+            tooltip.add(Component.empty())
+            tooltip.add(Component.literal("Actions requises :").withStyle(ChatFormatting.GRAY))
+            if (goal.stepsRequired != null) {
+                tooltip.add(Component.literal(" • 🚶 Marcher ${goal.stepsRequired} pas avec le Pokémon sorti").withStyle(ChatFormatting.AQUA))
+            }
+            if (goal.useMoveCount != null && goal.requiredMove != null) {
+                val mvName = Moves.getByName(goal.requiredMove)?.displayName?.string ?: goal.requiredMove
+                tooltip.add(Component.literal(" • ⚔ Utiliser la capacité $mvName ${goal.useMoveCount} fois en combat").withStyle(ChatFormatting.AQUA))
+            }
+            if (goal.recipe.criticalHits != null) {
+                tooltip.add(Component.literal(" • 🎯 Infliger ${goal.recipe.criticalHits} coups critiques en un seul combat").withStyle(ChatFormatting.AQUA))
+            }
+            if (goal.recipe.damageTaken != null) {
+                tooltip.add(Component.literal(" • 🛡 Subir ≥ ${goal.recipe.damageTaken} dégâts sans tomber K.O.").withStyle(ChatFormatting.AQUA))
+            }
+            if (goal.recipe.recoilDamage != null) {
+                tooltip.add(Component.literal(" • 💥 Subir ≥ ${goal.recipe.recoilDamage} dégâts de contrecoup").withStyle(ChatFormatting.AQUA))
+            }
+            if (goal.recipe.defeatAmount != null) {
+                tooltip.add(Component.literal(" • ⚔ Vaincre ${goal.recipe.defeatAmount} ${goal.recipe.defeatTarget ?: "adversaires"}").withStyle(ChatFormatting.AQUA))
+            }
+            if (goal.recipe.partyMember != null) {
+                tooltip.add(Component.literal(" • 👥 Avoir ${goal.recipe.partyMember} dans l'équipe").withStyle(ChatFormatting.AQUA))
+            }
+            if (goal.recipe.moonPhase != null) {
+                tooltip.add(Component.literal(" • 🌙 Phase lunaire requise : ${goal.recipe.moonPhase}").withStyle(ChatFormatting.AQUA))
+            }
+        }
 
         tooltip.add(Component.empty())
         tooltip.add(Component.literal("État du Pokémon source :").withStyle(ChatFormatting.GRAY))
         if (goal.hasSourceInPC) {
             for (owned in goal.ownedSourcePokemons) {
-                tooltip.add(Component.literal(" • ${owned.location} - Niv. ${owned.level} - Bonheur: ${owned.friendship}").withStyle(ChatFormatting.AQUA))
+                val gSym = if (owned.gender == Gender.FEMALE) "§d♀§r" else if (owned.gender == Gender.MALE) "§9♂§r" else "§7⚲§r"
+                tooltip.add(Component.literal(" • ${owned.location} - Niv. ${owned.level} ($gSym) - Bonheur: ${owned.friendship}").withStyle(ChatFormatting.AQUA))
             }
         } else {
             tooltip.add(Component.literal(" • Aucun spécimen dans l'équipe ou le PC").withStyle(ChatFormatting.RED))
@@ -603,10 +907,7 @@ class CobblemonPokedexScreen(
     }
 
     private fun renderRightPanel(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        val panelX = width - 200
-        val panelY = 52
-        val panelW = 188
-        val panelH = max(100, height - panelY - 10)
+        val (panelX, panelY, panelW, panelH) = getRightPanelBounds()
 
         // Fond et bordures du panneau droit
         guiGraphics.fill(panelX - 1, panelY - 1, panelX + panelW + 1, panelY + panelH + 1, 0xFF242834.toInt())
@@ -615,10 +916,10 @@ class CobblemonPokedexScreen(
         val currentTracked = selectedTracked ?: allTracked.firstOrNull() ?: return
         val sp = currentTracked.species
 
-        // 1. Cadre du Pokémon et grand sprite
-        val previewSize = 48
+        // 1. Cadre du Pokémon et sprite
+        val previewSize = 36
         val previewX = panelX + (panelW - previewSize) / 2
-        val previewY = panelY + 12
+        val previewY = panelY + 6
 
         guiGraphics.fill(previewX - 4, previewY - 4, previewX + previewSize + 4, previewY + previewSize + 4, 0xFF1D212E.toInt())
         guiGraphics.fill(previewX - 5, previewY - 5, previewX + previewSize + 5, previewY - 4, 0xFF353B4F.toInt())
@@ -627,105 +928,596 @@ class CobblemonPokedexScreen(
         if (!stack.isEmpty) {
             val pose = guiGraphics.pose()
             pose.pushPose()
-            pose.translate(previewX.toFloat(), previewY.toFloat(), 0f)
+            pose.translate(previewX.toFloat() - 6f, previewY.toFloat() - 6f, 0f)
             pose.scale(3.0f, 3.0f, 1.0f)
             guiGraphics.renderItem(stack, 0, 0)
             pose.popPose()
         }
 
-        // 2. Nom et Numéro Pokédex
+        // Nom et Numéro Pokédex
         val dexStr = String.format("#%04d", sp.nationalPokedexNumber)
         val nameStr = sp.translatedName.string
-        guiGraphics.drawCenteredString(font, "§6$dexStr§r §f§l$nameStr§r", panelX + panelW / 2, previewY + previewSize + 8, 0xFFFFFFFF.toInt())
+        guiGraphics.drawCenteredString(font, "§6$dexStr§r §f§l$nameStr§r", panelX + panelW / 2, previewY + previewSize + 4, 0xFFFFFFFF.toInt())
 
-        // 3. Types élémentaires
+        // Types et statut
         val primary = sp.standardForm.primaryType
         val secondary = sp.standardForm.secondaryType
         val typeDesc = if (secondary != null) {
-            "Type : §b${primary.name}§r / §b${secondary.name}§r"
+            "§b${primary.name}§r/§b${secondary.name}§r"
         } else {
-            "Type : §b${primary.name}§r"
+            "§b${primary.name}§r"
         }
-        guiGraphics.drawCenteredString(font, typeDesc, panelX + panelW / 2, previewY + previewSize + 22, 0xFFCCCCCC.toInt())
-
-        // 4. Statut Pokédex
-        val statusLine = when (currentTracked.status) {
-            PokedexStatus.CAUGHT -> "§a✔ Capturé / Découvert§r"
-            PokedexStatus.ENCOUNTERED -> "§6👁 Rencontré uniquement§r"
-            PokedexStatus.MISSING -> "§c✕ Non découvert§r"
+        val statusIcon = when (currentTracked.status) {
+            PokedexStatus.CAUGHT -> "§a✔ Capturé§r"
+            PokedexStatus.ENCOUNTERED -> "§6👁 Rencontré§r"
+            PokedexStatus.MISSING -> "§c✕ Manquant§r"
         }
-        guiGraphics.drawCenteredString(font, statusLine, panelX + panelW / 2, previewY + previewSize + 36, 0xFFFFFFFF.toInt())
+        guiGraphics.drawCenteredString(font, "$typeDesc · $statusIcon", panelX + panelW / 2, previewY + previewSize + 16, 0xFFCCCCCC.toInt())
 
-        // Séparateur
-        var curY = previewY + previewSize + 50
-        guiGraphics.fill(panelX + 10, curY, panelX + panelW - 10, curY + 1, 0xFF2A2F3D.toInt())
-        curY += 6
+        // Séparateur avant onglets
+        guiGraphics.fill(panelX + 6, panelY + 70, panelX + panelW - 6, panelY + 71, 0xFF282D3C.toInt())
 
-        // 5. Stocks dans le PC et l'équipe
-        guiGraphics.drawString(font, "§e§lRéserves du joueur :§r", panelX + 10, curY, 0xFFFFFFFF.toInt(), false)
-        curY += 12
+        // 2. Rendu des onglets (2 lignes)
+        var hoveredTabTooltip: String? = null
+        for (tab in RightPanelTab.values()) {
+            val (tx, ty, tw, th) = getRightPanelTabRect(tab)
+            val isHovered = mouseX >= tx && mouseX <= tx + tw && mouseY >= ty && mouseY <= ty + th
+            val isActive = (currentRightPanelTab == tab)
 
-        if (currentTracked.ownedCount > 0) {
-            for (owned in currentTracked.ownedInstances.take(3)) {
-                val txt = "• ${owned.location} (Niv. ${owned.level})"
-                guiGraphics.drawString(font, txt, panelX + 14, curY, 0xFF55FF55.toInt(), false)
-                curY += 10
+            if (isHovered) {
+                hoveredTabTooltip = tab.tooltip
             }
-            if (currentTracked.ownedCount > 3) {
-                guiGraphics.drawString(font, "• +${currentTracked.ownedCount - 3} autre(s)...", panelX + 14, curY, 0xFFAAAAAA.toInt(), false)
-                curY += 10
+
+            val bg = when {
+                isActive -> 0xFF3498DB.toInt()
+                isHovered -> 0xFF2D3345.toInt()
+                else -> 0xFF1D212E.toInt()
             }
-        } else {
-            guiGraphics.drawString(font, "• Aucun dans le PC ou l'équipe", panelX + 14, curY, 0xFF888888.toInt(), false)
-            curY += 10
+            val border = when {
+                isActive -> 0xFF54A0FF.toInt()
+                isHovered -> 0xFF3D465E.toInt()
+                else -> 0xFF282D3C.toInt()
+            }
+            val textColor = when {
+                isActive -> 0xFFFFFFFF.toInt()
+                isHovered -> 0xFFE0E0E0.toInt()
+                else -> 0xFFAAAAAA.toInt()
+            }
+
+            guiGraphics.fill(tx, ty, tx + tw, ty + th, bg)
+            guiGraphics.fill(tx, ty, tx + tw, ty + 1, border)
+            guiGraphics.fill(tx, ty + th - 1, tx + tw, ty + th, border)
+            guiGraphics.fill(tx, ty, tx + 1, ty + th, border)
+            guiGraphics.fill(tx + tw - 1, ty, tx + tw, ty + th, border)
+
+            guiGraphics.drawCenteredString(font, tab.label, tx + tw / 2, ty + 3, textColor)
         }
 
-        // Séparateur
-        curY += 4
-        guiGraphics.fill(panelX + 10, curY, panelX + panelW - 10, curY + 1, 0xFF2A2F3D.toInt())
-        curY += 6
+        // Séparateur sous les onglets
+        guiGraphics.fill(panelX + 6, panelY + 104, panelX + panelW - 6, panelY + 105, 0xFF282D3C.toInt())
 
-        // 6. Évolutions directes de cette espèce
-        guiGraphics.drawString(font, "§e§lLignée évolutive :§r", panelX + 10, curY, 0xFFFFFFFF.toInt(), false)
-        curY += 12
+        // 3. Zone scrollable de contenu de l'onglet
+        val contentX = panelX + 6
+        val contentY = panelY + 107
+        val contentW = panelW - 12
+        val contentH = (panelY + panelH - 26) - contentY
 
-        val evolutionsFromThis = PokemonEvolutionDataLoader.loadEvolutionRecipes()
-            .filter { it.sourceSpecies == sp }
+        guiGraphics.enableScissor(contentX, contentY, contentX + contentW, contentY + contentH)
+        val curY = contentY + 2 - rightPanelScrollOffset.toInt()
 
-        if (evolutionsFromThis.isNotEmpty()) {
-            for (evo in evolutionsFromThis.take(2)) {
-                val tgtName = evo.targetSpecies.translatedName.string
-                guiGraphics.drawString(font, "➔ $tgtName", panelX + 14, curY, 0xFFFFEAA7.toInt(), false)
-                curY += 10
-                val cond = evo.requirementsSummary
-                val shortCond = if (cond.length > 24) cond.substring(0, 22) + "…" else cond
-                guiGraphics.drawString(font, "  ($shortCond)", panelX + 14, curY, 0xFFAAAAAA.toInt(), false)
-                curY += 11
-            }
-        } else {
-            guiGraphics.drawString(font, "• Aucune évolution suivante", panelX + 14, curY, 0xFF888888.toInt(), false)
-            curY += 11
+        val finalY = when (currentRightPanelTab) {
+            RightPanelTab.DESCRIPTION -> renderTabDescription(guiGraphics, sp, currentTracked, contentX, curY, contentW)
+            RightPanelTab.ABILITIES -> renderTabAbilities(guiGraphics, sp, contentX, curY, contentW)
+            RightPanelTab.STATS -> renderTabStats(guiGraphics, sp, contentX, curY, contentW)
+            RightPanelTab.DROPS -> renderTabDrops(guiGraphics, sp, contentX, curY, contentW)
+            RightPanelTab.PASTURE -> renderTabPasture(guiGraphics, sp, contentX, curY, contentW)
+            RightPanelTab.SPAWNS -> renderTabSpawns(guiGraphics, sp, contentX, curY, contentW)
+            RightPanelTab.EVOLUTIONS -> renderTabEvolutions(guiGraphics, sp, contentX, curY, contentW)
         }
 
-        // 7. Bouton JourneyMap en bas du panneau
-        val btnY = panelY + panelH - 24
-        val isJmHovered = mouseX >= panelX + 10 && mouseX <= panelX + panelW - 10 && mouseY >= btnY && mouseY <= btnY + 18
+        guiGraphics.disableScissor()
+
+        val totalH = finalY - curY
+        rightPanelMaxScroll = max(0.0, (totalH - contentH).toDouble())
+
+        // Barre de défilement verticale
+        if (rightPanelMaxScroll > 0) {
+            val scrollTrackX = panelX + panelW - 5
+            val thumbH = max(10, (contentH * (contentH.toDouble() / totalH)).toInt())
+            val thumbY = contentY + ((contentH - thumbH) * (rightPanelScrollOffset / rightPanelMaxScroll)).toInt()
+            val thumbColor = if (isDraggingRightScrollbar) 0xFF54A0FF.toInt() else 0xFF353C4D.toInt()
+            guiGraphics.fill(scrollTrackX, contentY, scrollTrackX + 2, contentY + contentH, 0xFF181B24.toInt())
+            guiGraphics.fill(scrollTrackX, thumbY, scrollTrackX + 2, thumbY + thumbH, thumbColor)
+        }
+
+        // 4. Bouton JourneyMap en bas du panneau
+        val btnY = panelY + panelH - 22
+        val isJmHovered = mouseX >= panelX + 8 && mouseX <= panelX + panelW - 8 && mouseY >= btnY && mouseY <= btnY + 16
         val btnBg = if (isJmHovered) 0xFF3498DB.toInt() else 0xFF212530.toInt()
 
-        guiGraphics.fill(panelX + 10, btnY, panelX + panelW - 10, btnY + 18, btnBg)
-        guiGraphics.fill(panelX + 10, btnY, panelX + panelW - 10, btnY + 1, 0xFF54A0FF.toInt())
-        guiGraphics.fill(panelX + 10, btnY + 17, panelX + panelW - 10, btnY + 18, 0xFF54A0FF.toInt())
+        guiGraphics.fill(panelX + 8, btnY, panelX + panelW - 8, btnY + 16, btnBg)
+        guiGraphics.fill(panelX + 8, btnY, panelX + panelW - 8, btnY + 1, 0xFF54A0FF.toInt())
+        guiGraphics.fill(panelX + 8, btnY + 15, panelX + panelW - 8, btnY + 16, 0xFF54A0FF.toInt())
 
         val btnText = if (CobblemonOverlayManager.activeSpecies == sp) "✔ Actif sur carte" else "🗺 Voir sur JourneyMap"
-        guiGraphics.drawCenteredString(font, btnText, panelX + panelW / 2, btnY + 5, 0xFFFFFFFF.toInt())
+        guiGraphics.drawCenteredString(font, btnText, panelX + panelW / 2, btnY + 4, 0xFFFFFFFF.toInt())
+
+        // Tooltip de survol d'onglet
+        if (hoveredTabTooltip != null) {
+            guiGraphics.renderTooltip(font, Component.literal(hoveredTabTooltip), mouseX, mouseY)
+        }
+    }
+
+    private fun renderTabDescription(guiGraphics: GuiGraphics, sp: Species, currentTracked: TrackedPokemon, contentX: Int, startY: Int, contentW: Int): Int {
+        var y = startY
+
+        // Description Pokédex
+        guiGraphics.drawString(font, "§e§lDescription du Pokédex§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        y += 12
+
+        var hasDesc = false
+        for (entry in sp.pokedex) {
+            val text = Component.translatable(entry).string
+            if (text.isNotBlank() && text != entry) {
+                hasDesc = true
+                val lines = font.split(Component.literal("§7$text§r"), contentW - 6)
+                for (l in lines) {
+                    guiGraphics.drawString(font, l, contentX + 4, y, 0xFFDDDDDD.toInt(), false)
+                    y += 9
+                }
+                y += 2
+            }
+        }
+        if (!hasDesc) {
+            guiGraphics.drawString(font, "§7• Aucune description d'archive.§r", contentX + 4, y, 0xFF888888.toInt(), false)
+            y += 11
+        }
+
+        y += 4
+        // Morphologie & Genre
+        guiGraphics.drawString(font, "§e§lMorphologie & Genre§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        y += 11
+
+        val heightStr = String.format("%.1f m", sp.height / 10.0)
+        val weightStr = String.format("%.1f kg", sp.weight / 10.0)
+        guiGraphics.drawString(font, "Taille : §b$heightStr§r · Poids : §b$weightStr§r", contentX + 4, y, 0xFFCCCCCC.toInt(), false)
+        y += 10
+
+        val genderStr = if (sp.maleRatio < 0) {
+            "§7Asexué§r"
+        } else {
+            val mPct = (sp.maleRatio * 100).toInt()
+            val fPct = 100 - mPct
+            "§b♂ $mPct%§r §8/§r §d♀ $fPct%§r"
+        }
+        guiGraphics.drawString(font, "Genre : $genderStr", contentX + 4, y, 0xFFCCCCCC.toInt(), false)
+        y += 14
+
+        // Reproduction & Capture
+        guiGraphics.drawString(font, "§e§lReproduction & Capture§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        y += 11
+
+        guiGraphics.drawString(font, "Taux de capture : §a${sp.catchRate}§r §8/ 255§r", contentX + 4, y, 0xFFCCCCCC.toInt(), false)
+        y += 10
+        guiGraphics.drawString(font, "Bonheur base : §a${sp.baseFriendship}§r · XP base : §6${sp.baseExperienceYield}§r", contentX + 4, y, 0xFFCCCCCC.toInt(), false)
+        y += 10
+
+        val eggsStr = if (sp.eggGroups.isEmpty()) "Aucun" else sp.eggGroups.joinToString { it.name.lowercase().replaceFirstChar(Char::titlecase) }
+        guiGraphics.drawString(font, "Œuf : §f$eggsStr§r", contentX + 4, y, 0xFFCCCCCC.toInt(), false)
+        y += 10
+        guiGraphics.drawString(font, "Éclosion : §f${sp.eggCycles} cycles§r", contentX + 4, y, 0xFFCCCCCC.toInt(), false)
+        y += 14
+
+        // Réserves
+        guiGraphics.drawString(font, "§e§lRéserves du joueur§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        y += 11
+
+        if (currentTracked.ownedCount > 0) {
+            for (owned in currentTracked.ownedInstances.take(4)) {
+                val txt = "• ${owned.location} (Niv. ${owned.level})"
+                guiGraphics.drawString(font, txt, contentX + 4, y, 0xFF55FF55.toInt(), false)
+                y += 10
+            }
+            if (currentTracked.ownedCount > 4) {
+                guiGraphics.drawString(font, "• +${currentTracked.ownedCount - 4} autre(s)...", contentX + 4, y, 0xFFAAAAAA.toInt(), false)
+                y += 10
+            }
+        } else {
+            guiGraphics.drawString(font, "• Aucun dans le PC ou l'équipe", contentX + 4, y, 0xFF888888.toInt(), false)
+            y += 10
+        }
+
+        return y + 4
+    }
+
+    private fun renderTabAbilities(guiGraphics: GuiGraphics, sp: Species, contentX: Int, startY: Int, contentW: Int): Int {
+        var y = startY
+        guiGraphics.drawString(font, "§e§lTalents & Capacités§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        y += 12
+
+        val abilities = sp.standardForm.abilities
+        if (abilities.isEmpty()) {
+            guiGraphics.drawString(font, "§7• Aucun talent enregistré§r", contentX + 4, y, 0xFF888888.toInt(), false)
+            return y + 14
+        }
+
+        for (pot in abilities) {
+            val template = pot.template
+            val isHidden = pot is HiddenAbility || pot.priority == Priority.LOWEST
+            val badge = if (isHidden) "§d[Caché]§r" else "§b[Normal]§r"
+
+            val rawName = template.displayName.ifBlank { template.name }
+            val nameComp = Component.translatable(rawName)
+            val displayName = if (nameComp.string.isNotBlank() && nameComp.string != rawName) nameComp.string else rawName.replaceFirstChar(Char::titlecase)
+
+            guiGraphics.drawString(font, "$badge §f§l$displayName§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+            y += 11
+
+            val rawDesc = template.description
+            if (rawDesc.isNotBlank()) {
+                val descComp = Component.translatable(rawDesc)
+                val descText = if (descComp.string.isNotBlank() && descComp.string != rawDesc) descComp.string else ""
+                if (descText.isNotBlank()) {
+                    val lines = font.split(Component.literal(descText), contentW - 8)
+                    for (l in lines) {
+                        guiGraphics.drawString(font, l, contentX + 4, y, 0xFFAAAAAA.toInt(), false)
+                        y += 9
+                    }
+                }
+            }
+            y += 6
+        }
+
+        return y + 4
+    }
+
+    private fun renderTabStats(guiGraphics: GuiGraphics, sp: Species, contentX: Int, startY: Int, contentW: Int): Int {
+        var y = startY
+        guiGraphics.drawString(font, "§e§lStatistiques de base§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        y += 12
+
+        val bStats = sp.baseStats
+        val statsList = listOf(
+            "PV" to (bStats[Stats.HP] ?: 0),
+            "Attaque" to (bStats[Stats.ATTACK] ?: 0),
+            "Défense" to (bStats[Stats.DEFENCE] ?: 0),
+            "Att. Spé" to (bStats[Stats.SPECIAL_ATTACK] ?: 0),
+            "Déf. Spé" to (bStats[Stats.SPECIAL_DEFENCE] ?: 0),
+            "Vitesse" to (bStats[Stats.SPEED] ?: 0)
+        )
+        val bst = statsList.sumOf { it.second }
+
+        for ((name, value) in statsList) {
+            guiGraphics.drawString(font, name, contentX + 2, y, 0xFFCCCCCC.toInt(), false)
+            val valStr = value.toString()
+            guiGraphics.drawString(font, valStr, contentX + 48, y, 0xFFFFFFFF.toInt(), false)
+
+            val barX = contentX + 70
+            val barW = max(20, contentW - 74)
+            val fillW = ((value.toDouble() / 160.0).coerceIn(0.0, 1.0) * barW).toInt()
+
+            val color = when {
+                value < 50 -> 0xFFE74C3C.toInt()
+                value < 80 -> 0xFFE67E22.toInt()
+                value < 100 -> 0xFFF1C40F.toInt()
+                value < 130 -> 0xFF2ECC71.toInt()
+                else -> 0xFF1ABC9C.toInt()
+            }
+
+            guiGraphics.fill(barX, y + 2, barX + barW, y + 7, 0xFF20232E.toInt())
+            if (fillW > 0) {
+                guiGraphics.fill(barX, y + 2, barX + fillW, y + 7, color)
+            }
+            y += 12
+        }
+
+        y += 2
+        guiGraphics.drawString(font, "Total (BST) : §e§l$bst§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        y += 16
+
+        guiGraphics.drawString(font, "§e§lRendement EV§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        y += 12
+
+        val evs = sp.evYield
+        val evParts = mutableListOf<String>()
+        if ((evs[Stats.HP] ?: 0) > 0) evParts.add("+${evs[Stats.HP]} PV")
+        if ((evs[Stats.ATTACK] ?: 0) > 0) evParts.add("+${evs[Stats.ATTACK]} Attaque")
+        if ((evs[Stats.DEFENCE] ?: 0) > 0) evParts.add("+${evs[Stats.DEFENCE]} Défense")
+        if ((evs[Stats.SPECIAL_ATTACK] ?: 0) > 0) evParts.add("+${evs[Stats.SPECIAL_ATTACK]} Att. Spé")
+        if ((evs[Stats.SPECIAL_DEFENCE] ?: 0) > 0) evParts.add("+${evs[Stats.SPECIAL_DEFENCE]} Déf. Spé")
+        if ((evs[Stats.SPEED] ?: 0) > 0) evParts.add("+${evs[Stats.SPEED]} Vitesse")
+
+        if (evParts.isNotEmpty()) {
+            val evStr = evParts.joinToString(", ")
+            val lines = font.split(Component.literal("§a$evStr§r"), contentW - 4)
+            for (l in lines) {
+                guiGraphics.drawString(font, l, contentX + 4, y, 0xFFFFFFFF.toInt(), false)
+                y += 10
+            }
+        } else {
+            guiGraphics.drawString(font, "§7• Aucun EV à la défaite§r", contentX + 4, y, 0xFF888888.toInt(), false)
+            y += 10
+        }
+
+        return y + 6
+    }
+
+    private fun renderTabDrops(guiGraphics: GuiGraphics, sp: Species, contentX: Int, startY: Int, contentW: Int): Int {
+        var y = startY
+        guiGraphics.drawString(font, "§e§lObjets lâchés à la défaite§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        y += 14
+
+        val recipes = PokemonDropDataLoader.loadDropRecipes().filter { it.species == sp }
+        val drops = recipes.flatMap { it.drops }.distinctBy { it.itemStack.item.descriptionId + ":" + it.percentage }
+
+        if (drops.isEmpty()) {
+            guiGraphics.drawString(font, "§7• Aucun butin répertorié.§r", contentX + 4, y, 0xFF888888.toInt(), false)
+            return y + 14
+        }
+
+        for (drop in drops) {
+            guiGraphics.renderItem(drop.itemStack, contentX + 2, y)
+            guiGraphics.renderItemDecorations(font, drop.itemStack, contentX + 2, y)
+
+            val name = truncateString(drop.itemStack.hoverName.string, contentW - 24)
+            guiGraphics.drawString(font, name, contentX + 22, y + 1, 0xFFFFFFFF.toInt(), false)
+
+            val pctStr = if (drop.percentage >= 100) "100%" else String.format("%.1f%%", drop.percentage)
+            val qStr = if (drop.minCount == drop.maxCount) "${drop.minCount}" else "${drop.minCount}-${drop.maxCount}"
+            val evoTag = if (drop.isEvolutionItem) " §d[Évol.]§r" else ""
+            guiGraphics.drawString(font, "§a$pctStr§r · §e${qStr}x§r$evoTag", contentX + 22, y + 10, 0xFFCCCCCC.toInt(), false)
+
+            y += 22
+        }
+
+        return y + 4
+    }
+
+    private fun renderTabPasture(guiGraphics: GuiGraphics, sp: Species, contentX: Int, startY: Int, contentW: Int): Int {
+        var y = startY
+        guiGraphics.drawString(font, "§e§lMétiers au Pâturage§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        y += 14
+
+        if (!CobbleworkersCompat.isLoaded) {
+            guiGraphics.drawString(font, "§c✕ Mod Cobbleworkers absent§r", contentX + 4, y, 0xFFFF7675.toInt(), false)
+            y += 11
+            val lines = font.split(Component.literal("§7Installez Cobbleworkers pour attribuer des tâches de travail dans l'enclos.§r"), contentW - 8)
+            for (l in lines) {
+                guiGraphics.drawString(font, l, contentX + 4, y, 0xFFAAAAAA.toInt(), false)
+                y += 9
+            }
+            return y + 6
+        }
+
+        val jobs = CobbleworkersJobDataLoader.loadPastureRecipes().filter { it.eligiblePokemon.any { ing -> ing.species == sp } }
+        if (jobs.isEmpty()) {
+            guiGraphics.drawString(font, "§7• Aucun métier de travail assignable.§r", contentX + 4, y, 0xFF888888.toInt(), false)
+            return y + 14
+        }
+
+        for (job in jobs) {
+            guiGraphics.drawString(font, "§6§l${job.jobTitle.string}§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+            y += 11
+
+            val cadenceStr = if (job.isContinuous) "§aCadence : Continue§r" else "§eCooldown : ${job.cooldownSeconds}s§r"
+            guiGraphics.drawString(font, cadenceStr, contentX + 4, y, 0xFFCCCCCC.toInt(), false)
+            y += 10
+
+            val descLines = font.split(job.actionDescription, contentW - 8)
+            for (l in descLines) {
+                guiGraphics.drawString(font, l, contentX + 4, y, 0xFFAAAAAA.toInt(), false)
+                y += 9
+            }
+
+            val allOutputs = job.outputs.flatten().distinctBy { it.item.descriptionId }
+            if (allOutputs.isNotEmpty()) {
+                guiGraphics.drawString(font, "§7Produits :§r", contentX + 4, y, 0xFF888888.toInt(), false)
+                y += 10
+                var outX = contentX + 4
+                for (out in allOutputs.take(5)) {
+                    guiGraphics.renderItem(out, outX, y)
+                    guiGraphics.renderItemDecorations(font, out, outX, y)
+                    outX += 18
+                }
+                y += 20
+            }
+
+            guiGraphics.fill(contentX + 4, y, contentX + contentW - 4, y + 1, 0xFF282D3C.toInt())
+            y += 6
+        }
+
+        return y + 4
+    }
+
+    private fun renderTabSpawns(guiGraphics: GuiGraphics, sp: Species, contentX: Int, startY: Int, contentW: Int): Int {
+        var y = startY
+        guiGraphics.drawString(font, "§e§lZones d'apparition§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        y += 14
+
+        val spawns = PokemonSpawnDataLoader.getSpawnRecipesForSpecies(sp)
+        if (spawns.isEmpty()) {
+            guiGraphics.drawString(font, "§c✕ N'apparaît pas dans la nature§r", contentX + 4, y, 0xFFFF7675.toInt(), false)
+            y += 11
+            val lines = font.split(Component.literal("§7Ce Pokémon s'obtient uniquement par évolution, œuf, fossile ou échange.§r"), contentW - 8)
+            for (l in lines) {
+                guiGraphics.drawString(font, l, contentX + 4, y, 0xFFAAAAAA.toInt(), false)
+                y += 9
+            }
+            return y + 6
+        }
+
+        for (spawn in spawns.take(5)) {
+            val rarity = when (spawn.bucket.lowercase()) {
+                "ultra-rare" -> "§d§l★ Ultra-rare§r"
+                "rare" -> "§6§l★ Rare§r"
+                "uncommon" -> "§ePeu commun§r"
+                else -> "§aCommun§r"
+            }
+            guiGraphics.drawString(font, "$rarity §8|§r Niv. §b${spawn.levelMin}-${spawn.levelMax}§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+            y += 10
+
+            val timeStr = when (spawn.timeRange) {
+                "day" -> "Jour ☀"
+                "night" -> "Nuit 🌙"
+                else -> "Tout temps"
+            }
+            val weatherStr = when (spawn.weather) {
+                "rain" -> "Pluie 🌧"
+                "thundering" -> "Orage ⚡"
+                "clear" -> "Clair ☀"
+                else -> "Toute météo"
+            }
+            guiGraphics.drawString(font, "§7$timeStr · $weatherStr · ${spawn.context}§r", contentX + 4, y, 0xFFCCCCCC.toInt(), false)
+            y += 10
+
+            if (spawn.biomes.isNotEmpty()) {
+                val bList = spawn.biomes.take(3).map {
+                    it.substringAfter(":").replace("_", " ").replaceFirstChar(Char::titlecase)
+                }
+                val more = if (spawn.biomes.size > 3) " (+${spawn.biomes.size - 3})" else ""
+                val bText = "Biomes: ${bList.joinToString(", ")}$more"
+                val bLines = font.split(Component.literal("§8$bText§r"), contentW - 8)
+                for (bl in bLines) {
+                    guiGraphics.drawString(font, bl, contentX + 4, y, 0xFFAAAAAA.toInt(), false)
+                    y += 9
+                }
+            }
+
+            guiGraphics.fill(contentX + 4, y, contentX + contentW - 4, y + 1, 0xFF282D3C.toInt())
+            y += 5
+        }
+
+        return y + 4
+    }
+
+    private fun renderTabEvolutions(guiGraphics: GuiGraphics, sp: Species, contentX: Int, startY: Int, contentW: Int): Int {
+        var y = startY
+        rightPanelClickablePokemon.clear()
+
+        // 1. Forme source (Pré-évolutions)
+        guiGraphics.drawString(font, "§e§l1. Forme(s) d'origine§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        y += 12
+
+        val allRecipes = PokemonEvolutionDataLoader.loadEvolutionRecipes()
+        val preEvos = allRecipes.filter { it.targetSpecies == sp }
+
+        if (preEvos.isEmpty()) {
+            guiGraphics.drawString(font, "§7• Aucune pré-évolution (base)§r", contentX + 4, y, 0xFF888888.toInt(), false)
+            y += 12
+        } else {
+            for (pre in preEvos) {
+                val preSp = pre.sourceSpecies
+                val stack = getItemStack(preSp)
+                if (!stack.isEmpty) {
+                    guiGraphics.renderItem(stack, contentX + 2, y)
+                }
+                guiGraphics.drawString(font, "➔ §f§l${preSp.translatedName.string}§r", contentX + 20, y + 4, 0xFFFFFFFF.toInt(), false)
+                rightPanelClickablePokemon.add(Triple(intArrayOf(contentX + 2, y, contentW - 4, 18), preSp, true))
+                y += 18
+
+                val condLines = font.split(Component.literal("  §e${pre.requirementsSummary}§r"), contentW - 8)
+                for (l in condLines) {
+                    guiGraphics.drawString(font, l, contentX + 2, y, 0xFFE0E0E0.toInt(), false)
+                    y += 9
+                }
+
+                val ownedCount = allTracked.find { it.species == preSp }?.ownedCount ?: 0
+                val resTxt = if (ownedCount > 0) "  §a✔ En stock dans le PC/Équipe ($ownedCount)§r" else "  §c✕ Aucun en réserve§r"
+                guiGraphics.drawString(font, resTxt, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+                y += 13
+            }
+        }
+
+        y += 4
+        // 2. Évolutions suivantes (Destination)
+        guiGraphics.drawString(font, "§e§l2. Évolution(s) suivante(s)§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        y += 12
+
+        val nextEvos = allRecipes.filter { it.sourceSpecies == sp }
+
+        if (nextEvos.isEmpty()) {
+            guiGraphics.drawString(font, "§7• Aucune évolution suivante (final)§r", contentX + 4, y, 0xFF888888.toInt(), false)
+            y += 12
+        } else {
+            for (next in nextEvos) {
+                val tgtSp = next.targetSpecies
+                val stack = getItemStack(tgtSp)
+                if (!stack.isEmpty) {
+                    guiGraphics.renderItem(stack, contentX + 2, y)
+                }
+                guiGraphics.drawString(font, "➔ §f§l${tgtSp.translatedName.string}§r", contentX + 20, y + 4, 0xFFFFFFFF.toInt(), false)
+                rightPanelClickablePokemon.add(Triple(intArrayOf(contentX + 2, y, contentW - 4, 18), tgtSp, false))
+                y += 18
+
+                val condLines = font.split(Component.literal("  §e${next.requirementsSummary}§r"), contentW - 8)
+                for (l in condLines) {
+                    guiGraphics.drawString(font, l, contentX + 2, y, 0xFFE0E0E0.toInt(), false)
+                    y += 9
+                }
+
+                val isCaught = allTracked.find { it.species == tgtSp }?.isCaught == true
+                val caughtTxt = if (isCaught) "  §a✔ Déjà enregistré au Pokédex§r" else "  §6✕ Non découvert au Pokédex§r"
+                guiGraphics.drawString(font, caughtTxt, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+                y += 13
+            }
+        }
+
+        return y + 4
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button)
 
+        // Clic sur les onglets du panneau droit
+        for (tab in RightPanelTab.values()) {
+            val (tx, ty, tw, th) = getRightPanelTabRect(tab)
+            if (mouseX >= tx && mouseX <= tx + tw && mouseY >= ty && mouseY <= ty + th) {
+                currentRightPanelTab = tab
+                rightPanelScrollOffset = 0.0
+                return true
+            }
+        }
+
+        val (panelX, panelY, panelW, panelH) = getRightPanelBounds()
+        val contentY = panelY + 107
+        val contentH = (panelY + panelH - 26) - contentY
+        val scrollTrackX = panelX + panelW - 5
+
+        // Clic sur la barre de défilement du panneau droit
+        if (rightPanelMaxScroll > 0 && mouseX >= scrollTrackX - 3 && mouseX <= scrollTrackX + 5 && mouseY >= contentY && mouseY <= contentY + contentH) {
+            isDraggingRightScrollbar = true
+            dragStartRightMouseY = mouseY
+            dragStartRightScroll = rightPanelScrollOffset
+            return true
+        }
+
+        // Clic sur un Pokémon dans l'onglet Évolutions pour naviguer vers lui
+        if (currentRightPanelTab == RightPanelTab.EVOLUTIONS && mouseX >= panelX && mouseX <= panelX + panelW && mouseY >= contentY && mouseY <= contentY + contentH) {
+            for ((rect, clickedSp, _) in rightPanelClickablePokemon) {
+                val (rx, ry, rw, rh) = rect
+                if (mouseX >= rx && mouseX <= rx + rw && mouseY >= ry && mouseY <= ry + rh) {
+                    val found = allTracked.find { it.species == clickedSp }
+                    if (found != null) {
+                        selectedTracked = found
+                        rightPanelScrollOffset = 0.0
+                        return true
+                    }
+                }
+            }
+        }
+
+        // Clic sur le bouton JourneyMap dans le panneau droit
+        val btnY = panelY + panelH - 22
+        if (mouseX >= panelX + 8 && mouseX <= panelX + panelW - 8 && mouseY >= btnY && mouseY <= btnY + 16) {
+            selectedTracked?.let {
+                CobblemonOverlayManager.setOverlay(it.species, it.species.standardForm)
+            }
+            return true
+        }
+
         val (leftX, topY, areaW, areaH) = getLeftAreaBounds()
 
-        // 1. Clic sur la scrollbar
+        // 1. Clic sur la scrollbar gauche
         val scrollbarX = leftX + areaW - 8
         if (mouseX >= scrollbarX && mouseX <= leftX + areaW && mouseY >= topY && mouseY <= topY + areaH) {
             isDraggingScrollbar = true
@@ -744,6 +1536,7 @@ class CobblemonPokedexScreen(
                     val goal = filteredGoals[index]
                     selectedGoal = goal
                     selectedTracked = allTracked.find { it.species == goal.targetSpecies }
+                    rightPanelScrollOffset = 0.0
                     return true
                 }
             } else {
@@ -755,23 +1548,11 @@ class CobblemonPokedexScreen(
                     val index = row * cols + col
                     if (index in filteredTracked.indices) {
                         selectedTracked = filteredTracked[index]
+                        rightPanelScrollOffset = 0.0
                         return true
                     }
                 }
             }
-        }
-
-        // 3. Clic sur le bouton JourneyMap dans le panneau droit
-        val panelX = width - 200
-        val panelY = 52
-        val panelW = 188
-        val panelH = max(100, height - panelY - 10)
-        val btnY = panelY + panelH - 24
-        if (mouseX >= panelX + 10 && mouseX <= panelX + panelW - 10 && mouseY >= btnY && mouseY <= btnY + 18) {
-            selectedTracked?.let {
-                CobblemonOverlayManager.setOverlay(it.species, it.species.standardForm)
-            }
-            return true
         }
 
         return super.mouseClicked(mouseX, mouseY, button)
@@ -786,17 +1567,36 @@ class CobblemonPokedexScreen(
             scrollOffset = (dragStartScroll + scrollDelta).coerceIn(0.0, maxScroll)
             return true
         }
+        if (isDraggingRightScrollbar && rightPanelMaxScroll > 0) {
+            val (_, panelY, _, panelH) = getRightPanelBounds()
+            val contentY = panelY + 107
+            val contentH = (panelY + panelH - 26) - contentY
+            val totalTrackH = contentH - 4
+            val delta = mouseY - dragStartRightMouseY
+            val scrollDelta = (delta / totalTrackH) * rightPanelMaxScroll
+            rightPanelScrollOffset = (dragStartRightScroll + scrollDelta).coerceIn(0.0, rightPanelMaxScroll)
+            return true
+        }
         return super.mouseDragged(mouseX, mouseY, button, dragX, dragY)
     }
 
     override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
         if (button == 0) {
             isDraggingScrollbar = false
+            isDraggingRightScrollbar = false
         }
         return super.mouseReleased(mouseX, mouseY, button)
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        val (panelX, panelY, panelW, panelH) = getRightPanelBounds()
+        val contentY = panelY + 107
+        val contentH = (panelY + panelH - 26) - contentY
+        if (mouseX >= panelX && mouseX <= panelX + panelW && mouseY >= contentY && mouseY <= contentY + contentH) {
+            rightPanelScrollOffset = (rightPanelScrollOffset - scrollY * 20.0).coerceIn(0.0, rightPanelMaxScroll)
+            return true
+        }
+
         val (leftX, topY, areaW, areaH) = getLeftAreaBounds()
         if (mouseX >= leftX && mouseX <= leftX + areaW && mouseY >= topY && mouseY <= topY + areaH) {
             scrollOffset = (scrollOffset - scrollY * 24.0).coerceIn(0.0, maxScroll)
@@ -810,7 +1610,7 @@ class CobblemonPokedexScreen(
             onClose()
             return true
         }
-        if (CobblemonKeyBindings.OPEN_POKEDEX_KEY.matches(keyCode, scanCode)) {
+        if (!searchBox.isFocused && CobblemonKeyBindings.OPEN_POKEDEX_KEY.matches(keyCode, scanCode)) {
             onClose()
             return true
         }

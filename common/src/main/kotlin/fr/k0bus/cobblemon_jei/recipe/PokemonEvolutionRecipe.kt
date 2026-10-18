@@ -2,6 +2,7 @@ package fr.k0bus.cobblemon_jei.recipe
 
 import fr.k0bus.cobblemon_jei.ingredient.PokemonSpeciesIngredient
 import com.cobblemon.mod.common.pokemon.FormData
+import com.cobblemon.mod.common.pokemon.Gender
 import com.cobblemon.mod.common.pokemon.Species
 import net.minecraft.world.item.ItemStack
 
@@ -18,7 +19,22 @@ data class PokemonEvolutionRecipe(
     val requiredItems: List<ItemStack> = emptyList(),
     val evolutionVariant: String,
     val requirementsSummary: String,
-    val additionalConditions: List<String> = emptyList()
+    val additionalConditions: List<String> = emptyList(),
+    val requiredGender: Gender? = null,
+    val requiredMove: String? = null,
+    val requiredMoveType: String? = null,
+    val useMoveCount: Int? = null,
+    val stepsAmount: Int? = null,
+    val criticalHits: Int? = null,
+    val damageTaken: Int? = null,
+    val recoilDamage: Int? = null,
+    val defeatTarget: String? = null,
+    val defeatAmount: Int? = null,
+    val partyMember: String? = null,
+    val statCompare: String? = null,
+    val moonPhase: String? = null,
+    val minLevel: Int? = null,
+    val minFriendship: Int? = null
 ) {
     val inputIngredient = PokemonSpeciesIngredient(sourceSpecies, sourceForm)
     val outputIngredient = PokemonSpeciesIngredient(targetSpecies, targetForm)

@@ -9,6 +9,8 @@ import com.cobblemon.mod.common.pokemon.Species
 import com.cobblemon.mod.common.pokemon.evolution.variants.ItemInteractionEvolution
 import com.cobblemon.mod.common.pokemon.evolution.variants.LevelUpEvolution
 import com.cobblemon.mod.common.pokemon.evolution.variants.TradeEvolution
+import com.cobblemon.mod.common.api.moves.Moves
+import com.cobblemon.mod.common.pokemon.Gender
 import com.cobblemon.mod.common.pokemon.requirements.*
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -160,7 +162,7 @@ object PokemonEvolutionDataLoader {
                         if (elem.isJsonObject) {
                             val recipe = parseRawEvolutionJson(sourceSpecies, sourceSpecies.standardForm, elem.asJsonObject)
                             if (recipe != null) {
-                                val key = "${recipe.sourceSpecies.name}:${recipe.sourceForm.name}->${recipe.targetSpecies.name}:${recipe.targetForm.name}:${recipe.requirementsSummary}"
+                                val key = getRecipeDeduplicationKey(recipe)
                                 if (seenKeys.add(key)) {
                                     recipes.add(recipe)
                                 }
@@ -184,7 +186,7 @@ object PokemonEvolutionDataLoader {
                                     if (elem.isJsonObject) {
                                         val recipe = parseRawEvolutionJson(sourceSpecies, sourceForm, elem.asJsonObject)
                                         if (recipe != null) {
-                                            val key = "${recipe.sourceSpecies.name}:${recipe.sourceForm.name}->${recipe.targetSpecies.name}:${recipe.targetForm.name}:${recipe.requirementsSummary}"
+                                            val key = getRecipeDeduplicationKey(recipe)
                                             if (seenKeys.add(key)) {
                                                 recipes.add(recipe)
                                             }
@@ -206,6 +208,17 @@ object PokemonEvolutionDataLoader {
         logger.info("Cobblemon JEI: ${recipes.size} recettes d'évolution consolidées prêtes pour JEI.")
         cachedEvolutions = recipes
         return recipes
+    }
+
+    private fun getRecipeDeduplicationKey(recipe: PokemonEvolutionRecipe): String {
+        val src = try { recipe.sourceSpecies.resourceIdentifier.path.lowercase() } catch (_: Throwable) { recipe.sourceSpecies.name.lowercase() }
+        val srcForm = recipe.sourceForm.name.lowercase()
+        val tgt = try { recipe.targetSpecies.resourceIdentifier.path.lowercase() } catch (_: Throwable) { recipe.targetSpecies.name.lowercase() }
+        val tgtForm = recipe.targetForm.name.lowercase()
+        val items = recipe.requiredItems.mapNotNull {
+            try { BuiltInRegistries.ITEM.getKey(it.item).toString() } catch (_: Throwable) { null }
+        }.sorted().joinToString(",")
+        return "$src:$srcForm->$tgt:$tgtForm:g=${recipe.requiredGender}:m=${recipe.requiredMove}:mt=${recipe.requiredMoveType}:l=${recipe.minLevel}:f=${recipe.minFriendship}:s=${recipe.stepsAmount}:u=${recipe.useMoveCount}:items=$items"
     }
 
     private fun parseRawEvolutionJson(
@@ -238,6 +251,22 @@ object PokemonEvolutionDataLoader {
         val requiredItems = mutableListOf<ItemStack>()
         val conditions = mutableListOf<String>()
 
+        var requiredGender: Gender? = null
+        var requiredMove: String? = null
+        var requiredMoveType: String? = null
+        var useMoveCount: Int? = null
+        var stepsAmount: Int? = null
+        var criticalHits: Int? = null
+        var damageTaken: Int? = null
+        var recoilDamage: Int? = null
+        var defeatTarget: String? = null
+        var defeatAmount: Int? = null
+        var partyMember: String? = null
+        var statCompare: String? = null
+        var moonPhase: String? = null
+        var minLevel: Int? = null
+        var minFriendship: Int? = null
+
         // Contexte d'objet requis (ItemInteractionEvolution ou partenaire d'échange)
         if (evoObj.has("requiredContext")) {
             val rc = evoObj.get("requiredContext")
@@ -253,7 +282,6 @@ object PokemonEvolutionDataLoader {
         }
 
         // Exigences (Requirements)
-        var minLevel: Int? = null
         if (evoObj.has("requirements") && evoObj.get("requirements").isJsonArray) {
             val reqs = evoObj.getAsJsonArray("requirements")
             for (reqElem in reqs) {
@@ -266,7 +294,77 @@ object PokemonEvolutionDataLoader {
                         }
                         "friendship" -> {
                             val amt = if (reqObj.has("amount")) reqObj.get("amount").asInt else 160
+                            minFriendship = amt
                             conditions.add("Bonheur ≥ $amt")
+                        }
+                        "properties" -> {
+                            val target = if (reqObj.has("target")) reqObj.get("target").asString else ""
+                            if (target.contains("gender=female", ignoreCase = true)) {
+                                requiredGender = Gender.FEMALE
+                                conditions.add("Sexe requis : Femelle ♀")
+                            } else if (target.contains("gender=male", ignoreCase = true)) {
+                                requiredGender = Gender.MALE
+                                conditions.add("Sexe requis : Mâle ♂")
+                            } else if (target.contains("nature=", ignoreCase = true)) {
+                                val nat = target.substringAfter("nature=").substringBefore(" ")
+                                conditions.add("Nature : $nat")
+                            } else if (target.contains("gimmighoul_coins=", ignoreCase = true)) {
+                                val coins = target.substringAfter("gimmighoul_coins=").substringBefore(" ")
+                                conditions.add("Pièces Gimmighoul : $coins")
+                            } else {
+                                conditions.add("Propriété : $target")
+                            }
+                        }
+                        "has_move" -> {
+                            val mv = reqObj.get("move")?.asString?.lowercase() ?: ""
+                            requiredMove = mv
+                            val moveName = Moves.getByName(mv)?.displayName?.string ?: mv.replace("_", " ").replaceFirstChar { it.uppercase() }
+                            conditions.add("Capacité connue : $moveName")
+                        }
+                        "has_move_type" -> {
+                            val type = reqObj.get("type")?.asString?.lowercase() ?: ""
+                            requiredMoveType = type
+                            conditions.add("Capacité de type : ${type.replaceFirstChar { it.uppercase() }}")
+                        }
+                        "use_move" -> {
+                            val mv = reqObj.get("move")?.asString?.lowercase() ?: ""
+                            val count = if (reqObj.has("amount")) reqObj.get("amount").asInt else 20
+                            requiredMove = mv
+                            useMoveCount = count
+                            val moveName = Moves.getByName(mv)?.displayName?.string ?: mv.replace("_", " ").replaceFirstChar { it.uppercase() }
+                            conditions.add("Utiliser $moveName $count fois")
+                        }
+                        "blocks_traveled" -> {
+                            val steps = if (reqObj.has("amount")) reqObj.get("amount").asInt else 1000
+                            stepsAmount = steps
+                            conditions.add("Marcher $steps pas")
+                        }
+                        "battle_critical_hits" -> {
+                            val hits = if (reqObj.has("amount")) reqObj.get("amount").asInt else 3
+                            criticalHits = hits
+                            conditions.add("Infliger $hits coups critiques en 1 combat")
+                        }
+                        "damage_taken" -> {
+                            val dmg = if (reqObj.has("amount")) reqObj.get("amount").asInt else 49
+                            damageTaken = dmg
+                            conditions.add("Subir ≥ $dmg dégâts sans tomber K.O.")
+                        }
+                        "recoil" -> {
+                            val rec = if (reqObj.has("amount")) reqObj.get("amount").asInt else 294
+                            recoilDamage = rec
+                            conditions.add("Subir ≥ $rec dégâts de recul")
+                        }
+                        "defeat" -> {
+                            val amt = if (reqObj.has("amount")) reqObj.get("amount").asInt else 3
+                            val target = if (reqObj.has("target")) reqObj.get("target").asString else "Adversaires"
+                            defeatAmount = amt
+                            defeatTarget = target
+                            conditions.add("Vaincre $amt $target")
+                        }
+                        "party_member" -> {
+                            val target = if (reqObj.has("target")) reqObj.get("target").asString else ""
+                            partyMember = target
+                            conditions.add("Dans l'équipe : $target")
                         }
                         "held_item" -> {
                             if (reqObj.has("itemCondition")) {
@@ -295,14 +393,6 @@ object PokemonEvolutionDataLoader {
                             val wDesc = if (isThunder) "Orage" else if (isRain) "Pluie" else "Météo spécifique"
                             conditions.add("Météo : $wDesc")
                         }
-                        "has_move" -> {
-                            val move = reqObj.get("move")?.asString?.replace("_", " ")?.replaceFirstChar { it.uppercase() } ?: "Spécifique"
-                            conditions.add("Capacité connue : $move")
-                        }
-                        "has_move_type" -> {
-                            val type = reqObj.get("type")?.asString?.replaceFirstChar { it.uppercase() } ?: ""
-                            conditions.add("Capacité de type $type")
-                        }
                         "biome" -> {
                             conditions.add("Lieu / Biome spécifique")
                         }
@@ -310,10 +400,21 @@ object PokemonEvolutionDataLoader {
                             conditions.add("Structure spécifique")
                         }
                         "moon_phase" -> {
-                            conditions.add("Phase de lune spécifique")
+                            val phase = if (reqObj.has("moonPhase")) reqObj.get("moonPhase").asString else ""
+                            moonPhase = phase
+                            conditions.add("Phase de lune : $phase")
                         }
                         "stat_compare" -> {
-                            conditions.add("Comparaison de statistiques")
+                            val high = if (reqObj.has("highStat")) reqObj.get("highStat").asString else ""
+                            val low = if (reqObj.has("lowStat")) reqObj.get("lowStat").asString else ""
+                            statCompare = "$high > $low"
+                            conditions.add("Statistique : $high > $low")
+                        }
+                        "stat_equal" -> {
+                            val s1 = if (reqObj.has("statOne")) reqObj.get("statOne").asString else ""
+                            val s2 = if (reqObj.has("statTwo")) reqObj.get("statTwo").asString else ""
+                            statCompare = "$s1 = $s2"
+                            conditions.add("Statistique : $s1 = $s2")
                         }
                         else -> {}
                     }
@@ -335,6 +436,9 @@ object PokemonEvolutionDataLoader {
 
         // Résumé textuel principal
         val summaryParts = mutableListOf<String>()
+        if (requiredGender != null) {
+            summaryParts.add(if (requiredGender == Gender.FEMALE) "Femelle ♀" else "Mâle ♂")
+        }
         if (minLevel != null && minLevel > 1) {
             summaryParts.add("Niveau ≥ $minLevel")
         }
@@ -342,6 +446,16 @@ object PokemonEvolutionDataLoader {
         if (distinctItems.isNotEmpty()) {
             val itemNames = distinctItems.map { it.hoverName.string }.distinct()
             summaryParts.add(itemNames.joinToString(", "))
+        }
+        if (stepsAmount != null) {
+            summaryParts.add("$stepsAmount pas")
+        }
+        if (useMoveCount != null && requiredMove != null) {
+            val mvName = Moves.getByName(requiredMove)?.displayName?.string ?: requiredMove
+            summaryParts.add("$mvName ($useMoveCount x)")
+        } else if (requiredMove != null) {
+            val mvName = Moves.getByName(requiredMove)?.displayName?.string ?: requiredMove
+            summaryParts.add(mvName)
         }
         if (summaryParts.isEmpty()) {
             if (conditions.isNotEmpty()) {
@@ -361,7 +475,22 @@ object PokemonEvolutionDataLoader {
             requiredItems = distinctItems,
             evolutionVariant = variantLabel,
             requirementsSummary = fullSummary,
-            additionalConditions = conditions
+            additionalConditions = conditions,
+            requiredGender = requiredGender,
+            requiredMove = requiredMove,
+            requiredMoveType = requiredMoveType,
+            useMoveCount = useMoveCount,
+            stepsAmount = stepsAmount,
+            criticalHits = criticalHits,
+            damageTaken = damageTaken,
+            recoilDamage = recoilDamage,
+            defeatTarget = defeatTarget,
+            defeatAmount = defeatAmount,
+            partyMember = partyMember,
+            statCompare = statCompare,
+            moonPhase = moonPhase,
+            minLevel = minLevel,
+            minFriendship = minFriendship
         )
     }
 
@@ -389,7 +518,7 @@ object PokemonEvolutionDataLoader {
                         try {
                             val recipe = processInMemoryEvolution(species, form, evo)
                             if (recipe != null) {
-                                val key = "${recipe.sourceSpecies.name}:${recipe.sourceForm.name}->${recipe.targetSpecies.name}:${recipe.targetForm.name}:${recipe.requirementsSummary}"
+                                val key = getRecipeDeduplicationKey(recipe)
                                 if (seenKeys.add(key)) {
                                     recipes.add(recipe)
                                 }
@@ -423,6 +552,22 @@ object PokemonEvolutionDataLoader {
         val requiredItems = mutableListOf<ItemStack>()
         val conditions = mutableListOf<String>()
         var variantLabel = "Évolution"
+
+        var requiredGender: Gender? = null
+        var requiredMove: String? = null
+        var requiredMoveType: String? = null
+        var useMoveCount: Int? = null
+        var stepsAmount: Int? = null
+        var criticalHits: Int? = null
+        var damageTaken: Int? = null
+        var recoilDamage: Int? = null
+        var defeatTarget: String? = null
+        var defeatAmount: Int? = null
+        var partyMember: String? = null
+        var statCompare: String? = null
+        var moonPhase: String? = null
+        var minLevel: Int? = null
+        var minFriendship: Int? = null
 
         when (evolution) {
             is ItemInteractionEvolution -> {
@@ -460,14 +605,99 @@ object PokemonEvolutionDataLoader {
             }
         }
 
-        var minLevel: Int? = null
         for (req in evolution.requirements) {
             when (req) {
                 is LevelRequirement -> {
                     minLevel = req.minLevel
                 }
                 is FriendshipRequirement -> {
+                    minFriendship = req.amount
                     conditions.add("Bonheur ≥ ${req.amount}")
+                }
+                is PokemonPropertiesRequirement -> {
+                    val targetProps = req.target
+                    val g = targetProps.gender
+                    if (g != null) {
+                        requiredGender = g
+                        conditions.add(if (g == Gender.FEMALE) "Sexe requis : Femelle ♀" else "Sexe requis : Mâle ♂")
+                    }
+                    val orig = targetProps.originalString
+                    if (!orig.isNullOrBlank()) {
+                        if (orig.contains("gender=female", true)) {
+                            requiredGender = Gender.FEMALE
+                            if (conditions.none { it.contains("Femelle") }) conditions.add("Sexe requis : Femelle ♀")
+                        } else if (orig.contains("gender=male", true)) {
+                            requiredGender = Gender.MALE
+                            if (conditions.none { it.contains("Mâle") }) conditions.add("Sexe requis : Mâle ♂")
+                        } else if (orig.contains("nature=", true)) {
+                            val nat = orig.substringAfter("nature=").substringBefore(" ")
+                            conditions.add("Nature : $nat")
+                        }
+                    }
+                }
+                is MoveSetRequirement -> {
+                    val mv = req.move
+                    requiredMove = mv.name.lowercase()
+                    val moveName = mv.displayName.string
+                    conditions.add("Capacité connue : $moveName")
+                }
+                is MoveTypeRequirement -> {
+                    val t = req.type.name.lowercase()
+                    requiredMoveType = t
+                    conditions.add("Capacité de type : ${t.replaceFirstChar { it.uppercase() }}")
+                }
+                is UseMoveRequirement -> {
+                    val mv = req.move
+                    val count = req.amount
+                    requiredMove = mv.name.lowercase()
+                    useMoveCount = count
+                    val moveName = mv.displayName.string
+                    conditions.add("Utiliser $moveName $count fois")
+                }
+                is BlocksTraveledRequirement -> {
+                    val steps = req.amount
+                    stepsAmount = steps
+                    conditions.add("Marcher $steps pas")
+                }
+                is BattleCriticalHitsRequirement -> {
+                    val hits = req.amount
+                    criticalHits = hits
+                    conditions.add("Infliger $hits coups critiques en 1 combat")
+                }
+                is DamageTakenRequirement -> {
+                    val dmg = req.amount
+                    damageTaken = dmg
+                    conditions.add("Subir ≥ $dmg dégâts sans tomber K.O.")
+                }
+                is RecoilRequirement -> {
+                    val rec = req.amount
+                    recoilDamage = rec
+                    conditions.add("Subir ≥ $rec dégâts de recul")
+                }
+                is DefeatRequirement -> {
+                    val amt = req.amount
+                    val target = req.target.originalString
+                    defeatAmount = amt
+                    defeatTarget = target
+                    conditions.add("Vaincre $amt $target")
+                }
+                is PartyMemberRequirement -> {
+                    val target = req.target.originalString
+                    partyMember = target
+                    conditions.add("Dans l'équipe : $target")
+                }
+                is StatCompareRequirement -> {
+                    statCompare = "Statistiques comparées"
+                    conditions.add("Comparaison de statistiques")
+                }
+                is StatEqualRequirement -> {
+                    statCompare = "Statistiques égales"
+                    conditions.add("Statistiques égales")
+                }
+                is MoonPhaseRequirement -> {
+                    val phase = req.moonPhase.name
+                    moonPhase = phase
+                    conditions.add("Phase de lune : $phase")
                 }
                 is HeldItemRequirement -> {
                     val heldOpt = req.itemCondition?.items()
@@ -505,10 +735,6 @@ object PokemonEvolutionDataLoader {
                     }
                     conditions.add("Météo : $wName")
                 }
-                is MoveSetRequirement -> {
-                    val moveName = req.move?.displayName?.string ?: "Spécifique"
-                    conditions.add("Capacité connue : $moveName")
-                }
                 is BiomeRequirement -> {
                     conditions.add("Lieu / Biome spécifique")
                 }
@@ -517,6 +743,9 @@ object PokemonEvolutionDataLoader {
         }
 
         val summaryParts = mutableListOf<String>()
+        if (requiredGender != null) {
+            summaryParts.add(if (requiredGender == Gender.FEMALE) "Femelle ♀" else "Mâle ♂")
+        }
         if (minLevel != null && minLevel > 1) {
             summaryParts.add("Niveau ≥ $minLevel")
         }
@@ -525,6 +754,16 @@ object PokemonEvolutionDataLoader {
         if (distinctItems.isNotEmpty()) {
             val itemNames = distinctItems.map { it.hoverName.string }.distinct()
             summaryParts.add(itemNames.joinToString(", "))
+        }
+        if (stepsAmount != null) {
+            summaryParts.add("$stepsAmount pas")
+        }
+        if (useMoveCount != null && requiredMove != null) {
+            val mvName = Moves.getByName(requiredMove)?.displayName?.string ?: requiredMove
+            summaryParts.add("$mvName ($useMoveCount x)")
+        } else if (requiredMove != null) {
+            val mvName = Moves.getByName(requiredMove)?.displayName?.string ?: requiredMove
+            summaryParts.add(mvName)
         }
 
         if (summaryParts.isEmpty()) {
@@ -545,7 +784,22 @@ object PokemonEvolutionDataLoader {
             requiredItems = distinctItems,
             evolutionVariant = variantLabel,
             requirementsSummary = fullSummary,
-            additionalConditions = conditions
+            additionalConditions = conditions,
+            requiredGender = requiredGender,
+            requiredMove = requiredMove,
+            requiredMoveType = requiredMoveType,
+            useMoveCount = useMoveCount,
+            stepsAmount = stepsAmount,
+            criticalHits = criticalHits,
+            damageTaken = damageTaken,
+            recoilDamage = recoilDamage,
+            defeatTarget = defeatTarget,
+            defeatAmount = defeatAmount,
+            partyMember = partyMember,
+            statCompare = statCompare,
+            moonPhase = moonPhase,
+            minLevel = minLevel,
+            minFriendship = minFriendship
         )
     }
 
