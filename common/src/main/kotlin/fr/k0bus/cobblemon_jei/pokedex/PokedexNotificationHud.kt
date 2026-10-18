@@ -57,10 +57,9 @@ object PokedexNotificationHud {
     private var currentNotification: ActiveNotification? = null
     private val recentNotifications = mutableMapOf<String, Long>()
 
-    // Snapshot client pour détecter les captures/scans en multijoueur
+    // Snapshot client du Pokédex pour détecter les nouveaux enregistrements
     private var isSnapshotInitialized = false
     private val clientKnowledgeSnapshot = mutableMapOf<ResourceLocation, PokedexEntryProgress>()
-    private val clientPartySnapshot = mutableSetOf<UUID>()
     private var tickCounter = 0
 
     /**
@@ -194,34 +193,22 @@ object PokedexNotificationHud {
         if (mc.player == null) {
             isSnapshotInitialized = false
             clientKnowledgeSnapshot.clear()
-            clientPartySnapshot.clear()
             return
         }
 
         try {
             val dexData = CobblemonClient.clientPokedexData
-            val party = CobblemonClient.storage.party
 
             if (!isSnapshotInitialized) {
                 // Première capture de référence pour éviter les faux positifs lors de la connexion
                 dexData.speciesRecords.forEach { (resId, rec) ->
                     clientKnowledgeSnapshot[resId] = rec.getKnowledge()
                 }
-                party.slots.filterNotNull().forEach {
-                    clientPartySnapshot.add(it.uuid)
-                }
                 isSnapshotInitialized = true
                 return
             }
 
-            // 1. Détection des nouveaux ajouts dans l'équipe
-            for (p in party.slots.filterNotNull()) {
-                if (clientPartySnapshot.add(p.uuid)) {
-                    notify(NotificationType.CAPTURED, p.species, p.form, p.shiny, mc.player?.uuid)
-                }
-            }
-
-            // 2. Détection des changements dans le Pokédex client
+            // Détection des nouveaux enregistrements dans le Pokédex client
             for ((resId, rec) in dexData.speciesRecords) {
                 val currentKnowledge = rec.getKnowledge()
                 val prevKnowledge = clientKnowledgeSnapshot[resId]
