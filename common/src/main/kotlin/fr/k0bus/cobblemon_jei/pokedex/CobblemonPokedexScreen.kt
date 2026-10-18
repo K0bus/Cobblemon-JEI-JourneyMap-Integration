@@ -91,13 +91,25 @@ class CobblemonPokedexScreen(
     // Cache d'items (incluant la forme et le statut Shiny)
     private val itemStackCache = mutableMapOf<Triple<Species, FormData?, Boolean>, ItemStack>()
 
-    // Gestion de l'affichage Shiny dans l'onglet Formes
+    // Gestion de l'affichage Shiny et sélection de forme
+    private var selectedForm: FormData? = null
     private var globalShinyForms: Boolean = false
     private val individualShinyForms = mutableSetOf<String>()
     private var shinyHeaderButtonRect: IntArray? = null
+    private var zoomHeaderButtonRect: IntArray? = null
     private val shinyCardButtonRects = mutableListOf<Pair<IntArray, FormData>>()
+    private val zoomCardButtonRects = mutableListOf<Pair<IntArray, FormData>>()
+    private val selectCardButtonRects = mutableListOf<Pair<IntArray, FormData>>()
+    private var topPreviewRect: IntArray? = null
+    private var hoveredZoomCardForm: FormData? = null
 
-    private fun isFormShiny(form: FormData): Boolean {
+    // Visionneuse Grand Format (Showcase Modal)
+    private var isZoomModalOpen: Boolean = false
+    private var zoomModalForm: FormData? = null
+    private var zoomModalShiny: Boolean = false
+
+    private fun isFormShiny(form: FormData?): Boolean {
+        if (form == null) return globalShinyForms
         val key = form.name.lowercase()
         return if (globalShinyForms) {
             !individualShinyForms.contains(key)
@@ -113,6 +125,96 @@ class CobblemonPokedexScreen(
         } else {
             individualShinyForms.add(key)
         }
+    }
+
+    private fun getSpeciesForms(sp: Species): List<FormData> {
+        val allForms = mutableListOf<FormData>()
+        allForms.add(sp.standardForm)
+        for (f in sp.forms) {
+            if (f != sp.standardForm && allForms.none { it.name.equals(f.name, ignoreCase = true) }) {
+                allForms.add(f)
+            }
+        }
+        return allForms
+    }
+
+    private fun getFormDisplayName(form: FormData?, sp: Species): String {
+        if (form == null || form == sp.standardForm || form.name.isBlank() || form.name.equals("normal", ignoreCase = true) || form.name.equals("standard", ignoreCase = true)) {
+            return "Forme Standard"
+        }
+        val name = form.name.trim()
+        val lower = name.lowercase()
+        return when {
+            lower == "alola" || lower == "alolan" -> "Forme d'Alola"
+            lower == "galar" || lower == "galarian" -> "Forme de Galar"
+            lower == "hisui" || lower == "hisuian" -> "Forme de Hisui"
+            lower == "paldea" || lower == "paldean" -> "Forme de Paldea"
+            lower == "gmax" || lower == "gigantamax" || lower == "gigamax" -> "Forme Gigamax"
+            lower == "mega" -> "Méga-Évolution"
+            lower == "mega-x" || lower == "megax" -> "Méga-Évolution X"
+            lower == "mega-y" || lower == "megay" -> "Méga-Évolution Y"
+            lower.startsWith("a") || lower.startsWith("e") || lower.startsWith("i") || lower.startsWith("o") || lower.startsWith("u") || lower.startsWith("y") ->
+                "Forme d'${name.replaceFirstChar(Char::titlecase)}"
+            else ->
+                "Forme de ${name.replaceFirstChar(Char::titlecase)}"
+        }
+    }
+
+    private data class FormStatusInfo(val text: String, val color: Int)
+
+    private fun getFormStatusInfo(sp: Species, form: FormData, isShiny: Boolean, currentTracked: TrackedPokemon?): FormStatusInfo {
+        val formRecord = try {
+            val specRecord = CobblemonClient.clientPokedexData.speciesRecords[sp.resourceIdentifier]
+            specRecord?.getFormRecord(form.name.lowercase().ifBlank { "normal" })
+                ?: specRecord?.getFormRecord(form.name.lowercase())
+                ?: specRecord?.getFormRecord("")
+        } catch (_: Throwable) { null }
+
+        return if (isShiny) {
+            val ownedShinyCount = currentTracked?.ownedInstances?.count {
+                it.pokemon.shiny && PokemonTrackerService.isFormMatch(it.pokemon, form, sp)
+            } ?: 0
+            val isDexShinyCaught = formRecord?.hasSeenShinyState(true) == true && (formRecord.knowledge == PokedexEntryProgress.CAUGHT)
+            val isDexShinySeen = formRecord?.hasSeenShinyState(true) == true
+
+            when {
+                ownedShinyCount > 0 -> FormStatusInfo("§6★ Possédé ($ownedShinyCount)§r", 0xFFF1C40F.toInt())
+                isDexShinyCaught -> FormStatusInfo("§6★ Capturé Shiny§r", 0xFFF1C40F.toInt())
+                isDexShinySeen -> FormStatusInfo("§e👁 Vu Shiny (Pokédex)§r", 0xFFE67E22.toInt())
+                else -> FormStatusInfo("§c✕ Non découvert Shiny§r", 0xFFE74C3C.toInt())
+            }
+        } else {
+            val ownedCount = currentTracked?.ownedInstances?.count { PokemonTrackerService.isFormMatch(it.pokemon, form, sp) } ?: 0
+            val isDexCaught = formRecord?.knowledge == PokedexEntryProgress.CAUGHT
+            val isDexSeen = formRecord?.knowledge == PokedexEntryProgress.ENCOUNTERED
+
+            when {
+                ownedCount > 0 -> FormStatusInfo("§a✔ Possédé ($ownedCount)§r", 0xFF2ECC71.toInt())
+                isDexCaught -> FormStatusInfo("§a✔ Capturé§r", 0xFF2ECC71.toInt())
+                isDexSeen -> FormStatusInfo("§6👁 Vu (Pokédex)§r", 0xFFE67E22.toInt())
+                else -> FormStatusInfo("§c✕ Non découvert§r", 0xFFE74C3C.toInt())
+            }
+        }
+    }
+
+    private fun openZoomModal(form: FormData?) {
+        val sp = selectedTracked?.species ?: return
+        zoomModalForm = form ?: selectedForm ?: sp.standardForm
+        selectedForm = zoomModalForm
+        zoomModalShiny = isFormShiny(zoomModalForm ?: sp.standardForm)
+        isZoomModalOpen = true
+        Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.1f))
+    }
+
+    private fun cycleZoomModalForm(direction: Int) {
+        val sp = selectedTracked?.species ?: return
+        val allForms = getSpeciesForms(sp)
+        if (allForms.isEmpty()) return
+        val curIndex = allForms.indexOfFirst { it.name.equals(zoomModalForm?.name ?: sp.standardForm.name, ignoreCase = true) }.coerceAtLeast(0)
+        val newIndex = Math.floorMod(curIndex + direction, allForms.size)
+        zoomModalForm = allForms[newIndex]
+        selectedForm = zoomModalForm
+        Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.1f))
     }
 
     // Scroll de la zone gauche
@@ -374,6 +476,9 @@ class CobblemonPokedexScreen(
         renderLeftContent(guiGraphics, mouseX, mouseY)
         renderRightPanel(guiGraphics, mouseX, mouseY)
         renderBottomProgressBar(guiGraphics, mouseX, mouseY, stats)
+
+        // Rendu de la visionneuse Grand Format (au-dessus de tout)
+        renderZoomModal(guiGraphics, mouseX, mouseY)
     }
 
     private fun renderBottomProgressBar(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, stats: PokedexTrackerStats) {
@@ -964,15 +1069,28 @@ class CobblemonPokedexScreen(
         val currentTracked = selectedTracked ?: allTracked.firstOrNull() ?: return
         val sp = currentTracked.species
 
-        // 1. Cadre du Pokémon et sprite
+        val activeForm = selectedForm ?: sp.standardForm
+        val isShinyActive = isFormShiny(activeForm)
+
+        // 1. Cadre du Pokémon et sprite (cliquable pour Grand Format)
         val previewSize = 36
         val previewX = panelX + (panelW - previewSize) / 2
         val previewY = panelY + 6
 
-        guiGraphics.fill(previewX - 4, previewY - 4, previewX + previewSize + 4, previewY + previewSize + 4, 0xFF1D212E.toInt())
-        guiGraphics.fill(previewX - 5, previewY - 5, previewX + previewSize + 5, previewY - 4, 0xFF353B4F.toInt())
+        val isPreviewHovered = mouseX >= previewX - 4 && mouseX <= previewX + previewSize + 4 &&
+                mouseY >= previewY - 4 && mouseY <= previewY + previewSize + 4
+        topPreviewRect = intArrayOf(previewX - 4, previewY - 4, previewSize + 8, previewSize + 8)
 
-        val stack = getItemStack(sp)
+        val previewBg = if (isPreviewHovered) 0xFF282F42.toInt() else 0xFF1D212E.toInt()
+        val previewBorder = if (isPreviewHovered) 0xFF54A0FF.toInt() else 0xFF353B4F.toInt()
+
+        guiGraphics.fill(previewX - 4, previewY - 4, previewX + previewSize + 4, previewY + previewSize + 4, previewBg)
+        guiGraphics.fill(previewX - 4, previewY - 4, previewX + previewSize + 4, previewY - 3, previewBorder)
+        guiGraphics.fill(previewX - 4, previewY + previewSize + 3, previewX + previewSize + 4, previewY + previewSize + 4, previewBorder)
+        guiGraphics.fill(previewX - 4, previewY - 4, previewX - 3, previewY + previewSize + 4, previewBorder)
+        guiGraphics.fill(previewX + previewSize + 3, previewY - 4, previewX + previewSize + 4, previewY + previewSize + 4, previewBorder)
+
+        val stack = getItemStack(sp, activeForm, isShinyActive)
         if (!stack.isEmpty) {
             val pose = guiGraphics.pose()
             pose.pushPose()
@@ -982,25 +1100,26 @@ class CobblemonPokedexScreen(
             pose.popPose()
         }
 
+        // Petite loupe discrète dans le coin du cadre
+        val zoomIconColor = if (isPreviewHovered) 0xFF54A0FF.toInt() else 0x88AAAAAA.toInt()
+        guiGraphics.drawString(font, "🔍", previewX + previewSize - 6, previewY + previewSize - 6, zoomIconColor, false)
+
         // Nom et Numéro Pokédex
         val dexStr = String.format("#%04d", sp.nationalPokedexNumber)
         val nameStr = sp.translatedName.string
         guiGraphics.drawCenteredString(font, "§6$dexStr§r §f§l$nameStr§r", panelX + panelW / 2, previewY + previewSize + 4, 0xFFFFFFFF.toInt())
 
-        // Types et statut
-        val primary = sp.standardForm.primaryType
-        val secondary = sp.standardForm.secondaryType
+        // Types et statut de la forme active
+        val primary = activeForm.primaryType
+        val secondary = activeForm.secondaryType
         val typeDesc = if (secondary != null) {
             "§b${primary.name}§r/§b${secondary.name}§r"
         } else {
             "§b${primary.name}§r"
         }
-        val statusIcon = when (currentTracked.status) {
-            PokedexStatus.CAUGHT -> "§a✔ Capturé§r"
-            PokedexStatus.ENCOUNTERED -> "§6👁 Rencontré§r"
-            PokedexStatus.MISSING -> "§c✕ Manquant§r"
-        }
-        guiGraphics.drawCenteredString(font, "$typeDesc · $statusIcon", panelX + panelW / 2, previewY + previewSize + 16, 0xFFCCCCCC.toInt())
+        val formStatus = getFormStatusInfo(sp, activeForm, isShinyActive, currentTracked)
+        val formTitleSub = if (activeForm != sp.standardForm) " · §e${getFormDisplayName(activeForm, sp)}§r" else ""
+        guiGraphics.drawCenteredString(font, "$typeDesc · ${formStatus.text}$formTitleSub", panelX + panelW / 2, previewY + previewSize + 16, 0xFFCCCCCC.toInt())
 
         // Séparateur avant onglets
         guiGraphics.fill(panelX + 6, panelY + 70, panelX + panelW - 6, panelY + 71, 0xFF282D3C.toInt())
@@ -1091,25 +1210,38 @@ class CobblemonPokedexScreen(
         val btnText = if (CobblemonOverlayManager.activeSpecies == sp) "✔ Actif sur carte" else "🗺 Voir sur JourneyMap"
         guiGraphics.drawCenteredString(font, btnText, panelX + panelW / 2, btnY + 4, 0xFFFFFFFF.toInt())
 
-        // Tooltip de survol d'onglet et éléments interactifs
-        if (hoveredTabTooltip != null) {
-            guiGraphics.renderTooltip(font, Component.literal(hoveredTabTooltip), mouseX, mouseY)
-        } else if (currentRightPanelTab == RightPanelTab.FORMS) {
-            shinyHeaderButtonRect?.let { (bx, by, bw, bh) ->
-                if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
-                    val tt = if (globalShinyForms) "Désactiver le mode Chromatique (Shiny)" else "Activer le mode Chromatique (Shiny) pour toutes les formes"
-                    guiGraphics.renderTooltip(font, Component.literal(tt), mouseX, mouseY)
-                }
-            }
-            if (mouseX >= panelX && mouseX <= panelX + panelW && mouseY >= contentY && mouseY <= contentY + contentH) {
-                for ((rect, form) in shinyCardButtonRects) {
-                    val (bx, by, bw, bh) = rect
+        // Tooltip de survol d'onglet et éléments interactifs (affichés uniquement si la modale zoom n'est pas ouverte)
+        if (!isZoomModalOpen) {
+            if (hoveredTabTooltip != null) {
+                guiGraphics.renderTooltip(font, Component.literal(hoveredTabTooltip), mouseX, mouseY)
+            } else if (isPreviewHovered) {
+                guiGraphics.renderComponentTooltip(font, listOf(Component.literal("§b🔍 Cliquer pour voir en grand format")), mouseX, mouseY)
+            } else if (currentRightPanelTab == RightPanelTab.FORMS) {
+                zoomHeaderButtonRect?.let { (bx, by, bw, bh) ->
                     if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
-                        val isSh = isFormShiny(form)
-                        val fName = if (form == sp.standardForm || form.name.isBlank()) "Forme Standard" else "Forme de ${form.name.replaceFirstChar(Char::titlecase)}"
-                        val tt = if (isSh) "Cliquer pour afficher la version normale ($fName)" else "Cliquer pour afficher la version Shiny ($fName)"
+                        guiGraphics.renderComponentTooltip(font, listOf(Component.literal("§b🔍 Ouvrir la visionneuse de skins en grand format")), mouseX, mouseY)
+                        return
+                    }
+                }
+                shinyHeaderButtonRect?.let { (bx, by, bw, bh) ->
+                    if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
+                        val tt = if (globalShinyForms) "Désactiver le mode Chromatique (Shiny)" else "Activer le mode Chromatique (Shiny) pour toutes les formes"
                         guiGraphics.renderTooltip(font, Component.literal(tt), mouseX, mouseY)
-                        break
+                        return
+                    }
+                }
+                if (hoveredZoomCardForm != null) {
+                    guiGraphics.renderComponentTooltip(font, listOf(Component.literal("§b🔍 Voir cette variante en grand format")), mouseX, mouseY)
+                } else if (mouseX >= panelX && mouseX <= panelX + panelW && mouseY >= contentY && mouseY <= contentY + contentH) {
+                    for ((rect, form) in shinyCardButtonRects) {
+                        val (bx, by, bw, bh) = rect
+                        if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
+                            val isSh = isFormShiny(form)
+                            val fName = getFormDisplayName(form, sp)
+                            val tt = if (isSh) "Cliquer pour afficher la version normale ($fName)" else "Cliquer pour afficher la version Shiny ($fName)"
+                            guiGraphics.renderTooltip(font, Component.literal(tt), mouseX, mouseY)
+                            break
+                        }
                     }
                 }
             }
@@ -1210,24 +1342,38 @@ class CobblemonPokedexScreen(
     ): Int {
         var y = startY
         shinyCardButtonRects.clear()
+        zoomCardButtonRects.clear()
+        selectCardButtonRects.clear()
+        hoveredZoomCardForm = null
 
-        // Récupérer toutes les formes de l'espèce
-        val allForms = mutableListOf<FormData>()
-        allForms.add(sp.standardForm)
-        for (f in sp.forms) {
-            if (f != sp.standardForm && allForms.none { it.name.equals(f.name, ignoreCase = true) }) {
-                allForms.add(f)
-            }
-        }
+        val allForms = getSpeciesForms(sp)
 
-        guiGraphics.drawString(font, "§e§lFormes & Variantes (${allForms.size})§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        // Titre compact
+        val titleText = "§e§lVariantes (${allForms.size})§r"
+        guiGraphics.drawString(font, titleText, contentX + 2, y + 1, 0xFFFFFFFF.toInt(), false)
 
-        // Bouton global Shiny dans l'en-tête
-        val shinyBtnW = 54
+        // Boutons en-tête : [🔍 Zoom] et [★ Shiny]
+        val shinyBtnW = 46
         val shinyBtnH = 12
         val shinyBtnX = contentX + contentW - shinyBtnW
         val shinyBtnY = y - 1
         shinyHeaderButtonRect = intArrayOf(shinyBtnX, shinyBtnY, shinyBtnW, shinyBtnH)
+
+        val zoomBtnW = 44
+        val zoomBtnH = 12
+        val zoomBtnX = shinyBtnX - zoomBtnW - 4
+        val zoomBtnY = y - 1
+        zoomHeaderButtonRect = intArrayOf(zoomBtnX, zoomBtnY, zoomBtnW, zoomBtnH)
+
+        val isZoomHovered = mouseX >= zoomBtnX && mouseX <= zoomBtnX + zoomBtnW && mouseY >= zoomBtnY && mouseY <= zoomBtnY + zoomBtnH
+        val zoomBg = if (isZoomHovered) 0xFF353C4D.toInt() else 0xFF1D212E.toInt()
+        val zoomBorder = if (isZoomHovered) 0xFF54A0FF.toInt() else 0xFF3D465E.toInt()
+        guiGraphics.fill(zoomBtnX, zoomBtnY, zoomBtnX + zoomBtnW, zoomBtnY + zoomBtnH, zoomBg)
+        guiGraphics.fill(zoomBtnX, zoomBtnY, zoomBtnX + zoomBtnW, zoomBtnY + 1, zoomBorder)
+        guiGraphics.fill(zoomBtnX, zoomBtnY + zoomBtnH - 1, zoomBtnX + zoomBtnW, zoomBtnY + zoomBtnH, zoomBorder)
+        guiGraphics.fill(zoomBtnX, zoomBtnY, zoomBtnX + 1, zoomBtnY + zoomBtnH, zoomBorder)
+        guiGraphics.fill(zoomBtnX + zoomBtnW - 1, zoomBtnY, zoomBtnX + zoomBtnW, zoomBtnY + zoomBtnH, zoomBorder)
+        guiGraphics.drawCenteredString(font, "§b🔍 Zoom§r", zoomBtnX + zoomBtnW / 2, zoomBtnY + 2, 0xFFFFFFFF.toInt())
 
         val isHeaderHovered = mouseX >= shinyBtnX && mouseX <= shinyBtnX + shinyBtnW && mouseY >= shinyBtnY && mouseY <= shinyBtnY + shinyBtnH
         val headerBg = when {
@@ -1245,25 +1391,30 @@ class CobblemonPokedexScreen(
         guiGraphics.fill(shinyBtnX + shinyBtnW - 1, shinyBtnY, shinyBtnX + shinyBtnW, shinyBtnY + shinyBtnH, headerBorder)
         guiGraphics.drawCenteredString(font, headerText, shinyBtnX + shinyBtnW / 2, shinyBtnY + 2, 0xFFFFFFFF.toInt())
 
-        y += 14
+        y += 15
 
         val allRecipes = PokemonEvolutionDataLoader.loadEvolutionRecipes()
+        val cardH = 52
 
         for (form in allForms) {
-            val isStandard = (form == sp.standardForm || form.name.isBlank() || form.name.equals("normal", ignoreCase = true))
-            val formTitle = if (isStandard) {
-                "Forme Standard"
-            } else {
-                "Forme de ${form.name.replaceFirstChar(Char::titlecase)}"
-            }
-
+            val isSelectedForm = (form == (selectedForm ?: sp.standardForm))
+            val formTitle = getFormDisplayName(form, sp)
             val isShiny = isFormShiny(form)
             val cardY = y
-            val cardH = 46
 
-            // Carte de fond (avec teinte dorée subtile si shiny)
-            val cardBg = if (isShiny) 0xFF1A1812.toInt() else 0xFF151922.toInt()
-            val cardBorder = if (isShiny) 0xFF8E6E1A.toInt() else 0xFF282D3C.toInt()
+            // Fond et bordures de la carte
+            val cardBg = when {
+                isSelectedForm && isShiny -> 0xFF2A2414.toInt()
+                isSelectedForm -> 0xFF1C2433.toInt()
+                isShiny -> 0xFF1A1812.toInt()
+                else -> 0xFF151922.toInt()
+            }
+            val cardBorder = when {
+                isSelectedForm && isShiny -> 0xFFF1C40F.toInt()
+                isSelectedForm -> 0xFF54A0FF.toInt()
+                isShiny -> 0xFF8E6E1A.toInt()
+                else -> 0xFF282D3C.toInt()
+            }
 
             guiGraphics.fill(contentX, cardY, contentX + contentW, cardY + cardH, cardBg)
             guiGraphics.fill(contentX, cardY, contentX + contentW, cardY + 1, cardBorder)
@@ -1271,136 +1422,88 @@ class CobblemonPokedexScreen(
             guiGraphics.fill(contentX, cardY, contentX + 1, cardY + cardH, cardBorder)
             guiGraphics.fill(contentX + contentW - 1, cardY, contentX + contentW, cardY + cardH, cardBorder)
 
-            // Zone Sprite + Étoile Shiny cliquable
-            val spriteX = contentX + 4
-            val spriteY = cardY + 6
-            val toggleBox = intArrayOf(contentX + 2, cardY + 4, 20, 36)
+            // Zone Sprite + Star à gauche (cliquable pour basculer shiny individuel)
+            val spriteBoxX = contentX + 3
+            val spriteBoxY = cardY + 3
+            val spriteBoxW = 26
+            val spriteBoxH = cardH - 6
+            val toggleBox = intArrayOf(spriteBoxX, spriteBoxY, spriteBoxW, spriteBoxH)
             shinyCardButtonRects.add(Pair(toggleBox, form))
 
-            val isSpriteHovered = mouseX >= toggleBox[0] && mouseX <= toggleBox[0] + toggleBox[2] &&
-                    mouseY >= toggleBox[1] && mouseY <= toggleBox[1] + toggleBox[3]
+            val isSpriteHovered = mouseX >= spriteBoxX && mouseX <= spriteBoxX + spriteBoxW &&
+                    mouseY >= spriteBoxY && mouseY <= spriteBoxY + spriteBoxH
 
-            if (isSpriteHovered) {
-                guiGraphics.fill(toggleBox[0], toggleBox[1], toggleBox[0] + toggleBox[2], toggleBox[1] + toggleBox[3], 0x33F1C40F.toInt())
-                guiGraphics.fill(toggleBox[0], toggleBox[1], toggleBox[0] + toggleBox[2], toggleBox[1] + 1, 0xFFF1C40F.toInt())
-                guiGraphics.fill(toggleBox[0], toggleBox[1] + toggleBox[3] - 1, toggleBox[0] + toggleBox[2], toggleBox[1] + toggleBox[3], 0xFFF1C40F.toInt())
-                guiGraphics.fill(toggleBox[0], toggleBox[1], toggleBox[0] + 1, toggleBox[1] + toggleBox[3], 0xFFF1C40F.toInt())
-                guiGraphics.fill(toggleBox[0] + toggleBox[2] - 1, toggleBox[1], toggleBox[0] + toggleBox[2], toggleBox[1] + toggleBox[3], 0xFFF1C40F.toInt())
-            }
+            val spriteBg = if (isSpriteHovered) 0xFF222838.toInt() else 0xFF10121A.toInt()
+            val spriteBorder = if (isSpriteHovered) 0xFF54A0FF.toInt() else 0xFF1E2330.toInt()
+            guiGraphics.fill(spriteBoxX, spriteBoxY, spriteBoxX + spriteBoxW, spriteBoxY + spriteBoxH, spriteBg)
+            guiGraphics.fill(spriteBoxX, spriteBoxY, spriteBoxX + spriteBoxW, spriteBoxY + 1, spriteBorder)
+            guiGraphics.fill(spriteBoxX, spriteBoxY + spriteBoxH - 1, spriteBoxX + spriteBoxW, spriteBoxY + spriteBoxH, spriteBorder)
+            guiGraphics.fill(spriteBoxX, spriteBoxY, spriteBoxX + 1, spriteBoxY + spriteBoxH, spriteBorder)
+            guiGraphics.fill(spriteBoxX + spriteBoxW - 1, spriteBoxY, spriteBoxX + spriteBoxW, spriteBoxY + spriteBoxH, spriteBorder)
 
-            // Sprite de la forme (Normal ou Shiny selon l'état)
+            // Sprite de la forme
             val stack = getItemStack(sp, form, isShiny)
             if (!stack.isEmpty) {
-                guiGraphics.renderItem(stack, spriteX, spriteY)
+                guiGraphics.renderItem(stack, spriteBoxX + 5, spriteBoxY + 5)
             }
 
-            // Petit badge étoile sous le sprite
+            // Étoile sous le sprite
             val starTxt = if (isShiny) "§e★§r" else "§8☆§r"
-            guiGraphics.drawCenteredString(font, starTxt, spriteX + 8, spriteY + 18, 0xFFFFFFFF.toInt())
+            guiGraphics.drawCenteredString(font, starTxt, spriteBoxX + spriteBoxW / 2, spriteBoxY + 28, 0xFFFFFFFF.toInt())
 
-            // Titre et Aspects
-            var headerX = contentX + 26
+            // Clic sur le reste de la carte pour sélectionner la forme
+            val selectCardBox = intArrayOf(contentX + spriteBoxW + 4, cardY, contentW - spriteBoxW - 22, cardH)
+            selectCardButtonRects.add(Pair(selectCardBox, form))
+
+            // Bouton Zoom [🔍] individuel en haut à droite de la carte
+            val zoomCardBox = intArrayOf(contentX + contentW - 16, cardY + 3, 13, 12)
+            zoomCardButtonRects.add(Pair(zoomCardBox, form))
+            val isZoomCardHovered = mouseX >= zoomCardBox[0] && mouseX <= zoomCardBox[0] + zoomCardBox[2] &&
+                    mouseY >= zoomCardBox[1] && mouseY <= zoomCardBox[1] + zoomCardBox[3]
+            if (isZoomCardHovered) {
+                hoveredZoomCardForm = form
+            }
+            val zoomIconColor = if (isZoomCardHovered) 0xFF54A0FF.toInt() else 0xFF888888.toInt()
+            guiGraphics.drawString(font, "🔍", zoomCardBox[0], zoomCardBox[1] + 1, zoomIconColor, false)
+
+            val infoX = contentX + spriteBoxW + 6
+
+            // Ligne 1 : Titre de la forme
             val titlePrefix = if (isShiny) "§6★ §f§l" else "§f§l"
-            guiGraphics.drawString(font, "$titlePrefix$formTitle§r", headerX, cardY + 6, 0xFFFFFFFF.toInt(), false)
-            headerX += font.width("$titlePrefix$formTitle§r") + 4
+            guiGraphics.drawString(font, "$titlePrefix$formTitle§r", infoX, cardY + 5, 0xFFFFFFFF.toInt(), false)
 
-            if (form.aspects.isNotEmpty()) {
-                val aspectsStr = "§8[${form.aspects.joinToString(", ")}]§r"
-                guiGraphics.drawString(font, aspectsStr, headerX, cardY + 7, 0xFFAAAAAA.toInt(), false)
-            }
+            // Ligne 2 : Statut de capture / possession (DÉDIÉ, AUCUN OVERLAP)
+            val statusInfo = getFormStatusInfo(sp, form, isShiny, currentTracked)
+            guiGraphics.drawString(font, statusInfo.text, infoX, cardY + 16, statusInfo.color, false)
 
-            // Statut de capture / possession (en tenant compte de Shiny si activé)
-            val formRecord = try {
-                val specRecord = CobblemonClient.clientPokedexData.speciesRecords[sp.resourceIdentifier]
-                specRecord?.getFormRecord(form.name.lowercase().ifBlank { "normal" })
-                    ?: specRecord?.getFormRecord(form.name.lowercase())
-                    ?: specRecord?.getFormRecord("")
-            } catch (_: Throwable) { null }
-
-            val statusText: String
-            val statusColor: Int
-
-            if (isShiny) {
-                val ownedShinyCount = currentTracked?.ownedInstances?.count {
-                    it.pokemon.shiny && PokemonTrackerService.isFormMatch(it.pokemon, form, sp)
-                } ?: 0
-                val isDexShinyCaught = formRecord?.hasSeenShinyState(true) == true && (formRecord.knowledge == PokedexEntryProgress.CAUGHT)
-                val isDexShinySeen = formRecord?.hasSeenShinyState(true) == true
-
-                when {
-                    ownedShinyCount > 0 -> {
-                        statusText = "§6★ Possédé ($ownedShinyCount)§r"
-                        statusColor = 0xFFF1C40F.toInt()
-                    }
-                    isDexShinyCaught -> {
-                        statusText = "§6★ Capturé Shiny§r"
-                        statusColor = 0xFFF1C40F.toInt()
-                    }
-                    isDexShinySeen -> {
-                        statusText = "§e👁 Vu Shiny (Pokédex)§r"
-                        statusColor = 0xFFE67E22.toInt()
-                    }
-                    else -> {
-                        statusText = "§c✕ Non découvert Shiny§r"
-                        statusColor = 0xFFE74C3C.toInt()
-                    }
-                }
-            } else {
-                val ownedCount = currentTracked?.ownedInstances?.count { PokemonTrackerService.isFormMatch(it.pokemon, form, sp) } ?: 0
-                val isDexCaught = formRecord?.knowledge == PokedexEntryProgress.CAUGHT
-                val isDexSeen = formRecord?.knowledge == PokedexEntryProgress.ENCOUNTERED
-
-                when {
-                    ownedCount > 0 -> {
-                        statusText = "§a✔ Possédé ($ownedCount)§r"
-                        statusColor = 0xFF2ECC71.toInt()
-                    }
-                    isDexCaught -> {
-                        statusText = "§a✔ Capturé§r"
-                        statusColor = 0xFF2ECC71.toInt()
-                    }
-                    isDexSeen -> {
-                        statusText = "§6👁 Vu (Pokédex)§r"
-                        statusColor = 0xFFE67E22.toInt()
-                    }
-                    else -> {
-                        statusText = "§c✕ Non découvert§r"
-                        statusColor = 0xFFE74C3C.toInt()
-                    }
-                }
-            }
-
-            val statusW = font.width(statusText)
-            guiGraphics.drawString(font, statusText, contentX + contentW - statusW - 6, cardY + 6, statusColor, false)
-
-            // Types élémentaires
-            var typeX = contentX + 26
+            // Ligne 3 : Badges de Types élémentaires
+            var typeX = infoX
             val primColor = CobblemonOverlayManager.getElementColor(form.primaryType.name)
             val primName = form.primaryType.displayName.string.uppercase()
-            val primW = font.width(primName) + 6
-            guiGraphics.fill(typeX, cardY + 18, typeX + primW, cardY + 28, primColor)
-            guiGraphics.drawString(font, primName, typeX + 3, cardY + 19, 0xFFFFFFFF.toInt(), true)
-            typeX += primW + 4
+            val primW = font.width(primName) + 4
+            guiGraphics.fill(typeX, cardY + 27, typeX + primW, cardY + 36, primColor)
+            guiGraphics.drawString(font, primName, typeX + 2, cardY + 28, 0xFFFFFFFF.toInt(), true)
+            typeX += primW + 3
 
             form.secondaryType?.let { secType ->
                 val secColor = CobblemonOverlayManager.getElementColor(secType.name)
                 val secName = secType.displayName.string.uppercase()
-                val secW = font.width(secName) + 6
-                guiGraphics.fill(typeX, cardY + 18, typeX + secW, cardY + 28, secColor)
-                guiGraphics.drawString(font, secName, typeX + 3, cardY + 19, 0xFFFFFFFF.toInt(), true)
+                val secW = font.width(secName) + 4
+                guiGraphics.fill(typeX, cardY + 27, typeX + secW, cardY + 36, secColor)
+                guiGraphics.drawString(font, secName, typeX + 2, cardY + 28, 0xFFFFFFFF.toInt(), true)
             }
 
-            // Évolutions de cette forme
+            // Ligne 4 : Évolutions
             val formEvos = allRecipes.filter { it.sourceSpecies == sp && (it.sourceForm == form || (it.sourceForm.name.isNotBlank() && it.sourceForm.name.equals(form.name, true))) }
             val evoText = if (formEvos.isNotEmpty()) {
                 val targets = formEvos.map { it.targetSpecies.translatedName.string }.distinct()
                 "§7Évolue en : §e${targets.joinToString(", ")}§r"
             } else if (allForms.size > 1) {
-                "§8✕ Aucune évolution possible pour cette forme§r"
+                "§8✕ Pas d'évolution (cette forme)§r"
             } else {
                 "§8• Aucune évolution connue§r"
             }
-            guiGraphics.drawString(font, evoText, contentX + 26, cardY + 32, 0xFFCCCCCC.toInt(), false)
+            guiGraphics.drawString(font, evoText, infoX, cardY + 39, 0xFFCCCCCC.toInt(), false)
 
             y += cardH + 4
         }
@@ -1764,8 +1867,257 @@ class CobblemonPokedexScreen(
         return y + 4
     }
 
+    private fun renderZoomModal(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        if (!isZoomModalOpen) return
+
+        val currentTracked = selectedTracked ?: allTracked.firstOrNull() ?: return
+        val sp = currentTracked.species
+        val allForms = getSpeciesForms(sp)
+        val activeZoomForm = zoomModalForm ?: selectedForm ?: sp.standardForm
+        val formIndex = allForms.indexOfFirst { it.name.equals(activeZoomForm.name, ignoreCase = true) }.coerceAtLeast(0)
+
+        // 1. Fond sombre obscurcissant tout l'écran
+        guiGraphics.fill(0, 0, width, height, 0xCC080A10.toInt())
+
+        // 2. Fenêtre modale centrée
+        val modalW = 240
+        val modalH = 226
+        val modalX = (width - modalW) / 2
+        val modalY = (height - modalH) / 2
+
+        // Fond et bordures de la modale
+        guiGraphics.fill(modalX, modalY, modalX + modalW, modalY + modalH, 0xFF141722.toInt())
+        guiGraphics.fill(modalX - 1, modalY - 1, modalX + modalW + 1, modalY, 0xFF353C4D.toInt())
+        guiGraphics.fill(modalX - 1, modalY + modalH, modalX + modalW + 1, modalY + modalH + 1, 0xFF353C4D.toInt())
+        guiGraphics.fill(modalX - 1, modalY, modalX, modalY + modalH, 0xFF353C4D.toInt())
+        guiGraphics.fill(modalX + modalW, modalY, modalX + modalW + 1, modalY + modalH, 0xFF353C4D.toInt())
+
+        // Barre de titre de la modale
+        guiGraphics.fill(modalX, modalY, modalX + modalW, modalY + 22, 0xFF1A1F2C.toInt())
+        guiGraphics.fill(modalX, modalY + 21, modalX + modalW, modalY + 22, 0xFF2A3144.toInt())
+
+        val title = "§e§l${sp.translatedName.string}§r §7#${String.format("%04d", sp.nationalPokedexNumber)}§r"
+        guiGraphics.drawString(font, title, modalX + 8, modalY + 7, 0xFFFFFFFF.toInt(), false)
+
+        // Bouton Fermer [✕] en haut à droite
+        val closeBtnX = modalX + modalW - 18
+        val closeBtnY = modalY + 4
+        val isCloseHovered = mouseX >= closeBtnX && mouseX <= closeBtnX + 14 && mouseY >= closeBtnY && mouseY <= closeBtnY + 14
+        val closeColor = if (isCloseHovered) 0xFFFF5555.toInt() else 0xFFAAAAAA.toInt()
+        guiGraphics.drawString(font, "§l✕§r", closeBtnX + 3, closeBtnY + 3, closeColor, false)
+
+        // Sous-titre : Nom de la variante en grand
+        val formDisplayName = getFormDisplayName(activeZoomForm, sp)
+        guiGraphics.drawCenteredString(font, "§f§l$formDisplayName§r", modalX + modalW / 2, modalY + 27, 0xFFFFFFFF.toInt())
+
+        // 3. Grande scène d'exposition 3D (Showcase)
+        val stageW = 180
+        val stageH = 100
+        val stageX = modalX + (modalW - stageW) / 2
+        val stageY = modalY + 40
+
+        guiGraphics.fill(stageX, stageY, stageX + stageW, stageY + stageH, 0xFF0D0F17.toInt())
+        guiGraphics.fill(stageX, stageY, stageX + stageW, stageY + 1, 0xFF2A3144.toInt())
+        guiGraphics.fill(stageX, stageY + stageH - 1, stageX + stageW, stageY + stageH, 0xFF2A3144.toInt())
+        guiGraphics.fill(stageX, stageY, stageX + 1, stageY + stageH, 0xFF2A3144.toInt())
+        guiGraphics.fill(stageX + stageW - 1, stageY, stageX + stageW, stageY + stageH, 0xFF2A3144.toInt())
+
+        // Modèle 3D rendu en grand format (Scale 5.0f -> 80x80px)
+        val zoomStack = getItemStack(sp, activeZoomForm, zoomModalShiny)
+        if (!zoomStack.isEmpty) {
+            val pose = guiGraphics.pose()
+            pose.pushPose()
+            val modelScale = 5.0f
+            val modelRenderSize = 16f * modelScale
+            val modelX = stageX + (stageW - modelRenderSize) / 2f
+            val modelY = stageY + (stageH - modelRenderSize) / 2f
+            pose.translate(modelX, modelY, 0f)
+            pose.scale(modelScale, modelScale, 1.0f)
+            guiGraphics.renderItem(zoomStack, 0, 0)
+            pose.popPose()
+        }
+
+        // 4. Ligne de contrôle : [ ◀ ]   [ ★ Shiny ]   [ ▶ ]
+        val ctrlY = stageY + stageH + 6
+
+        // Flèche Précédent [ ◀ ]
+        val prevBtnX = stageX
+        val prevBtnW = 24
+        val prevBtnH = 15
+        val isPrevHovered = mouseX >= prevBtnX && mouseX <= prevBtnX + prevBtnW && mouseY >= ctrlY && mouseY <= ctrlY + prevBtnH
+        val prevBg = if (isPrevHovered) 0xFF353C4D.toInt() else 0xFF1D212E.toInt()
+        val prevBorder = if (isPrevHovered) 0xFF54A0FF.toInt() else 0xFF2A3144.toInt()
+        guiGraphics.fill(prevBtnX, ctrlY, prevBtnX + prevBtnW, ctrlY + prevBtnH, prevBg)
+        guiGraphics.fill(prevBtnX, ctrlY, prevBtnX + prevBtnW, ctrlY + 1, prevBorder)
+        guiGraphics.fill(prevBtnX, ctrlY + prevBtnH - 1, prevBtnX + prevBtnW, ctrlY + prevBtnH, prevBorder)
+        guiGraphics.fill(prevBtnX, ctrlY, prevBtnX + 1, ctrlY + prevBtnH, prevBorder)
+        guiGraphics.fill(prevBtnX + prevBtnW - 1, ctrlY, prevBtnX + prevBtnW, ctrlY + prevBtnH, prevBorder)
+        guiGraphics.drawCenteredString(font, "◀", prevBtnX + prevBtnW / 2, ctrlY + 3, 0xFFFFFFFF.toInt())
+
+        // Bouton Shiny au centre [ ★ Shiny ]
+        val shinyBtnW = 68
+        val shinyBtnH = 15
+        val shinyBtnX = modalX + (modalW - shinyBtnW) / 2
+        val isShinyHovered = mouseX >= shinyBtnX && mouseX <= shinyBtnX + shinyBtnW && mouseY >= ctrlY && mouseY <= ctrlY + shinyBtnH
+        val shinyBg = when {
+            zoomModalShiny -> if (isShinyHovered) 0xFFD4AC0D.toInt() else 0xFFB7950B.toInt()
+            isShinyHovered -> 0xFF353C4D.toInt()
+            else -> 0xFF1D212E.toInt()
+        }
+        val shinyBorder = if (zoomModalShiny) 0xFFF1C40F.toInt() else 0xFF2A3144.toInt()
+        val shinyText = if (zoomModalShiny) "§6★ Shiny§r" else "§7☆ Shiny§r"
+
+        guiGraphics.fill(shinyBtnX, ctrlY, shinyBtnX + shinyBtnW, ctrlY + shinyBtnH, shinyBg)
+        guiGraphics.fill(shinyBtnX, ctrlY, shinyBtnX + shinyBtnW, ctrlY + 1, shinyBorder)
+        guiGraphics.fill(shinyBtnX, ctrlY, shinyBtnX + shinyBtnW, ctrlY + 1, shinyBorder)
+        guiGraphics.fill(shinyBtnX, ctrlY + shinyBtnH - 1, shinyBtnX + shinyBtnW, ctrlY + shinyBtnH, shinyBorder)
+        guiGraphics.fill(shinyBtnX, ctrlY, shinyBtnX + 1, ctrlY + shinyBtnH, shinyBorder)
+        guiGraphics.fill(shinyBtnX + shinyBtnW - 1, ctrlY, shinyBtnX + shinyBtnW, ctrlY + shinyBtnH, shinyBorder)
+        guiGraphics.drawCenteredString(font, shinyText, shinyBtnX + shinyBtnW / 2, ctrlY + 4, 0xFFFFFFFF.toInt())
+
+        // Flèche Suivant [ ▶ ]
+        val nextBtnX = stageX + stageW - 24
+        val nextBtnW = 24
+        val nextBtnH = 15
+        val isNextHovered = mouseX >= nextBtnX && mouseX <= nextBtnX + nextBtnW && mouseY >= ctrlY && mouseY <= ctrlY + nextBtnH
+        val nextBg = if (isNextHovered) 0xFF353C4D.toInt() else 0xFF1D212E.toInt()
+        val nextBorder = if (isNextHovered) 0xFF54A0FF.toInt() else 0xFF2A3144.toInt()
+        guiGraphics.fill(nextBtnX, ctrlY, nextBtnX + nextBtnW, ctrlY + nextBtnH, nextBg)
+        guiGraphics.fill(nextBtnX, ctrlY, nextBtnX + nextBtnW, ctrlY + 1, nextBorder)
+        guiGraphics.fill(nextBtnX, ctrlY + nextBtnH - 1, nextBtnX + nextBtnW, ctrlY + nextBtnH, nextBorder)
+        guiGraphics.fill(nextBtnX, ctrlY, nextBtnX + 1, ctrlY + nextBtnH, nextBorder)
+        guiGraphics.fill(nextBtnX + nextBtnW - 1, ctrlY, nextBtnX + nextBtnW, ctrlY + nextBtnH, nextBorder)
+        guiGraphics.drawCenteredString(font, "▶", nextBtnX + nextBtnW / 2, ctrlY + 3, 0xFFFFFFFF.toInt())
+
+        // 5. Compteur de variante : Variante X / Total
+        guiGraphics.drawCenteredString(font, "§7Variante ${formIndex + 1} / ${allForms.size}§r", modalX + modalW / 2, ctrlY + 19, 0xFFAAAAAA.toInt())
+
+        // 6. Types élémentaires de la forme
+        val primColor = CobblemonOverlayManager.getElementColor(activeZoomForm.primaryType.name)
+        val primName = activeZoomForm.primaryType.displayName.string.uppercase()
+        val primW = font.width(primName) + 6
+        val sec = activeZoomForm.secondaryType
+        val totalTypeW = if (sec != null) primW + 4 + font.width(sec.displayName.string.uppercase()) + 6 else primW
+
+        var typeStartX = modalX + (modalW - totalTypeW) / 2
+        val typeY = ctrlY + 30
+        guiGraphics.fill(typeStartX, typeY, typeStartX + primW, typeY + 10, primColor)
+        guiGraphics.drawString(font, primName, typeStartX + 3, typeY + 1, 0xFFFFFFFF.toInt(), true)
+        typeStartX += primW + 4
+
+        if (sec != null) {
+            val secColor = CobblemonOverlayManager.getElementColor(sec.name)
+            val secName = sec.displayName.string.uppercase()
+            val secW = font.width(secName) + 6
+            guiGraphics.fill(typeStartX, typeY, typeStartX + secW, typeY + 10, secColor)
+            guiGraphics.drawString(font, secName, typeStartX + 3, typeY + 1, 0xFFFFFFFF.toInt(), true)
+        }
+
+        // 7. Statut de capture / possession
+        val statusInfo = getFormStatusInfo(sp, activeZoomForm, zoomModalShiny, currentTracked)
+        guiGraphics.drawCenteredString(font, statusInfo.text, modalX + modalW / 2, ctrlY + 44, statusInfo.color)
+
+        // 8. Bouton Fermer en bas
+        val bottomCloseW = 90
+        val bottomCloseH = 14
+        val bottomCloseX = modalX + (modalW - bottomCloseW) / 2
+        val bottomCloseY = modalY + modalH - 18
+        val isBottomCloseHovered = mouseX >= bottomCloseX && mouseX <= bottomCloseX + bottomCloseW &&
+                mouseY >= bottomCloseY && mouseY <= bottomCloseY + bottomCloseH
+        val bCloseBg = if (isBottomCloseHovered) 0xFF353C4D.toInt() else 0xFF1D212E.toInt()
+        val bCloseBorder = if (isBottomCloseHovered) 0xFF54A0FF.toInt() else 0xFF2A3144.toInt()
+
+        guiGraphics.fill(bottomCloseX, bottomCloseY, bottomCloseX + bottomCloseW, bottomCloseY + bottomCloseH, bCloseBg)
+        guiGraphics.fill(bottomCloseX, bottomCloseY, bottomCloseX + bottomCloseW, bottomCloseY + 1, bCloseBorder)
+        guiGraphics.fill(bottomCloseX, bottomCloseY + bottomCloseH - 1, bottomCloseX + bottomCloseW, bottomCloseY + bottomCloseH, bCloseBorder)
+        guiGraphics.fill(bottomCloseX, bottomCloseY, bottomCloseX + 1, bottomCloseY + bottomCloseH, bCloseBorder)
+        guiGraphics.fill(bottomCloseX + bottomCloseW - 1, bottomCloseY, bottomCloseX + bottomCloseW, bottomCloseY + bottomCloseH, bCloseBorder)
+        guiGraphics.drawCenteredString(font, "§7Fermer (Échap)§r", bottomCloseX + bottomCloseW / 2, bottomCloseY + 3, 0xFFFFFFFF.toInt())
+    }
+
+    private fun handleZoomModalClick(mouseX: Double, mouseY: Double) {
+        val modalW = 240
+        val modalH = 226
+        val modalX = (width - modalW) / 2
+        val modalY = (height - modalH) / 2
+
+        // Clic sur [ ✕ ] haut droite
+        val closeBtnX = modalX + modalW - 18
+        val closeBtnY = modalY + 4
+        if (mouseX >= closeBtnX && mouseX <= closeBtnX + 14 && mouseY >= closeBtnY && mouseY <= closeBtnY + 14) {
+            isZoomModalOpen = false
+            Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+            return
+        }
+
+        // Clic sur bouton fermer en bas
+        val bottomCloseW = 90
+        val bottomCloseH = 14
+        val bottomCloseX = modalX + (modalW - bottomCloseW) / 2
+        val bottomCloseY = modalY + modalH - 18
+        if (mouseX >= bottomCloseX && mouseX <= bottomCloseX + bottomCloseW && mouseY >= bottomCloseY && mouseY <= bottomCloseY + bottomCloseH) {
+            isZoomModalOpen = false
+            Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+            return
+        }
+
+        val stageW = 180
+        val stageH = 100
+        val stageX = modalX + (modalW - stageW) / 2
+        val stageY = modalY + 40
+        val ctrlY = stageY + stageH + 6
+
+        // [ ◀ ]
+        val prevBtnX = stageX
+        val prevBtnW = 24
+        val prevBtnH = 15
+        if (mouseX >= prevBtnX && mouseX <= prevBtnX + prevBtnW && mouseY >= ctrlY && mouseY <= ctrlY + prevBtnH) {
+            cycleZoomModalForm(-1)
+            return
+        }
+
+        // [ ▶ ]
+        val nextBtnX = stageX + stageW - 24
+        val nextBtnW = 24
+        val nextBtnH = 15
+        if (mouseX >= nextBtnX && mouseX <= nextBtnX + nextBtnW && mouseY >= ctrlY && mouseY <= ctrlY + nextBtnH) {
+            cycleZoomModalForm(1)
+            return
+        }
+
+        // [ ★ Shiny ]
+        val shinyBtnW = 68
+        val shinyBtnH = 15
+        val shinyBtnX = modalX + (modalW - shinyBtnW) / 2
+        if (mouseX >= shinyBtnX && mouseX <= shinyBtnX + shinyBtnW && mouseY >= ctrlY && mouseY <= ctrlY + shinyBtnH) {
+            zoomModalShiny = !zoomModalShiny
+            Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.2f))
+            return
+        }
+
+        // Clic en dehors de la boîte modale : ferme la modale
+        if (mouseX < modalX || mouseX > modalX + modalW || mouseY < modalY || mouseY > modalY + modalH) {
+            isZoomModalOpen = false
+            return
+        }
+    }
+
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button)
+
+        // Si la modale Grand Format est ouverte, elle capture tous les clics
+        if (isZoomModalOpen) {
+            handleZoomModalClick(mouseX, mouseY)
+            return true
+        }
+
+        // Clic sur le cadre de preview en haut du panneau droit (ouvre Grand Format)
+        topPreviewRect?.let { (px, py, pw, ph) ->
+            if (mouseX >= px && mouseX <= px + pw && mouseY >= py && mouseY <= py + ph) {
+                openZoomModal(selectedForm ?: selectedTracked?.species?.standardForm)
+                return true
+            }
+        }
 
         // Clic sur les onglets du panneau droit
         for (tab in RightPanelTab.values()) {
@@ -1782,8 +2134,15 @@ class CobblemonPokedexScreen(
         val contentH = (panelY + panelH - 26) - contentY
         val scrollTrackX = panelX + panelW - 5
 
-        // Clics dans l'onglet Formes (Toggle Shiny global ou par carte)
+        // Clics dans l'onglet Formes (Zoom header, Shiny header, Zoom carte, Sélection carte, Shiny carte)
         if (currentRightPanelTab == RightPanelTab.FORMS) {
+            zoomHeaderButtonRect?.let { (bx, by, bw, bh) ->
+                if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
+                    openZoomModal(selectedForm ?: selectedTracked?.species?.standardForm)
+                    return true
+                }
+            }
+
             shinyHeaderButtonRect?.let { (bx, by, bw, bh) ->
                 if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
                     globalShinyForms = !globalShinyForms
@@ -1794,6 +2153,26 @@ class CobblemonPokedexScreen(
             }
 
             if (mouseX >= panelX && mouseX <= panelX + panelW && mouseY >= contentY && mouseY <= contentY + contentH) {
+                // 1. Clic sur bouton Zoom [🔍] d'une carte
+                for ((rect, form) in zoomCardButtonRects) {
+                    val (bx, by, bw, bh) = rect
+                    if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
+                        openZoomModal(form)
+                        return true
+                    }
+                }
+
+                // 2. Clic sur le corps de la carte pour la sélectionner
+                for ((rect, form) in selectCardButtonRects) {
+                    val (bx, by, bw, bh) = rect
+                    if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
+                        selectedForm = form
+                        Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 0.9f))
+                        return true
+                    }
+                }
+
+                // 3. Clic sur le bouton étoile / sprite pour basculer shiny individuel
                 for ((rect, form) in shinyCardButtonRects) {
                     val (bx, by, bw, bh) = rect
                     if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
@@ -1821,7 +2200,9 @@ class CobblemonPokedexScreen(
                     val found = allTracked.find { it.species == clickedSp }
                     if (found != null) {
                         selectedTracked = found
+                        selectedForm = null
                         individualShinyForms.clear()
+                        zoomModalForm = null
                         rightPanelScrollOffset = 0.0
                         return true
                     }
@@ -1833,7 +2214,7 @@ class CobblemonPokedexScreen(
         val btnY = panelY + panelH - 22
         if (mouseX >= panelX + 8 && mouseX <= panelX + panelW - 8 && mouseY >= btnY && mouseY <= btnY + 16) {
             selectedTracked?.let {
-                CobblemonOverlayManager.setOverlay(it.species, it.species.standardForm)
+                CobblemonOverlayManager.setOverlay(it.species, selectedForm ?: it.species.standardForm)
             }
             return true
         }
@@ -1859,7 +2240,9 @@ class CobblemonPokedexScreen(
                     val goal = filteredGoals[index]
                     selectedGoal = goal
                     selectedTracked = allTracked.find { it.species == goal.targetSpecies }
+                    selectedForm = null
                     individualShinyForms.clear()
+                    zoomModalForm = null
                     rightPanelScrollOffset = 0.0
                     return true
                 }
@@ -1872,7 +2255,9 @@ class CobblemonPokedexScreen(
                     val index = row * cols + col
                     if (index in filteredTracked.indices) {
                         selectedTracked = filteredTracked[index]
+                        selectedForm = null
                         individualShinyForms.clear()
+                        zoomModalForm = null
                         rightPanelScrollOffset = 0.0
                         return true
                     }
@@ -1914,6 +2299,11 @@ class CobblemonPokedexScreen(
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        if (isZoomModalOpen) {
+            cycleZoomModalForm(if (scrollY > 0) -1 else 1)
+            return true
+        }
+
         val (panelX, panelY, panelW, panelH) = getRightPanelBounds()
         val contentY = panelY + 107
         val contentH = (panelY + panelH - 26) - contentY
@@ -1931,6 +2321,23 @@ class CobblemonPokedexScreen(
     }
 
     override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        if (isZoomModalOpen) {
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                isZoomModalOpen = false
+                Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+                return true
+            }
+            if (keyCode == GLFW.GLFW_KEY_LEFT) {
+                cycleZoomModalForm(-1)
+                return true
+            }
+            if (keyCode == GLFW.GLFW_KEY_RIGHT) {
+                cycleZoomModalForm(1)
+                return true
+            }
+            return true
+        }
+
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
             onClose()
             return true
