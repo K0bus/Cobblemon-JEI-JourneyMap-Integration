@@ -69,12 +69,9 @@ data class PokemonSpeciesIngredient(
      */
     val itemStack: ItemStack by lazy {
         try {
-            val pokemon = Pokemon().apply {
-                this.species = this@PokemonSpeciesIngredient.species
-                this.form = this@PokemonSpeciesIngredient.form
-                this.level = 1
-            }
-            PokemonItem.from(pokemon, 1)
+            val aspects = mutableSetOf<String>()
+            aspects.addAll(form.aspects)
+            PokemonItem.from(species, aspects, 1)
         } catch (_: Throwable) {
             ItemStack.EMPTY
         }

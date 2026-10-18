@@ -233,15 +233,15 @@ class CobblemonPokedexScreen(
     private val evoCardHeight = 46
 
     private fun getItemStack(species: Species, form: FormData? = null, shiny: Boolean = false): ItemStack {
-        return itemStackCache.computeIfAbsent(Triple(species, form, shiny)) {
+        val targetForm = form ?: species.standardForm
+        return itemStackCache.computeIfAbsent(Triple(species, targetForm, shiny)) {
             try {
-                val pokemon = Pokemon().apply {
-                    this.species = species
-                    this.form = form ?: species.standardForm
-                    this.level = 1
-                    this.shiny = shiny
+                val aspects = mutableSetOf<String>()
+                aspects.addAll(targetForm.aspects)
+                if (shiny) {
+                    aspects.add("shiny")
                 }
-                PokemonItem.from(pokemon, 1)
+                PokemonItem.from(species, aspects, 1)
             } catch (_: Throwable) {
                 ItemStack.EMPTY
             }
