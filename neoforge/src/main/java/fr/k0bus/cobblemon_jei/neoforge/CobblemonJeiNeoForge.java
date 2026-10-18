@@ -27,6 +27,7 @@ public class CobblemonJeiNeoForge {
             });
 
             net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.ClientTickEvent.Post event) -> {
+                fr.k0bus.cobblemon_jei.pokedex.PokedexNotificationHud.INSTANCE.tick();
                 while (fr.k0bus.cobblemon_jei.pokedex.CobblemonKeyBindings.INSTANCE.getOPEN_POKEDEX_KEY().consumeClick()) {
                     net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
                     if (mc.screen == null) {
@@ -34,9 +35,15 @@ public class CobblemonJeiNeoForge {
                     }
                 }
             });
-            LOGGER.info("Cobblemon JEI: Touche de raccourci Pokédex enregistrée.");
+
+            net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.RenderGuiEvent.Post event) -> {
+                fr.k0bus.cobblemon_jei.pokedex.PokedexNotificationHud.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
+            });
+
+            fr.k0bus.cobblemon_jei.pokedex.PokedexNotificationHud.INSTANCE.init();
+            LOGGER.info("Cobblemon JEI: HUD de notification Pokédex initialisé et enregistré.");
         } catch (Throwable t) {
-            LOGGER.warn("Cobblemon JEI: Erreur lors de l'enregistrement des touches: {}", t.getMessage());
+            LOGGER.warn("Cobblemon JEI: Erreur lors de l'enregistrement des événements HUD/touches: {}", t.getMessage());
         }
     }
 }

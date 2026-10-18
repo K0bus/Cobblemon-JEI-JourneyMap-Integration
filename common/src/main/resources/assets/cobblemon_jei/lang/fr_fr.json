@@ -184,5 +184,7 @@
   "gui.cobblemon_jei.pokedex.tab.all": "Tous les Pokémon",
   "gui.cobblemon_jei.pokedex.tab.missing": "Pokémon Manquants",
   "gui.cobblemon_jei.pokedex.tab.evolutions": "Évolutions à faire",
-  "gui.cobblemon_jei.pokedex.search.hint": "Rechercher (nom, #, type)..."
+  "gui.cobblemon_jei.pokedex.search.hint": "Rechercher (nom, #, type)...",
+  "gui.cobblemon_jei.notification.caught": "Capturé !",
+  "gui.cobblemon_jei.notification.scanned": "Analysé !"
 }

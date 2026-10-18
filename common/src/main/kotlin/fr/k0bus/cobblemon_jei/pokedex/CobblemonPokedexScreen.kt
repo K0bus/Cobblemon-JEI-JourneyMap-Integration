@@ -138,27 +138,8 @@ class CobblemonPokedexScreen(
         return allForms
     }
 
-    private fun getFormDisplayName(form: FormData?, sp: Species): String {
-        if (form == null || form == sp.standardForm || form.name.isBlank() || form.name.equals("normal", ignoreCase = true) || form.name.equals("standard", ignoreCase = true)) {
-            return "Forme Standard"
-        }
-        val name = form.name.trim()
-        val lower = name.lowercase()
-        return when {
-            lower == "alola" || lower == "alolan" -> "Forme d'Alola"
-            lower == "galar" || lower == "galarian" -> "Forme de Galar"
-            lower == "hisui" || lower == "hisuian" -> "Forme de Hisui"
-            lower == "paldea" || lower == "paldean" -> "Forme de Paldea"
-            lower == "gmax" || lower == "gigantamax" || lower == "gigamax" -> "Forme Gigamax"
-            lower == "mega" -> "Méga-Évolution"
-            lower == "mega-x" || lower == "megax" -> "Méga-Évolution X"
-            lower == "mega-y" || lower == "megay" -> "Méga-Évolution Y"
-            lower.startsWith("a") || lower.startsWith("e") || lower.startsWith("i") || lower.startsWith("o") || lower.startsWith("u") || lower.startsWith("y") ->
-                "Forme d'${name.replaceFirstChar(Char::titlecase)}"
-            else ->
-                "Forme de ${name.replaceFirstChar(Char::titlecase)}"
-        }
-    }
+    private fun getFormDisplayName(form: FormData?, sp: Species): String =
+        PokemonTrackerService.getFormDisplayName(form, sp)
 
     private data class FormStatusInfo(val text: String, val color: Int)
 

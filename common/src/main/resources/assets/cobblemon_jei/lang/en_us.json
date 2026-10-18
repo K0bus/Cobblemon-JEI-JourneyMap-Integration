@@ -184,5 +184,7 @@
   "gui.cobblemon_jei.pokedex.tab.all": "All Pokémon",
   "gui.cobblemon_jei.pokedex.tab.missing": "Missing Pokémon",
   "gui.cobblemon_jei.pokedex.tab.evolutions": "Pending Evolutions",
-  "gui.cobblemon_jei.pokedex.search.hint": "Search (name, #, type)..."
+  "gui.cobblemon_jei.pokedex.search.hint": "Search (name, #, type)...",
+  "gui.cobblemon_jei.notification.caught": "Caught!",
+  "gui.cobblemon_jei.notification.scanned": "Scanned!"
 }
