@@ -68,12 +68,21 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
     }
 }
 
-val curseProjectId = (findProperty("curseforge_project_id") as? String
-    ?: System.getenv("CURSEFORGE_PROJECT_ID")
-    ?: "0").trim()
-val curseApiKey = (findProperty("curseforge_token") as? String
-    ?: System.getenv("CURSEFORGE_TOKEN")
-    ?: "").trim()
+fun resolveCurseProperty(key: String, envKey: String): String {
+    val localFile = rootProject.file("local.properties")
+    if (localFile.exists()) {
+        val props = java.util.Properties()
+        localFile.inputStream().use { props.load(it) }
+        val value = props.getProperty(key)?.trim()
+        if (!value.isNullOrBlank()) return value
+    }
+    val extProp = (project.findProperty(key) as? String)?.trim()
+    if (!extProp.isNullOrBlank()) return extProp
+    return System.getenv(envKey)?.trim() ?: ""
+}
+
+val curseProjectId = resolveCurseProperty("curseforge_project_id", "CURSEFORGE_PROJECT_ID")
+val curseApiKey = resolveCurseProperty("curseforge_token", "CURSEFORGE_TOKEN")
 
 tasks.register<net.darkhax.curseforgegradle.TaskPublishCurseForge>("curseforge") {
     group = "publishing"
