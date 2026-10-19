@@ -1,0 +1,11 @@
+# ==============================================================================
+# Modèle de configuration locale (Exemple)
+# ==============================================================================
+# Copiez ce fichier en `local.properties` et renseignez vos informations :
+#
+# curseforge_project_id=123456
+# curseforge_token=votre_jeton_api_curseforge
+# ==============================================================================
+
+curseforge_project_id=
+curseforge_token=

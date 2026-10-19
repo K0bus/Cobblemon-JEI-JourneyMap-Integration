@@ -3,6 +3,7 @@ plugins {
     kotlin("jvm") version "2.0.21" apply false
     kotlin("plugin.serialization") version "2.0.21" apply false
     id("net.neoforged.moddev") version "2.0.148" apply false
+    id("net.darkhax.curseforgegradle") version "1.1.25" apply false
 }
 
 val gitVersion: groovy.lang.Closure<String> by extra
@@ -28,6 +29,21 @@ val projectVersion = computeVersion()
 
 group = "fr.k0bus"
 version = projectVersion
+
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    java.util.Properties().apply {
+        localPropertiesFile.inputStream().use { load(it) }
+        forEach { (k, v) ->
+            val keyStr = k.toString()
+            val valStr = v.toString()
+            rootProject.extensions.extraProperties.set(keyStr, valStr)
+            subprojects {
+                extensions.extraProperties.set(keyStr, valStr)
+            }
+        }
+    }
+}
 
 subprojects {
     group = "fr.k0bus"
@@ -63,4 +79,10 @@ subprojects {
             expand("version" to project.version)
         }
     }
+}
+
+tasks.register("curseforge") {
+    group = "publishing"
+    description = "Publishes both NeoForge and Fabric artifacts to CurseForge."
+    dependsOn(":neoforge:curseforge", ":fabric:curseforge")
 }

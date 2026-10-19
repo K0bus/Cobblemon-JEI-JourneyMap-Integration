@@ -17,3 +17,5 @@ logs/
 .eclipse/
 */.eclipse/
 /dist/
+local.properties
+.env

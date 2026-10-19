@@ -1,6 +1,7 @@
 plugins {
     id("net.neoforged.moddev")
     kotlin("jvm")
+    id("net.darkhax.curseforgegradle")
 }
 
 val neoforgeVersion = property("neoforge_version") as String
@@ -64,5 +65,45 @@ kotlin {
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     compilerOptions {
         freeCompilerArgs.add("-Xskip-metadata-version-check")
+    }
+}
+
+val curseProjectId = (findProperty("curseforge_project_id") as? String
+    ?: System.getenv("CURSEFORGE_PROJECT_ID")
+    ?: "0").trim()
+val curseApiKey = (findProperty("curseforge_token") as? String
+    ?: System.getenv("CURSEFORGE_TOKEN")
+    ?: "").trim()
+
+tasks.register<net.darkhax.curseforgegradle.TaskPublishCurseForge>("curseforge") {
+    group = "publishing"
+    description = "Publishes the NeoForge mod JAR to CurseForge."
+
+    apiToken = curseApiKey
+
+    val changelogFile = rootProject.layout.buildDirectory.file("release_changelog.md").get().asFile
+    val mainFile = upload(if (curseProjectId.toLongOrNull() != null) curseProjectId else "0", tasks.named("jar"))
+
+    mainFile.displayName = "${project.property("archives_base_name")}-neoforge-${project.version}.jar"
+    mainFile.releaseType = "release"
+    mainFile.changelog = changelogFile
+    mainFile.changelogType = "markdown"
+
+    mainFile.addGameVersion("1.21.1")
+    mainFile.addModLoader("NeoForge")
+    mainFile.addJavaVersion("Java 21")
+
+    mainFile.addRequirement("cobblemon", "journeymap", "architectury-api")
+
+    doFirst {
+        if (curseApiKey.isBlank()) {
+            throw GradleException("CURSEFORGE_TOKEN is required to publish to CurseForge. Set it as an environment variable or gradle property.")
+        }
+        if (curseProjectId.toLongOrNull() == null || curseProjectId == "0") {
+            throw GradleException("curseforge_project_id is required to publish to CurseForge. Set it in gradle.properties or CURSEFORGE_PROJECT_ID env var.")
+        }
+        if (!changelogFile.exists()) {
+            throw GradleException("Changelog file not found at ${changelogFile.absolutePath}. Generate it before publishing.")
+        }
     }
 }
