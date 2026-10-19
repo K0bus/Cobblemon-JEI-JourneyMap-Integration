@@ -103,6 +103,7 @@ tasks.register<net.darkhax.curseforgegradle.TaskPublishCurseForge>("curseforge")
     mainFile.addGameVersion("1.21.1")
     mainFile.addModLoader("NeoForge")
     mainFile.addJavaVersion("Java 21")
+    mainFile.addEnvironment("Client")
 
     mainFile.addRequirement("cobblemon", "journeymap", "architectury-api")
 

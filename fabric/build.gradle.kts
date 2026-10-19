@@ -68,6 +68,7 @@ tasks.register<net.darkhax.curseforgegradle.TaskPublishCurseForge>("curseforge")
     mainFile.addGameVersion("1.21.1")
     mainFile.addModLoader("Fabric")
     mainFile.addJavaVersion("Java 21")
+    mainFile.addEnvironment("Client")
 
     mainFile.addRequirement("fabric-api", "cobblemon", "journeymap", "architectury-api")
 
