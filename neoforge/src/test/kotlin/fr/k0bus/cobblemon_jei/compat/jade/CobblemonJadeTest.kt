@@ -12,6 +12,7 @@ class CobblemonJadeTest {
     fun `test UIDs are correctly defined`() {
         assertEquals("cobblemon_jei:pasture_data", PasturePokemonDataProvider.UID.toString())
         assertEquals("cobblemon_jei:pasture_fullness", PastureFullnessProvider.UID.toString())
+        assertEquals("cobblemon_jei:pokemon_status", PokemonStatusComponentProvider.UID.toString())
     }
 
     @Test

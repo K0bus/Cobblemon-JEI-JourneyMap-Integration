@@ -70,9 +70,50 @@ Lorsqu'un Pokémon entre pour la première fois dans le périmètre du joueur :
 
 ---
 
-## 🧹 Cycle de Vie & Zéro Fuite Mémoire
+---
 
-1. **Déplacement du Pokémon** : Si les coordonnées de bloc changent, `marker.setPoint(...)` réactualise la position sans détruire le marqueur.
-2. **Despawn / Capture / Mort** : Si l'UUID n'est plus présent dans la liste des entités du monde client, le marqueur est immédiatement retiré de JourneyMap via `api.remove(marker)` et évincé de la mémoire.
-3. **Changement de Dimension** : Si `currentDim != lastDimension`, `clearRadar()` vide l'ensemble des marqueurs et réinitialise les structures de données.
-4. **Fermeture du Calque** : `clearTrackedOnly()` retire les marqueurs des cibles ordinaires mais **préserve les marqueurs des Pokémon Shiny** tant qu'ils sont encore présents dans le monde.
+## 🎯 Modes de Suivi du Tracker / Radar
+
+Le [PokemonTrackingManager](file:///home/k0bus/dev/minecraft/Cobblemon_JourneyMap/common/src/main/kotlin/fr/k0bus/cobblemon_jei/pokedex/PokemonTrackingManager.kt) propose 4 modes de suivi sélectionnables directement depuis le Pokédex (bouton `🎯 Tracker` ou raccourcis dans la fiche Pokémon) :
+
+1. **Tous les non capturés (`ALL_UNCAUGHT`)** :
+   - Surveille tous les Pokémon sauvages dont l'espèce ou la forme régionale/alternative n'est pas encore enregistrée comme capturée dans votre Pokédex.
+   - Idéal pour compléter son Pokédex en exploration libre.
+   - Les marqueurs sont annotés du tag `§c[Non capturé]`.
+
+2. **Cible unique (`SINGLE`)** :
+   - Traque un Pokémon précis (et éventuellement une forme spécifique).
+   - Affiche également le calque persistant des zones de spawn sur JourneyMap.
+   - Tag de marqueur : `§3[Cible]`.
+
+3. **Lignée évolutive complète (`EVOLUTION_LINE`)** :
+   - Analyse récursivement l'arbre d'évolution complet du Pokémon sélectionné (toutes les branches d'ancêtres/pré-évolutions et tous les enfants/évolutions, y compris les branches multiples comme Évoli, Debugant, etc.).
+   - Vous alerte dès qu'un membre de la famille apparaît à proximité.
+   - Tag de marqueur : `§b[Lignée]`.
+
+4. **Liste personnalisée / Watchlist (`CUSTOM_LIST`)** :
+   - Permet d'ajouter ou de retirer n'importe quel Pokémon à une liste de surveillance à l'aide de l'étoile ⭐ sur la fiche du Pokédex.
+   - Surveille simultanément tous les spécimens de votre liste.
+   - La liste est sauvegardée de manière persistante dans `config/cobblemon_tracker.json`.
+   - Tag de marqueur : `§a[Liste]`.
+
+---
+
+## 🔍 Intégration JADE (HUD d'entité)
+
+Le composant [PokemonStatusComponentProvider](file:///home/k0bus/dev/minecraft/Cobblemon_JourneyMap/common/src/main/kotlin/fr/k0bus/cobblemon_jei/compat/jade/PokemonStatusComponentProvider.kt) enrichit le HUD Jade lorsque vous pointez un Pokémon sauvage :
+
+- **Statut Pokédex de l'espèce** :
+  - `§aCapturé` (avec icône Pokéball)
+  - `§6Vu`
+  - `§cNon découvert`
+- **Statut de la forme spécifique** (si l'espèce possède plusieurs formes) :
+  - `§aForme capturée` / `§6Forme vue` / `§cForme manquante`
+- **Statut Shiny** :
+  - Mentionne si la variante chromatique est déjà possédée en collection.
+- **Inventaire / Stock joueur** :
+  - Nombre d'exemplaires de ce Pokémon présents dans l'**Équipe** et dans le **PC** (ex: `Équipe: 1 | PC: 3 (Total: 4)`).
+  - Détail si des exemplaires correspondent exactement à la forme ciblée.
+- **Badge Cible Traquée** :
+  - `🎯 CIBLE TRAQUÉE PAR LE RADAR` affiché en surbrillance dorée si le spécimen regardé correspond à vos critères actuels de tracking.
+

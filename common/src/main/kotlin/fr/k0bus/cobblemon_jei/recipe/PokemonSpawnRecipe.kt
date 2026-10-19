@@ -25,7 +25,20 @@ data class PokemonSpawnRecipe(
     val canSeeSky: Boolean? = null,
     val minSkyLight: Int? = null,
     val maxSkyLight: Int? = null,
+    val minY: Int? = null,
+    val maxY: Int? = null,
+    val neededBaseBlocks: Set<String> = emptySet(),
+    val neededNearbyBlocks: Set<String> = emptySet(),
+    val minLight: Int? = null,
+    val maxLight: Int? = null,
+    val moonPhase: Int? = null,
+    val isSlimeChunk: Boolean? = null,
+    val minLureLevel: Int? = null,
+    val maxLureLevel: Int? = null,
+    val rodType: String? = null,
+    val bait: String? = null,
     val structures: Set<String> = emptySet(),
+    val antiStructures: Set<String> = emptySet(),
     val notes: String = ""
 ) {
     /**

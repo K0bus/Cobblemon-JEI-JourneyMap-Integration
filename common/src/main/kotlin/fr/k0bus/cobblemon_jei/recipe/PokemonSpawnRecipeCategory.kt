@@ -150,11 +150,25 @@ class PokemonSpawnRecipeCategory(
             guiGraphics.drawString(font, contextLabel, posX, 39, 0xFF54A0FF.toInt(), false)
         }
 
-        // Ligne 3 (y = 50) : Niveaux
+        // Ligne 3 (y = 50) : Niveaux & Altitude Y
         val levelsLabel = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.levels_label").string
         guiGraphics.drawString(font, levelsLabel, 8, 50, 0xFFAAAAAA.toInt(), false)
         val levelsRange = Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.level_range", recipe.levelMin, recipe.levelMax).string
-        guiGraphics.drawString(font, levelsRange, 8 + font.width(levelsLabel) + 4, 50, 0xFFE0E0E0.toInt(), false)
+        val levelsStartX = 8 + font.width(levelsLabel) + 4
+        guiGraphics.drawString(font, levelsRange, levelsStartX, 50, 0xFFE0E0E0.toInt(), false)
+
+        if (recipe.minY != null || recipe.maxY != null) {
+            val yRange = when {
+                recipe.minY != null && recipe.maxY != null -> "Y:${recipe.minY}..${recipe.maxY}"
+                recipe.minY != null -> "Y≥${recipe.minY}"
+                else -> "Y≤${recipe.maxY}"
+            }
+            val yX = (levelsStartX + font.width(levelsRange) + 8).coerceIn(88, 115)
+            if (yX + font.width("• $yRange") <= WIDTH - 6) {
+                guiGraphics.drawString(font, "•", yX - 5, 50, 0xFF666666.toInt(), false)
+                guiGraphics.drawString(font, yRange, yX, 50, 0xFFFFA502.toInt(), false)
+            }
+        }
 
         // Ligne 4 (y = 61) : Heure & Météo
         val timeLabel = formatTime(recipe.timeRange)
@@ -238,8 +252,9 @@ class PokemonSpawnRecipeCategory(
     ): List<Component> {
         val tooltips = mutableListOf<Component>()
 
-        // Tooltip complet si survol de la zone des biomes (y entre 73 et 124)
-        if (recipe.isNaturalSpawn && mouseY >= 73 && mouseY <= 124 && mouseX >= 6 && mouseX <= (WIDTH - 6)) {
+        // Tooltip complet si survol de la zone des détails (y entre 36 et 124)
+        if (recipe.isNaturalSpawn && mouseY >= 36 && mouseY <= 124 && mouseX >= 6 && mouseX <= (WIDTH - 6)) {
+            // Biomes
             if (recipe.biomes.isNotEmpty()) {
                 tooltips.add(
                     Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_biomes")
@@ -252,6 +267,7 @@ class PokemonSpawnRecipeCategory(
                     tooltips.add(Component.literal(prefix + formatBiomeName(biome)).withStyle(style))
                 }
             }
+            // Anti-Biomes
             if (recipe.antiBiomes.isNotEmpty()) {
                 tooltips.add(
                     Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_anti_biomes")
@@ -261,17 +277,90 @@ class PokemonSpawnRecipeCategory(
                     tooltips.add(Component.literal(" ✗ $anti").withStyle(ChatFormatting.RED))
                 }
             }
+            // Structures
             if (recipe.structures.isNotEmpty()) {
                 tooltips.add(
                     Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_structures")
                         .withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD)
                 )
                 for (struct in recipe.structures) {
-                    tooltips.add(Component.literal(" 🏛 $struct").withStyle(ChatFormatting.LIGHT_PURPLE))
+                    tooltips.add(Component.literal(" 🏛 ${formatBlockOrTag(struct)}").withStyle(ChatFormatting.LIGHT_PURPLE))
+                }
+            }
+            if (recipe.antiStructures.isNotEmpty()) {
+                tooltips.add(
+                    Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_anti_structures")
+                        .withStyle(ChatFormatting.RED, ChatFormatting.BOLD)
+                )
+                for (struct in recipe.antiStructures) {
+                    tooltips.add(Component.literal(" ✗ ${formatBlockOrTag(struct)}").withStyle(ChatFormatting.RED))
+                }
+            }
+
+            // Conditions de terrain & Altitude
+            val hasTerrain = recipe.minY != null || recipe.maxY != null || recipe.neededBaseBlocks.isNotEmpty() || recipe.neededNearbyBlocks.isNotEmpty()
+            if (hasTerrain) {
+                tooltips.add(Component.empty())
+                tooltips.add(
+                    Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_terrain")
+                        .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD)
+                )
+                if (recipe.minY != null || recipe.maxY != null) {
+                    val yRange = when {
+                        recipe.minY != null && recipe.maxY != null -> "${recipe.minY} à ${recipe.maxY}"
+                        recipe.minY != null -> "≥ ${recipe.minY}"
+                        else -> "≤ ${recipe.maxY}"
+                    }
+                    tooltips.add(Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_altitude", yRange).withStyle(ChatFormatting.WHITE))
+                }
+                if (recipe.neededBaseBlocks.isNotEmpty()) {
+                    val blocks = recipe.neededBaseBlocks.joinToString(", ") { formatBlockOrTag(it) }
+                    tooltips.add(Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_ground", blocks).withStyle(ChatFormatting.WHITE))
+                }
+                if (recipe.neededNearbyBlocks.isNotEmpty()) {
+                    val nearby = recipe.neededNearbyBlocks.joinToString(", ") { formatBlockOrTag(it) }
+                    tooltips.add(Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_nearby", nearby).withStyle(ChatFormatting.WHITE))
+                }
+            }
+
+            // Conditions d'environnement (Ciel, Lumière, Slime, Lune, Pêche)
+            val hasSkyOrLight = recipe.canSeeSky != null || recipe.minSkyLight != null || recipe.maxSkyLight != null ||
+                    recipe.minLight != null || recipe.maxLight != null || recipe.isSlimeChunk == true || recipe.moonPhase != null ||
+                    recipe.minLureLevel != null || recipe.rodType != null || recipe.bait != null
+
+            if (hasSkyOrLight) {
+                tooltips.add(Component.empty())
+                tooltips.add(
+                    Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_environment")
+                        .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)
+                )
+                if (recipe.canSeeSky == true) {
+                    tooltips.add(Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_sky_open").withStyle(ChatFormatting.GREEN))
+                } else if (recipe.canSeeSky == false) {
+                    tooltips.add(Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_sky_covered").withStyle(ChatFormatting.DARK_AQUA))
+                }
+                if (recipe.minSkyLight != null || recipe.maxSkyLight != null) {
+                    val skyLightRange = "${recipe.minSkyLight ?: 0} - ${recipe.maxSkyLight ?: 15}"
+                    tooltips.add(Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_sky_light", skyLightRange).withStyle(ChatFormatting.WHITE))
+                }
+                if (recipe.minLight != null || recipe.maxLight != null) {
+                    val blockLightRange = "${recipe.minLight ?: 0} - ${recipe.maxLight ?: 15}"
+                    tooltips.add(Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_block_light", blockLightRange).withStyle(ChatFormatting.WHITE))
+                }
+                if (recipe.isSlimeChunk == true) {
+                    tooltips.add(Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_slime_chunk").withStyle(ChatFormatting.GREEN))
+                }
+                if (recipe.moonPhase != null) {
+                    tooltips.add(Component.translatable("gui.cobblemon_jei.category.pokemon_spawns.tooltip_moon", formatMoonPhase(recipe.moonPhase!!)).withStyle(ChatFormatting.LIGHT_PURPLE))
+                }
+                if (recipe.minLureLevel != null || recipe.rodType != null || recipe.bait != null) {
+                    val rod = recipe.rodType ?: "Canne"
+                    val lure = if (recipe.minLureLevel != null) " (Niv. ${recipe.minLureLevel}+)" else ""
+                    val bait = if (recipe.bait != null) " [${formatBlockOrTag(recipe.bait!!)}]" else ""
+                    tooltips.add(Component.literal(" 🎣 $rod$lure$bait").withStyle(ChatFormatting.BLUE))
                 }
             }
         }
-
         return tooltips
     }
 
@@ -391,6 +480,25 @@ class PokemonSpawnRecipeCategory(
             "steel" -> 0xFF718093.toInt()
             "fairy" -> 0xFFFDA7DF.toInt()
             else -> 0xFF747D8C.toInt()
+        }
+    }
+
+    private fun formatBlockOrTag(raw: String): String {
+        val clean = raw.removePrefix("#").substringAfter(":")
+        return clean.replace("_", " ").split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+    }
+
+    private fun formatMoonPhase(phase: Int): String {
+        return when (phase) {
+            0 -> "Pleine lune"
+            1 -> "Gibbeuse décroissante"
+            2 -> "Dernier quartier"
+            3 -> "Croissant décroissant"
+            4 -> "Nouvelle lune"
+            5 -> "Premier croissant"
+            6 -> "Premier quartier"
+            7 -> "Gibbeuse croissante"
+            else -> "Phase $phase"
         }
     }
 }

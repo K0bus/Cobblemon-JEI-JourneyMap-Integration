@@ -18,6 +18,10 @@ class CobblemonJadePlugin : IWailaPlugin {
         registration.registerEntityComponent(PastureFullnessProvider.INSTANCE, PokemonEntity::class.java)
         registration.addConfig(PastureFullnessProvider.UID, true)
         registration.markAsClientFeature(PastureFullnessProvider.UID)
+
+        registration.registerEntityComponent(PokemonStatusComponentProvider.INSTANCE, PokemonEntity::class.java)
+        registration.addConfig(PokemonStatusComponentProvider.UID, true)
+        registration.markAsClientFeature(PokemonStatusComponentProvider.UID)
     }
 
     companion object {

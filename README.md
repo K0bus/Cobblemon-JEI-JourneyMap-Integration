@@ -23,15 +23,31 @@ It provides:
 
 ### 1. 🔍 Just Enough Items (JEI) Integration
 - **Search by Cobblemon Species Ingredient**: Look up any Pokémon by its translated name (EN/FR), National Pokédex number, or elemental types.
-- **Ultra-Detailed Spawn Cards**:
-  - Eligible dimensions (Overworld, Nether, End, plus modded dimensions such as The Aether).
-  - Allowed biomes (with dynamic registry tag resolution like `#minecraft:is_forest`, `#c:is_nether`, etc.).
-  - Environmental criteria: Weather (clear, rain, thunder), time of day (day, night, dawn, dusk), Y altitude bounds, and spawn contexts (ground, water, lava, underground, fishing).
+- **Ultra-Detailed Spawn Cards & Tooltips**:
+  - **Eligible Dimensions**: Overworld, Nether, End, plus modded dimensions such as The Aether.
+  - **Allowed Biomes**: Real-time registry tag resolution (`#minecraft:is_forest`, `#c:is_nether`, `#cobblemon:is_jungle`, etc.) and anti-biomes (`antiBiomes`).
+  - **Terrain & Altitude Constraints**:
+    - **Y Altitude Limits**: Exact range (`minY` to `maxY`), e.g., underground-only spans or mountain peaks.
+    - **Required Ground Block (`neededBaseBlocks`)**: Specific block under the Pokémon (`quartz_block`, `sand`, `snow_block`, tags, etc.).
+    - **Nearby Blocks (`neededNearbyBlocks`)**: Required environment blocks within vicinity (`water`, `lava`, `leaves`, etc.).
+  - **Atmospheric & Celestial Conditions**:
+    - **Sky Visibility (`canSeeSky`)**: Open sky vs. subterranean/underground/covered cavern spawns.
+    - **Light Levels**: Celestial sky light (`minSkyLight`/`maxSkyLight`) and block light (`minLight`/`maxLight`).
+    - **Lunar Phase (`moonPhase`)**: Specific moon phase requirements (e.g., Full Moon, New Moon).
+    - **Slime Chunks (`isSlimeChunk`)**: Dedicated slime chunk wild spawn conditions.
+    - **Fishing Criteria**: Required fishing rod type (`rodType`), lure level (`minLureLevel`), and bait.
+  - **Structures**: Whitelisted structures (`structures`) and excluded structures (`antiStructures`).
   - Spawn weights, estimated rarity buckets, and level ranges.
 - **Evolution Tree Cards**:
   - Level thresholds, evolution stones and items (linking cords, held items), trade conditions, friendship levels, and required time-of-day windows.
 - **Pokémon Defeat Drops (Loot Tables)**:
   - View all item drops obtained by defeating wild Pokémon, with quantities, exact drop percentages, roll counts, and evolution item tags.
+- **Special Traits & Abilities (Pokédex & Cards)**:
+  - 🏇 **Mounts**: Rideable Pokémon (land, water, flying).
+  - 🐾 **Shoulder Mountable**: Pocket-sized companions carryable on player shoulders.
+  - 🔥 **Fire & Lava Immunity**: Natural immunity to fire, lava, and burning hazards.
+  - 🔇 **Sculk Stealth**: Vibration dampening (immune to Warden / Sculk sensor detection).
+  - ⚡ **Gigantamax**: Availability of Gigantamax form.
 
 
 ---
@@ -59,10 +75,12 @@ It provides:
   - **Audio Fanfare**: Plays a celebratory chime (`UI_TOAST_CHALLENGE_COMPLETE`).
   - **Visual Notification**: Golden highlight banner in the client Actionbar.
   - **Dedicated Map Marker (`MarkerOverlay`)**: Sparkling golden Pokéball marker highlighting the Shiny's exact position with species name, level, and status tooltip.
-- **Active Target Radar**:
-  - Tracks live positions of the selected species and form in real-time.
-  - Smooth marker movement on both the minimap and fullscreen map.
-  - Automatic removal upon entity capture, defeat, or despawn.
+- **Multi-Target Tracker & Radar (`PokemonTrackingManager`)**:
+  - **All Uncaught Pokémon (`ALL_UNCAUGHT`)**: Tracks all wild Pokémon whose species or form is still uncaught in your Pokédex. Ideal for completing the Pokédex on the go!
+  - **Single Target (`SINGLE`)**: Tracks a specific Pokémon (and optionally form) with persistent spawn zones.
+  - **Full Evolutionary Line (`EVOLUTION_LINE`)**: Automatically resolves and tracks the entire evolutionary family (all ancestor and descendant stages/branches, e.g. Eevee, Tyrogue).
+  - **Custom Watchlist (`CUSTOM_LIST`)**: Star ⭐ any Pokémon in the Pokédex to add it to your tracking list; radar alerts whenever any starred Pokémon is nearby.
+  - Interactive Tracker modal directly in the Pokédex screen (`🎯 Tracker` button).
 
 ---
 
@@ -116,6 +134,13 @@ It provides:
   - Evolution line preview and one-click *"View on JourneyMap"* button.
 
 ### 7. 🌿 Jade Integration (Optional Soft-Dependency)
+- **Live Pokémon Pokédex & Stock Status (`PokemonStatusComponentProvider`)**:
+  - When looking at a wild Pokémon, displays its Pokédex status:
+    - Species: **Caught** / **Seen** / **Undiscovered**
+    - Form: **Form caught** / **Form seen** / **Form missing**
+    - Shiny: Owned / Unowned
+  - **Inventory & PC Counter**: Shows how many Pokémon of this species/form are stored in your **Party** and in your **PC** (e.g. `Party: 1 | PC: 3 (Total: 4)`).
+  - **Tracked Target Badge**: Highlights when the target is currently tracked by your radar (`🎯 RADAR TARGET DETECTED`).
 - **Automatic Pastured Pokémon Detection**:
   - Automatically identifies whether a Pokémon is tethered to a Pasture Block (`PokemonPastureBlockEntity`).
 - **Live Fullness Gauge (`PastureFullnessProvider`)**:
@@ -128,7 +153,7 @@ It provides:
 - **Client & Server Synchronized (`PasturePokemonDataProvider`)**:
   - Server-side data provider ensuring 100% precision in singleplayer, LAN, or dedicated servers.
 - **Configurable via Jade GUI**:
-  - Independent toggles for Fullness and Drop Timer in Jade's in-game config screen.
+  - Independent toggles for Fullness, Drop Timer, and Pokémon Status in Jade's in-game config screen.
 
 ---
 

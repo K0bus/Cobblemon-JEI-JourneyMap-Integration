@@ -196,7 +196,7 @@ object PokemonSpawnDataLoader {
         }
     }
 
-    private fun parseSpawnPoolFile(json: JsonObject, sourceId: String, output: MutableList<RawSpawnEntry>) {
+    internal fun parseSpawnPoolFile(json: JsonObject, sourceId: String, output: MutableList<RawSpawnEntry>) {
         val enabled = json.get("enabled")?.asBoolean ?: true
         if (!enabled) return
 
@@ -230,12 +230,25 @@ object PokemonSpawnDataLoader {
             }
 
             val canSeeSky = condObj?.get("canSeeSky")?.asBoolean
-            val minLight = condObj?.get("minSkyLight")?.asInt
-            val maxLight = condObj?.get("maxSkyLight")?.asInt
+            val minSkyLight = condObj?.get("minSkyLight")?.asInt
+            val maxSkyLight = condObj?.get("maxSkyLight")?.asInt
+            val minY = condObj?.get("minY")?.asInt
+            val maxY = condObj?.get("maxY")?.asInt
+            val neededBaseBlocks = parseStringList(condObj, "neededBaseBlocks")
+            val neededNearbyBlocks = parseStringList(condObj, "neededNearbyBlocks")
+            val minLight = condObj?.get("minLight")?.asInt
+            val maxLight = condObj?.get("maxLight")?.asInt
+            val moonPhase = condObj?.get("moonPhase")?.asInt
+            val isSlimeChunk = condObj?.get("isSlimeChunk")?.asBoolean
+            val minLureLevel = condObj?.get("minLureLevel")?.asInt
+            val maxLureLevel = condObj?.get("maxLureLevel")?.asInt
+            val rodType = condObj?.get("rodType")?.asString
+            val bait = condObj?.get("bait")?.asString
             val structures = parseStringList(condObj, "structures")
 
             val antiCondObj = entryObj.getAsJsonObject("anticondition")
             val antiBiomes = parseStringList(antiCondObj, "biomes")
+            val antiStructures = parseStringList(antiCondObj, "structures")
 
             // Cas 1 : Spawns standard de type "pokemon"
             val pokemonSpec = entryObj.get("pokemon")?.asString
@@ -253,9 +266,22 @@ object PokemonSpawnDataLoader {
                     timeRange = timeRange,
                     weather = weather,
                     canSeeSky = canSeeSky,
+                    minSkyLight = minSkyLight,
+                    maxSkyLight = maxSkyLight,
+                    minY = minY,
+                    maxY = maxY,
+                    neededBaseBlocks = neededBaseBlocks,
+                    neededNearbyBlocks = neededNearbyBlocks,
                     minLight = minLight,
                     maxLight = maxLight,
+                    moonPhase = moonPhase,
+                    isSlimeChunk = isSlimeChunk,
+                    minLureLevel = minLureLevel,
+                    maxLureLevel = maxLureLevel,
+                    rodType = rodType,
+                    bait = bait,
                     structures = structures,
+                    antiStructures = antiStructures,
                     output = output
                 )
             }
@@ -284,9 +310,22 @@ object PokemonSpawnDataLoader {
                         timeRange = timeRange,
                         weather = weather,
                         canSeeSky = canSeeSky,
+                        minSkyLight = minSkyLight,
+                        maxSkyLight = maxSkyLight,
+                        minY = minY,
+                        maxY = maxY,
+                        neededBaseBlocks = neededBaseBlocks,
+                        neededNearbyBlocks = neededNearbyBlocks,
                         minLight = minLight,
                         maxLight = maxLight,
+                        moonPhase = moonPhase,
+                        isSlimeChunk = isSlimeChunk,
+                        minLureLevel = minLureLevel,
+                        maxLureLevel = maxLureLevel,
+                        rodType = rodType,
+                        bait = bait,
                         structures = structures,
+                        antiStructures = antiStructures,
                         output = output
                     )
                 }
@@ -307,9 +346,22 @@ object PokemonSpawnDataLoader {
         timeRange: String,
         weather: String,
         canSeeSky: Boolean?,
+        minSkyLight: Int?,
+        maxSkyLight: Int?,
+        minY: Int?,
+        maxY: Int?,
+        neededBaseBlocks: Set<String>,
+        neededNearbyBlocks: Set<String>,
         minLight: Int?,
         maxLight: Int?,
+        moonPhase: Int?,
+        isSlimeChunk: Boolean?,
+        minLureLevel: Int?,
+        maxLureLevel: Int?,
+        rodType: String?,
+        bait: String?,
         structures: Set<String>,
+        antiStructures: Set<String>,
         output: MutableList<RawSpawnEntry>
     ) {
         val (species, form) = resolveSpeciesAndForm(pokemonSpec)
@@ -329,9 +381,22 @@ object PokemonSpawnDataLoader {
                     timeRange = timeRange,
                     weather = weather,
                     canSeeSky = canSeeSky,
-                    minSkyLight = minLight,
-                    maxSkyLight = maxLight,
-                    structures = structures
+                    minSkyLight = minSkyLight,
+                    maxSkyLight = maxSkyLight,
+                    minY = minY,
+                    maxY = maxY,
+                    neededBaseBlocks = neededBaseBlocks,
+                    neededNearbyBlocks = neededNearbyBlocks,
+                    minLight = minLight,
+                    maxLight = maxLight,
+                    moonPhase = moonPhase,
+                    isSlimeChunk = isSlimeChunk,
+                    minLureLevel = minLureLevel,
+                    maxLureLevel = maxLureLevel,
+                    rodType = rodType,
+                    bait = bait,
+                    structures = structures,
+                    antiStructures = antiStructures
                 )
             )
         }
@@ -465,7 +530,7 @@ object PokemonSpawnDataLoader {
     /**
      * Agrège les entrées partageant des conditions similaires pour fusionner les biomes.
      */
-    private fun aggregateRawEntries(rawEntries: List<RawSpawnEntry>): List<PokemonSpawnRecipe> {
+    internal fun aggregateRawEntries(rawEntries: List<RawSpawnEntry>): List<PokemonSpawnRecipe> {
         data class GroupKey(
             val species: Species,
             val form: FormData,
@@ -475,7 +540,11 @@ object PokemonSpawnDataLoader {
             val context: String,
             val timeRange: String,
             val weather: String,
-            val dimensions: Set<String>
+            val dimensions: Set<String>,
+            val minY: Int?,
+            val maxY: Int?,
+            val neededBaseBlocks: Set<String>,
+            val isSlimeChunk: Boolean?
         )
 
         val groups = rawEntries.groupBy { entry ->
@@ -488,7 +557,11 @@ object PokemonSpawnDataLoader {
                 context = entry.context,
                 timeRange = entry.timeRange,
                 weather = entry.weather,
-                dimensions = entry.dimensions
+                dimensions = entry.dimensions,
+                minY = entry.minY,
+                maxY = entry.maxY,
+                neededBaseBlocks = entry.neededBaseBlocks,
+                isSlimeChunk = entry.isSlimeChunk
             )
         }
 
@@ -497,10 +570,19 @@ object PokemonSpawnDataLoader {
             val mergedBiomes = entries.flatMap { it.biomes }.toSet()
             val mergedAntiBiomes = entries.flatMap { it.antiBiomes }.toSet()
             val mergedStructures = entries.flatMap { it.structures }.toSet()
+            val mergedAntiStructures = entries.flatMap { it.antiStructures }.toSet()
+            val mergedNearbyBlocks = entries.flatMap { it.neededNearbyBlocks }.toSet()
             val maxWeight = entries.maxOfOrNull { it.weight } ?: 10.0f
             val canSeeSky = entries.firstNotNullOfOrNull { it.canSeeSky }
-            val minLight = entries.firstNotNullOfOrNull { it.minSkyLight }
-            val maxLight = entries.firstNotNullOfOrNull { it.maxSkyLight }
+            val minSkyLight = entries.firstNotNullOfOrNull { it.minSkyLight }
+            val maxSkyLight = entries.firstNotNullOfOrNull { it.maxSkyLight }
+            val minLight = entries.firstNotNullOfOrNull { it.minLight }
+            val maxLight = entries.firstNotNullOfOrNull { it.maxLight }
+            val moonPhase = entries.firstNotNullOfOrNull { it.moonPhase }
+            val minLureLevel = entries.firstNotNullOfOrNull { it.minLureLevel }
+            val maxLureLevel = entries.firstNotNullOfOrNull { it.maxLureLevel }
+            val rodType = entries.firstNotNullOfOrNull { it.rodType }
+            val bait = entries.firstNotNullOfOrNull { it.bait }
 
             recipes.add(
                 PokemonSpawnRecipe(
@@ -518,9 +600,22 @@ object PokemonSpawnDataLoader {
                     timeRange = key.timeRange,
                     weather = key.weather,
                     canSeeSky = canSeeSky,
-                    minSkyLight = minLight,
-                    maxSkyLight = maxLight,
-                    structures = mergedStructures
+                    minSkyLight = minSkyLight,
+                    maxSkyLight = maxSkyLight,
+                    minY = key.minY,
+                    maxY = key.maxY,
+                    neededBaseBlocks = key.neededBaseBlocks,
+                    neededNearbyBlocks = mergedNearbyBlocks,
+                    minLight = minLight,
+                    maxLight = maxLight,
+                    moonPhase = moonPhase,
+                    isSlimeChunk = key.isSlimeChunk,
+                    minLureLevel = minLureLevel,
+                    maxLureLevel = maxLureLevel,
+                    rodType = rodType,
+                    bait = bait,
+                    structures = mergedStructures,
+                    antiStructures = mergedAntiStructures
                 )
             )
         }
@@ -567,7 +662,7 @@ object PokemonSpawnDataLoader {
         return result
     }
 
-    private data class RawSpawnEntry(
+    internal data class RawSpawnEntry(
         val species: Species,
         val form: FormData,
         val bucket: String,
@@ -583,6 +678,19 @@ object PokemonSpawnDataLoader {
         val canSeeSky: Boolean?,
         val minSkyLight: Int?,
         val maxSkyLight: Int?,
-        val structures: Set<String>
+        val minY: Int?,
+        val maxY: Int?,
+        val neededBaseBlocks: Set<String>,
+        val neededNearbyBlocks: Set<String>,
+        val minLight: Int?,
+        val maxLight: Int?,
+        val moonPhase: Int?,
+        val isSlimeChunk: Boolean?,
+        val minLureLevel: Int?,
+        val maxLureLevel: Int?,
+        val rodType: String?,
+        val bait: String?,
+        val structures: Set<String>,
+        val antiStructures: Set<String>
     )
 }

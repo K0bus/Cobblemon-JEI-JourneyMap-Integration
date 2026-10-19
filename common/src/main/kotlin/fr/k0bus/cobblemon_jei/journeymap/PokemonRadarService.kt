@@ -163,10 +163,7 @@ object PokemonRadarService {
             } catch (_: Throwable) {}
         }
 
-        val targetSpecies = if (CobblemonOverlayManager.isOverlayActive) CobblemonOverlayManager.activeSpecies else null
-        val targetForm = if (CobblemonOverlayManager.isOverlayActive) CobblemonOverlayManager.activeForm else null
-
-        scanWorld(mc, level, player, targetSpecies, targetForm)
+        scanWorld(mc, level, player)
     }
 
     /**
@@ -216,9 +213,7 @@ object PokemonRadarService {
     private fun scanWorld(
         mc: Minecraft,
         level: net.minecraft.client.multiplayer.ClientLevel,
-        player: net.minecraft.world.entity.player.Player,
-        targetSpecies: Species?,
-        targetForm: FormData?
+        player: net.minecraft.world.entity.player.Player
     ) {
         val api = clientApi ?: return
 
@@ -230,7 +225,7 @@ object PokemonRadarService {
 
         val foundPokemons = mutableMapOf<UUID, DetectedPokemon>()
         var foundNewShinySpecies: Species? = null
-        var foundNewTargetSpecies = false
+        var foundNewTargetSpecies: Species? = null
         var currentShinyCount = 0
         var currentTargetCount = 0
 
@@ -248,11 +243,8 @@ object PokemonRadarService {
 
                 // Vérifier si cette entité doit être suivie par le radar :
                 // Cas A : C'est un Shiny sauvage capturable -> Sentinelle permanente activée !
-                // Cas B : C'est le Pokémon actuellement ciblé par l'overlay de recherche
-                val matchesTarget = targetSpecies != null &&
-                        species.name.equals(targetSpecies.name, ignoreCase = true) &&
-                        (targetForm == null || form.name.equals(targetForm.name, ignoreCase = true))
-
+                // Cas B : C'est une cible valide selon le mode de tracking actif (non capturé, cible unique, lignée, liste)
+                val matchesTarget = fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.isTarget(species, form)
                 val isGlobalShiny = isShiny
 
                 if (!isGlobalShiny && !matchesTarget) {
@@ -284,7 +276,7 @@ object PokemonRadarService {
                     if (isShiny) {
                         foundNewShinySpecies = species
                     } else if (matchesTarget) {
-                        foundNewTargetSpecies = true
+                        foundNewTargetSpecies = species
                     }
                     alertedEntities.add(uuid)
                 }
@@ -338,8 +330,8 @@ object PokemonRadarService {
         // 3. Notification sonore et visuelle prioritaire pour les Shiny
         if (foundNewShinySpecies != null) {
             playShinyAlert(mc, player, foundNewShinySpecies)
-        } else if (foundNewTargetSpecies && targetSpecies != null) {
-            playTargetAlert(mc, player, targetSpecies)
+        } else if (foundNewTargetSpecies != null) {
+            playTargetAlert(mc, player, foundNewTargetSpecies)
         }
     }
 
@@ -351,13 +343,20 @@ object PokemonRadarService {
         val marker = MarkerOverlay(MOD_ID, detected.blockPos, icon)
 
         val shinyTag = if (detected.isShiny) " §6★ §eSHINY §6★" else ""
+        val targetTag = if (!detected.isShiny) fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.getTargetTag(detected.species, detected.form) else ""
         val wildTag = if (detected.isWild) "§7(Sauvage)" else "§b(Dressé)"
-        val titleText = "§f${detected.species.translatedName.string}$shinyTag\n" +
+        val titleText = "§f${detected.species.translatedName.string}$shinyTag$targetTag\n" +
                 "§7Niveau: §e${detected.level} $wildTag\n" +
                 "§8Position: ${detected.blockPos.x}, ${detected.blockPos.y}, ${detected.blockPos.z}"
 
-        val labelText = if (detected.isShiny) "★ ${detected.species.translatedName.string} Lv.${detected.level}"
-        else "${detected.species.translatedName.string} Lv.${detected.level}"
+        val labelPrefix = when {
+            detected.isShiny -> "★ "
+            fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.currentMode == fr.k0bus.cobblemon_jei.pokedex.TrackingMode.ALL_UNCAUGHT -> "[Dex] "
+            fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.currentMode == fr.k0bus.cobblemon_jei.pokedex.TrackingMode.EVOLUTION_LINE -> "[Évo] "
+            fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.currentMode == fr.k0bus.cobblemon_jei.pokedex.TrackingMode.CUSTOM_LIST -> "[★] "
+            else -> ""
+        }
+        val labelText = "$labelPrefix${detected.species.translatedName.string} Lv.${detected.level}"
 
         marker.overlayGroupName = OVERLAY_GROUP_RADAR
         marker.title = titleText
@@ -425,10 +424,17 @@ object PokemonRadarService {
                     1.0f,
                     false
                 )
-                player.displayClientMessage(
-                    Component.translatable("chat.cobblemon_jm.radar.nearby", species.translatedName),
-                    true
-                )
+                val msg = when (fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.currentMode) {
+                    fr.k0bus.cobblemon_jei.pokedex.TrackingMode.ALL_UNCAUGHT ->
+                        Component.translatable("chat.cobblemon_jm.radar.nearby_uncaught", species.translatedName)
+                    fr.k0bus.cobblemon_jei.pokedex.TrackingMode.EVOLUTION_LINE ->
+                        Component.translatable("chat.cobblemon_jm.radar.nearby_line", species.translatedName)
+                    fr.k0bus.cobblemon_jei.pokedex.TrackingMode.CUSTOM_LIST ->
+                        Component.translatable("chat.cobblemon_jm.radar.nearby_list", species.translatedName)
+                    else ->
+                        Component.translatable("chat.cobblemon_jm.radar.nearby", species.translatedName)
+                }
+                player.displayClientMessage(msg, true)
             } catch (_: Throwable) {}
         }
     }
@@ -476,10 +482,13 @@ object PokemonRadarService {
     /**
      * Fournit un résumé textuel formaté de l'état du radar pour l'intégration dans l'interface HUD / Tooltips.
      */
-    fun getStatusSummary(speciesName: String): String {
+    fun getStatusSummary(speciesName: String = ""): String {
+        val modeSummary = fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.getModeSummary()
+        val nameToShow = speciesName.ifBlank { modeSummary }
         return when {
-            hasShinyNearby -> "§6★ $shinyNearbyCount SHINY à proximité ! §e($detectedCount $speciesName)"
-            detectedCount > 0 -> "§a$detectedCount cible(s) à portée"
+            hasShinyNearby -> "§6★ $shinyNearbyCount SHINY à proximité ! §e($detectedCount $nameToShow)"
+            detectedCount > 0 -> "§a$detectedCount cible(s) à portée §7($nameToShow)"
+            fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.isTrackingActive -> "§70 cible ($nameToShow)"
             else -> "§7Aucun spécimen à portée"
         }
     }

@@ -11,13 +11,15 @@ import journeymap.api.v2.client.IClientAPI
 object CobblemonOverlayManager {
 
     val isOverlayActive: Boolean
-        get() = SpawnOverlayManager.isOverlayActive
+        get() = SpawnOverlayManager.isOverlayActive || fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.isTrackingActive
 
     val activeSpecies: Species?
         get() = SpawnOverlayManager.activeSpecies
+            ?: fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.targetSpecies
+            ?: fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.evolutionBaseSpecies
 
     val activeForm: FormData?
-        get() = SpawnOverlayManager.activeForm
+        get() = SpawnOverlayManager.activeForm ?: fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.targetForm
 
     val scanProgress: SpawnOverlayManager.ScanProgress
         get() = SpawnOverlayManager.scanProgress
@@ -27,11 +29,15 @@ object CobblemonOverlayManager {
     }
 
     fun setOverlay(species: Species?, form: FormData? = null) {
-        SpawnOverlayManager.setOverlay(species, form)
+        if (species != null) {
+            fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.trackSingle(species, form)
+        } else {
+            clearOverlay()
+        }
     }
 
     fun clearOverlay() {
-        SpawnOverlayManager.clearOverlay()
+        fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.stopTracking()
     }
 
     fun getElementColor(typeName: String): Int {
