@@ -218,8 +218,20 @@ class CobblemonRctProgressionScreen(
     }
 
     private fun centerOnNextTarget() {
-        val target = graph?.nodes?.firstOrNull { it.status == RctProgressionStatus.AVAILABLE }
-            ?: graph?.nodes?.firstOrNull() ?: return
+        val nodes = graph?.nodes ?: return
+
+        // 1. Chercher en priorité absolue les dresseurs NON-OPTIONNELS disponibles (histoire principale / arènes)
+        val nonOptionalTarget = nodes
+            .filter { !it.trainer.optional && it.status == RctProgressionStatus.AVAILABLE }
+            .minWithOrNull(compareBy({ it.rank }, { it.trainer.computedLevelCap }))
+
+        // 2. Si et seulement s'il n'y a plus aucun dresseur non-optionnel disponible, basculer sur les optionnels
+        val target = nonOptionalTarget
+            ?: nodes
+                .filter { it.trainer.optional && it.status == RctProgressionStatus.AVAILABLE }
+                .minWithOrNull(compareBy({ it.rank }, { it.trainer.computedLevelCap }))
+            ?: nodes.firstOrNull()
+            ?: return
 
         val drawerWidth = if (isDetailDrawerOpen) 240.0 else 0.0
         val visibleW = width - drawerWidth
@@ -534,7 +546,17 @@ class CobblemonRctProgressionScreen(
         val lines = mutableListOf<Component>()
         lines.add(Component.literal("§6§l${t.name}§r"))
         lines.add(Component.literal("§7Type : §f${t.type.replaceFirstChar { it.uppercase() }}"))
-        lines.add(Component.literal("§7Cap de Niveau : §aNv. ${t.computedLevelCap}§r"))
+
+        val maxPokeLevel = t.team.maxOfOrNull { it.level } ?: t.computedLevelCap
+        val nextSuccessorCap = node.successorIds
+            .mapNotNull { RctDataLoader.getTrainer(it)?.computedLevelCap }
+            .filter { it > t.computedLevelCap }
+            .minOrNull()
+        val unlockedCapAfterWin = nextSuccessorCap ?: t.computedLevelCap
+
+        lines.add(Component.literal("§7Niveau max Pokémon : §bNv. $maxPokeLevel§r"))
+        lines.add(Component.literal("§7Cap imposé combat : §eNv. ${t.computedLevelCap}§r"))
+        lines.add(Component.literal("§7Cap débloqué après victoire : §aNv. $unlockedCapAfterWin§r"))
         lines.add(Component.literal("§7Équipe : §f${t.team.size} Pokémon"))
 
         when (node.status) {
@@ -615,14 +637,28 @@ class CobblemonRctProgressionScreen(
 
         curY += statusBannerH + 10
 
-        // 3. Cap de niveau
-        val capBannerH = 26
+        // 3. Cap de niveau & progression
+        val maxPokeLevel = t.team.maxOfOrNull { it.level } ?: t.computedLevelCap
+        val nextSuccessorCap = node.successorIds
+            .mapNotNull { RctDataLoader.getTrainer(it)?.computedLevelCap }
+            .filter { it > t.computedLevelCap }
+            .minOrNull()
+        val unlockedCapAfterWin = nextSuccessorCap ?: t.computedLevelCap
+
+        val capBannerH = 44
         guiGraphics.fill(panelX + 14, curY, panelX + panelW - 14, curY + capBannerH, 0xFF1C2230.toInt())
         guiGraphics.fill(panelX + 14, curY, panelX + 17, curY + capBannerH, getCapBadgeColor(t.computedLevelCap))
 
         guiGraphics.drawString(font, "CAP DE NIVEAU DU COMBAT", panelX + 22, curY + 4, 0xFFA0AABF.toInt(), false)
-        guiGraphics.drawString(font, "Nv. ${t.computedLevelCap}", panelX + 22, curY + 14, 0xFFF1C40F.toInt(), true)
-        guiGraphics.drawString(font, "(Maximum toléré)", panelX + 70, curY + 14, 0xFF7F8C8D.toInt(), false)
+        guiGraphics.drawString(font, "Cap combat : §eNv. ${t.computedLevelCap}§r", panelX + 22, curY + 16, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, "Max adverse : §bNv. $maxPokeLevel§r", panelX + 120, curY + 16, 0xFFFFFFFF.toInt(), false)
+
+        val unlockText = if (node.status == RctProgressionStatus.DEFEATED) {
+            "Cap débloqué : §aNv. $unlockedCapAfterWin§r §7(Déjà acquis)§r"
+        } else {
+            "Cap après victoire : §aNv. $unlockedCapAfterWin§r"
+        }
+        guiGraphics.drawString(font, unlockText, panelX + 22, curY + 28, 0xFFFFFFFF.toInt(), false)
 
         curY += capBannerH + 12
 
@@ -674,20 +710,32 @@ class CobblemonRctProgressionScreen(
         guiGraphics.drawString(font, "Poids de spawn : §f$weightPct§r", panelX + 14, curY, 0xFFA0AABF.toInt(), false)
         curY += 12
 
-        val biomesWhite = if (t.biomeTagWhitelist.isNotEmpty()) {
+        // Biomes autorisés (avec retour à la ligne automatique sans débordement)
+        guiGraphics.drawString(font, "§aBiomes autorisés :§r", panelX + 14, curY, 0xFFFFFFFF.toInt(), false)
+        curY += 11
+        val whiteText = if (t.biomeTagWhitelist.isNotEmpty()) {
             t.biomeTagWhitelist.joinToString(", ") { "#${it.removePrefix("#")}" }
         } else {
             "Tous les biomes autorisés"
         }
-        val biomesWhiteTrunc = font.plainSubstrByWidth("Biomes : $biomesWhite", panelW - 28)
-        guiGraphics.drawString(font, "§aBiomes : §f$biomesWhiteTrunc§r", panelX + 14, curY, 0xFFFFFFFF.toInt(), false)
-        curY += 12
+        val whiteLines = font.split(Component.literal("§7$whiteText§r"), panelW - 32)
+        for (line in whiteLines) {
+            guiGraphics.drawString(font, line, panelX + 18, curY, 0xFFCCCCCC.toInt(), false)
+            curY += 10
+        }
+        curY += 3
 
+        // Biomes interdits (avec retour à la ligne automatique sans débordement)
         if (t.biomeTagBlacklist.isNotEmpty()) {
-            val biomesBlack = t.biomeTagBlacklist.joinToString(", ") { "#${it.removePrefix("#")}" }
-            val biomesBlackTrunc = font.plainSubstrByWidth("Interdits : $biomesBlack", panelW - 28)
-            guiGraphics.drawString(font, "§cInterdits : §7$biomesBlackTrunc§r", panelX + 14, curY, 0xFFFFFFFF.toInt(), false)
-            curY += 12
+            guiGraphics.drawString(font, "§cBiomes interdits :§r", panelX + 14, curY, 0xFFFFFFFF.toInt(), false)
+            curY += 11
+            val blackText = t.biomeTagBlacklist.joinToString(", ") { "#${it.removePrefix("#")}" }
+            val blackLines = font.split(Component.literal("§8$blackText§r"), panelW - 32)
+            for (line in blackLines) {
+                guiGraphics.drawString(font, line, panelX + 18, curY, 0xFF999999.toInt(), false)
+                curY += 10
+            }
+            curY += 3
         }
 
         if (t.requiredDefeats.isNotEmpty()) {
