@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     `java-library`
     kotlin("jvm")
@@ -34,7 +36,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 fun resolveCurseProperty(key: String, envKey: String): String {
     val localFile = rootProject.file("local.properties")
     if (localFile.exists()) {
-        val props = java.util.Properties()
+        val props = Properties()
         localFile.inputStream().use { props.load(it) }
         val value = props.getProperty(key)?.trim()
         if (!value.isNullOrBlank()) return value
