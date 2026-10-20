@@ -50,6 +50,7 @@ Exécuter la vérification complète en local :
 ### Actions à réaliser obligatoirement à cette étape :
 1. **Présenter le récapitulatif complet à l'utilisateur** :
    - **Tag calculé** (ex. `v1.2.0`).
+   - **Noms de release CurseForge** : `vX.Y.Z [Fabric]` et `vX.Y.Z [NeoForge]`.
    - **Justification SemVer** concise.
    - **Statut du build local** (`./gradlew clean build` réussi).
    - **Aperçu complet du changelog bilingue** (EN / FR).

@@ -95,7 +95,7 @@ tasks.register<net.darkhax.curseforgegradle.TaskPublishCurseForge>("curseforge")
     val changelogFile = rootProject.layout.buildDirectory.file("release_changelog.md").get().asFile
     val mainFile = upload(if (curseProjectId.toLongOrNull() != null) curseProjectId else "0", tasks.named("jar"))
 
-    mainFile.displayName = "${project.property("archives_base_name")}-neoforge-${project.version}.jar"
+    mainFile.displayName = "v${project.version} [NeoForge]"
     mainFile.releaseType = "release"
     mainFile.changelog = changelogFile
     mainFile.changelogType = "markdown"
