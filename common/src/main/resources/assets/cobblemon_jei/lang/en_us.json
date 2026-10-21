@@ -235,5 +235,9 @@
   "chat.cobblemon_jm.tracker.list_removed": "%s §cremoved§r from tracking watchlist (%d remaining).",
   "chat.cobblemon_jm.radar.nearby_uncaught": "§b§l[Radar]§r Uncaught %s detected nearby!",
   "chat.cobblemon_jm.radar.nearby_line": "§e§l[Radar]§r Evolution line member (%s) detected nearby!",
-  "chat.cobblemon_jm.radar.nearby_list": "§6§l[Radar]§r Watchlist target (%s) detected nearby!"
+  "chat.cobblemon_jm.radar.nearby_list": "§6§l[Radar]§r Watchlist target (%s) detected nearby!",
+  "gui.cobblemon_jei.pokedex.spawns.category.natural": "Natural",
+  "gui.cobblemon_jei.pokedex.spawns.category.snack": "Poké Snack",
+  "gui.cobblemon_jei.pokedex.spawns.category.natural.tooltip": "Natural wild spawns and biomes",
+  "gui.cobblemon_jei.pokedex.spawns.category.snack.tooltip": "Optimal Poké Snack seasonings and recipes to attract this Pokémon"
 }

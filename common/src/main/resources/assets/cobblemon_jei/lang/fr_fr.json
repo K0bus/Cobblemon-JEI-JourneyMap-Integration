@@ -235,5 +235,9 @@
   "chat.cobblemon_jm.tracker.list_removed": "%s §cretiré§r de votre liste de tracking (%d restants).",
   "chat.cobblemon_jm.radar.nearby_uncaught": "§b§l[Radar]§r %s non capturé détecté tout près !",
   "chat.cobblemon_jm.radar.nearby_line": "§e§l[Radar]§r Membre de la lignée (%s) détecté tout près !",
-  "chat.cobblemon_jm.radar.nearby_list": "§6§l[Radar]§r Cible surveillée (%s) détectée tout près !"
+  "chat.cobblemon_jm.radar.nearby_list": "§6§l[Radar]§r Cible surveillée (%s) détectée tout près !",
+  "gui.cobblemon_jei.pokedex.spawns.category.natural": "Naturel",
+  "gui.cobblemon_jei.pokedex.spawns.category.snack": "Poké Snack",
+  "gui.cobblemon_jei.pokedex.spawns.category.natural.tooltip": "Zones et conditions d'apparition sauvage",
+  "gui.cobblemon_jei.pokedex.spawns.category.snack.tooltip": "Assaisonnements optimaux et recette pour attirer ce Pokémon"
 }

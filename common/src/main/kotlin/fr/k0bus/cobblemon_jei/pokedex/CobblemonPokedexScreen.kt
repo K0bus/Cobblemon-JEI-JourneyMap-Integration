@@ -16,6 +16,8 @@ import fr.k0bus.cobblemon_jei.compat.cobbleworkers.CobbleworkersCompat
 import fr.k0bus.cobblemon_jei.data.CobbleworkersJobDataLoader
 import fr.k0bus.cobblemon_jei.data.PokemonDropDataLoader
 import fr.k0bus.cobblemon_jei.data.PokemonEvolutionDataLoader
+import fr.k0bus.cobblemon_jei.data.PokemonPokeSnackResolver
+import fr.k0bus.cobblemon_jei.data.HowToCreate
 import fr.k0bus.cobblemon_jei.data.PokemonSpawnDataLoader
 import fr.k0bus.cobblemon_jei.ingredient.PokemonSpeciesIngredient
 import fr.k0bus.cobblemon_jei.journeymap.CobblemonOverlayManager
@@ -67,7 +69,16 @@ class CobblemonPokedexScreen(
     private var onlyPcFeasibleEvolutions: Boolean = false
 
     // Onglet et défilement du panneau droit
+    enum class SpawnSubCategory(val label: String, val tooltip: String) {
+        NATURAL("🌲 Naturel", "Zones et conditions d'apparition sauvage"),
+        POKE_SNACK("🍪 Poké Snack", "Assaisonnements optimaux et recette pour attirer ce Pokémon")
+    }
+
     private var currentRightPanelTab: RightPanelTab = RightPanelTab.DESCRIPTION
+    private var currentSpawnCategory: SpawnSubCategory = SpawnSubCategory.NATURAL
+    private var spawnCategoryNaturalBtnRect: IntArray? = null
+    private var spawnCategorySnackBtnRect: IntArray? = null
+    private var hoveredPokeSnackStack: ItemStack? = null
     private var rightPanelScrollOffset: Double = 0.0
     private var rightPanelMaxScroll: Double = 0.0
     private var isDraggingRightScrollbar: Boolean = false
@@ -1382,7 +1393,7 @@ class CobblemonPokedexScreen(
             RightPanelTab.STATS -> renderTabStats(guiGraphics, sp, contentX, curY, contentW)
             RightPanelTab.DROPS -> renderTabDrops(guiGraphics, sp, contentX, curY, contentW)
             RightPanelTab.PASTURE -> renderTabPasture(guiGraphics, sp, contentX, curY, contentW)
-            RightPanelTab.SPAWNS -> renderTabSpawns(guiGraphics, sp, contentX, curY, contentW)
+            RightPanelTab.SPAWNS -> renderTabSpawns(guiGraphics, sp, contentX, curY, contentW, mouseX, mouseY)
             RightPanelTab.EVOLUTIONS -> renderTabEvolutions(guiGraphics, sp, contentX, curY, contentW)
         }
 
@@ -1457,6 +1468,8 @@ class CobblemonPokedexScreen(
             }
             if (hoveredTabTooltip != null) {
                 guiGraphics.renderTooltip(font, Component.literal(hoveredTabTooltip), mouseX, mouseY)
+            } else if (hoveredPokeSnackStack != null) {
+                guiGraphics.renderTooltip(font, hoveredPokeSnackStack!!, mouseX, mouseY)
             } else if (isPreviewHovered) {
                 guiGraphics.renderComponentTooltip(font, listOf(Component.literal("§b🔍 Cliquer pour voir en grand format")), mouseX, mouseY)
             } else if (currentRightPanelTab == RightPanelTab.FORMS) {
@@ -1993,8 +2006,61 @@ class CobblemonPokedexScreen(
         return y + 4
     }
 
-    private fun renderTabSpawns(guiGraphics: GuiGraphics, sp: Species, contentX: Int, startY: Int, contentW: Int): Int {
+    private fun renderTabSpawns(guiGraphics: GuiGraphics, sp: Species, contentX: Int, startY: Int, contentW: Int, mouseX: Int, mouseY: Int): Int {
         var y = startY
+        hoveredPokeSnackStack = null
+
+        // Sélecteur de sous-catégorie : Naturel vs Poké Snack
+        val tabBtnW = (contentW - 6) / 2
+        val tabBtnH = 15
+        val naturalX = contentX + 2
+        val snackX = naturalX + tabBtnW + 2
+        val tabBtnY = y
+
+        spawnCategoryNaturalBtnRect = intArrayOf(naturalX, tabBtnY, tabBtnW, tabBtnH)
+        spawnCategorySnackBtnRect = intArrayOf(snackX, tabBtnY, tabBtnW, tabBtnH)
+
+        val isNatActive = (currentSpawnCategory == SpawnSubCategory.NATURAL)
+        val isSnackActive = (currentSpawnCategory == SpawnSubCategory.POKE_SNACK)
+
+        val isNatHovered = mouseX >= naturalX && mouseX <= naturalX + tabBtnW && mouseY >= tabBtnY && mouseY <= tabBtnY + tabBtnH
+        val isSnackHovered = mouseX >= snackX && mouseX <= snackX + tabBtnW && mouseY >= tabBtnY && mouseY <= tabBtnY + tabBtnH
+
+        // Bouton 1 : Naturel
+        val natBg = when {
+            isNatActive -> 0xFF3498DB.toInt()
+            isNatHovered -> 0xFF2D3345.toInt()
+            else -> 0xFF1D212E.toInt()
+        }
+        val natBorder = if (isNatActive) 0xFF54A0FF.toInt() else 0xFF282D3C.toInt()
+        guiGraphics.fill(naturalX, tabBtnY, naturalX + tabBtnW, tabBtnY + tabBtnH, natBg)
+        guiGraphics.fill(naturalX, tabBtnY, naturalX + tabBtnW, tabBtnY + 1, natBorder)
+        guiGraphics.fill(naturalX, tabBtnY + tabBtnH - 1, naturalX + tabBtnW, tabBtnY + tabBtnH, natBorder)
+        guiGraphics.fill(naturalX, tabBtnY, naturalX + 1, tabBtnY + tabBtnH, natBorder)
+        guiGraphics.fill(naturalX + tabBtnW - 1, tabBtnY, naturalX + tabBtnW, tabBtnY + tabBtnH, natBorder)
+        guiGraphics.drawCenteredString(font, "🌲 Naturel", naturalX + tabBtnW / 2, tabBtnY + 4, if (isNatActive) 0xFFFFFFFF.toInt() else 0xFFAAAAAA.toInt())
+
+        // Bouton 2 : Poké Snack
+        val snackBg = when {
+            isSnackActive -> 0xFF3498DB.toInt()
+            isSnackHovered -> 0xFF2D3345.toInt()
+            else -> 0xFF1D212E.toInt()
+        }
+        val snackBorder = if (isSnackActive) 0xFF54A0FF.toInt() else 0xFF282D3C.toInt()
+        guiGraphics.fill(snackX, tabBtnY, snackX + tabBtnW, tabBtnY + tabBtnH, snackBg)
+        guiGraphics.fill(snackX, tabBtnY, snackX + tabBtnW, tabBtnY + 1, snackBorder)
+        guiGraphics.fill(snackX, tabBtnY + tabBtnH - 1, snackX + tabBtnW, tabBtnY + tabBtnH, snackBorder)
+        guiGraphics.fill(snackX, tabBtnY, snackX + 1, tabBtnY + tabBtnH, snackBorder)
+        guiGraphics.fill(snackX + tabBtnW - 1, tabBtnY, snackX + tabBtnW, tabBtnY + tabBtnH, snackBorder)
+        guiGraphics.drawCenteredString(font, "🍪 Poké Snack", snackX + tabBtnW / 2, tabBtnY + 4, if (isSnackActive) 0xFFFFFFFF.toInt() else 0xFFAAAAAA.toInt())
+
+        y += tabBtnH + 6
+
+        // Si la sous-catégorie Poké Snack est active, afficher le guide d'assaisonnement dédié
+        if (currentSpawnCategory == SpawnSubCategory.POKE_SNACK) {
+            return renderTabPokeSnack(guiGraphics, sp, contentX, y, contentW, mouseX, mouseY)
+        }
+
         guiGraphics.drawString(font, "§e§lZones d'apparition§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 14
 
@@ -2140,6 +2206,192 @@ class CobblemonPokedexScreen(
             guiGraphics.fill(contentX + 4, y, contentX + contentW - 4, y + 1, 0xFF282D3C.toInt())
             y += 5
         }
+
+        return y + 4
+    }
+
+    private fun renderTabPokeSnack(guiGraphics: GuiGraphics, sp: Species, contentX: Int, startY: Int, contentW: Int, mouseX: Int, mouseY: Int): Int {
+        var y = startY
+        hoveredPokeSnackStack = null
+
+        val activeForm = selectedForm ?: sp.standardForm
+        val advice = PokemonPokeSnackResolver.resolvePokeSnack(sp, activeForm)
+
+        // 1. En-tête : Poké Snack Dédié
+        guiGraphics.drawString(font, "§e§lPoké Snack Dédié§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        y += 12
+
+        // 2. Statut d'apparition dans la nature
+        if (advice.hasWildSpawns) {
+            val rarityBadge = when (advice.baseRarity) {
+                "ultra-rare" -> "§d§l★ Ultra-rare§r"
+                "rare" -> "§6§l★ Rare§r"
+                "uncommon" -> "§ePeu commun§r"
+                else -> "§aCommun§r"
+            }
+            guiGraphics.drawString(font, "§7Cible sauvage : §r$rarityBadge", contentX + 4, y, 0xFFE0E0E0.toInt(), false)
+            y += 11
+        } else {
+            guiGraphics.drawString(font, "§c✕ N'apparaît pas à l'état sauvage§r", contentX + 4, y, 0xFFFF7675.toInt(), false)
+            y += 10
+            if (advice.fallbackPreEvolution != null) {
+                val preSp = advice.fallbackPreEvolution
+                val evoCardH = 20
+                val evoCardW = contentW - 8
+                val evoCardX = contentX + 4
+                val isEvoHovered = mouseX >= evoCardX && mouseX <= evoCardX + evoCardW && mouseY >= y && mouseY <= y + evoCardH
+                guiGraphics.fill(evoCardX, y, evoCardX + evoCardW, y + evoCardH, if (isEvoHovered) 0xFF2D3345.toInt() else 0xFF1D212E.toInt())
+                guiGraphics.fill(evoCardX, y, evoCardX + evoCardW, y + 1, 0xFF54A0FF.toInt())
+                guiGraphics.fill(evoCardX, y, evoCardX + evoCardW, y + evoCardH, 0xFF54A0FF.toInt())
+                guiGraphics.fill(evoCardX, y, evoCardX + 1, y + evoCardH, 0xFF54A0FF.toInt())
+                guiGraphics.fill(evoCardX + evoCardW - 1, y, evoCardX + evoCardW, y + evoCardH, 0xFF54A0FF.toInt())
+
+                val preStack = PokemonItem.from(preSp.create())
+                guiGraphics.renderItem(preStack, evoCardX + 3, y + 2)
+                guiGraphics.drawString(font, "§b➜ ${preSp.name}§r §7(Cliquer pour afficher)§r", evoCardX + 22, y + 6, 0xFFFFFFFF.toInt(), false)
+                rightPanelClickablePokemon.add(Triple(intArrayOf(evoCardX, y, evoCardW, evoCardH), preSp, false))
+                y += evoCardH + 4
+            }
+        }
+
+        // Explication générale
+        val explLines = font.split(Component.literal("§7${advice.explanationSummary}§r"), contentW - 8)
+        for (l in explLines) {
+            guiGraphics.drawString(font, l, contentX + 4, y, 0xFFAAAAAA.toInt(), false)
+            y += 9
+        }
+        y += 4
+
+        // 3. Recette de base du Poké Snack (Chaudron de feu de camp)
+        val potBoxH = 36
+        guiGraphics.fill(contentX + 2, y, contentX + contentW - 2, y + potBoxH, 0xFF181B24.toInt())
+        guiGraphics.fill(contentX + 2, y, contentX + contentW - 2, y + 1, 0xFF282D3C.toInt())
+        guiGraphics.fill(contentX + 2, y + potBoxH - 1, contentX + contentW - 2, y + potBoxH, 0xFF282D3C.toInt())
+        guiGraphics.fill(contentX + 2, y, contentX + 3, y + potBoxH, 0xFF282D3C.toInt())
+        guiGraphics.fill(contentX + contentW - 3, y, contentX + contentW - 2, y + potBoxH, 0xFF282D3C.toInt())
+        guiGraphics.drawString(font, "§6🥘 Recette de Base (Chaudron)§r", contentX + 6, y + 3, 0xFFFFAA00.toInt(), false)
+
+        var itemX = contentX + 6
+        for (ing in advice.potBaseIngredients) {
+            guiGraphics.renderItem(ing, itemX, y + 15)
+            guiGraphics.renderItemDecorations(font, ing, itemX, y + 15)
+            if (mouseX >= itemX && mouseX <= itemX + 16 && mouseY >= y + 15 && mouseY <= y + 31) {
+                hoveredPokeSnackStack = ing
+            }
+            itemX += 20
+        }
+
+        guiGraphics.drawString(font, "§7+ 3 Assaisonnements :§r", itemX + 4, y + 19, 0xFF888888.toInt(), false)
+        y += potBoxH + 6
+
+        // 4. Les 3 meilleurs assaisonnements calculés
+        guiGraphics.drawString(font, "§e§l3 Meilleurs Assaisonnements§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        y += 12
+
+        for (rec in advice.seasonings) {
+            val cardX = contentX + 2
+            val cardW = contentW - 4
+
+            // Séparateur supérieur
+            guiGraphics.fill(cardX, y, cardX + cardW, y + 1, 0xFF282D3C.toInt())
+            y += 4
+
+            // Icône de l'assaisonnement
+            guiGraphics.renderItem(rec.itemStack, cardX + 4, y)
+            guiGraphics.renderItemDecorations(font, rec.itemStack, cardX + 4, y)
+            if (mouseX >= cardX + 4 && mouseX <= cardX + 20 && mouseY >= y && mouseY <= y + 16) {
+                hoveredPokeSnackStack = rec.itemStack
+            }
+
+            // Titre et Rôle
+            guiGraphics.drawString(font, "§6Slot ${rec.slotNumber} : §f${rec.itemStack.hoverName.string}§r", cardX + 24, y + 1, 0xFFFFFFFF.toInt(), false)
+            val roleLines = font.split(Component.literal("§b${rec.roleDescription}§r"), cardW - 26)
+            var ry = y + 11
+            for (rl in roleLines) {
+                guiGraphics.drawString(font, rl, cardX + 24, ry, 0xFFE0E0E0.toInt(), false)
+                ry += 9
+            }
+            y = max(y + 20, ry + 2)
+
+            // Comment le créer (Fabrication / Croisement)
+            when (val create = rec.howToCreate) {
+                is HowToCreate.BerryMutation -> {
+                    guiGraphics.drawString(font, "§e🧬 Mutation :§r §f${create.description}§r", cardX + 6, y, 0xFFFFFFFF.toInt(), false)
+                    y += 10
+                    val mutY = y
+                    guiGraphics.renderItem(create.parent1, cardX + 8, mutY)
+                    guiGraphics.renderItemDecorations(font, create.parent1, cardX + 8, mutY)
+                    if (mouseX >= cardX + 8 && mouseX <= cardX + 24 && mouseY >= mutY && mouseY <= mutY + 16) {
+                        hoveredPokeSnackStack = create.parent1
+                    }
+                    guiGraphics.drawString(font, "§7+§r", cardX + 28, mutY + 4, 0xFFFFFFFF.toInt(), false)
+                    guiGraphics.renderItem(create.parent2, cardX + 38, mutY)
+                    guiGraphics.renderItemDecorations(font, create.parent2, cardX + 38, mutY)
+                    if (mouseX >= cardX + 38 && mouseX <= cardX + 54 && mouseY >= mutY && mouseY <= mutY + 16) {
+                        hoveredPokeSnackStack = create.parent2
+                    }
+                    guiGraphics.drawString(font, "§7➜§r", cardX + 58, mutY + 4, 0xFFFFFFFF.toInt(), false)
+                    guiGraphics.renderItem(rec.itemStack, cardX + 70, mutY)
+                    guiGraphics.renderItemDecorations(font, rec.itemStack, cardX + 70, mutY)
+                    if (mouseX >= cardX + 70 && mouseX <= cardX + 86 && mouseY >= mutY && mouseY <= mutY + 16) {
+                        hoveredPokeSnackStack = rec.itemStack
+                    }
+                    y += 19
+                }
+                is HowToCreate.Crafting -> {
+                    guiGraphics.drawString(font, "§a🔨 Fabrication :§r §f${create.recipeDescription}§r", cardX + 6, y, 0xFFFFFFFF.toInt(), false)
+                    y += 10
+                }
+                is HowToCreate.NonCraftable -> {
+                    guiGraphics.drawString(font, "§7🔨 Fabrication :§r §8${create.reason}§r", cardX + 6, y, 0xFFAAAAAA.toInt(), false)
+                    y += 10
+                }
+            }
+
+            // Où le trouver (Biomes, Mob drops, Structures)
+            val where = rec.whereToFind
+            if (where.naturalBiomes.isNotEmpty()) {
+                val bText = "§2🌲 Biomes sauvages :§r §e${where.naturalBiomes.take(4).joinToString(", ")}§r"
+                val bLines = font.split(Component.literal(bText), cardW - 12)
+                for (bl in bLines) {
+                    guiGraphics.drawString(font, bl, cardX + 6, y, 0xFFFFFFFF.toInt(), false)
+                    y += 9
+                }
+            }
+
+            if (where.mobDrops.isNotEmpty()) {
+                val dText = "§d⚔ Butin Pokémon :§r §f" + where.mobDrops.joinToString(", ") { "${it.speciesName} (${String.format("%.1f", it.percentage)}%)" } + "§r"
+                val dLines = font.split(Component.literal(dText), cardW - 12)
+                for (dl in dLines) {
+                    guiGraphics.drawString(font, dl, cardX + 6, y, 0xFFFFFFFF.toInt(), false)
+                    y += 9
+                }
+            }
+
+            if (where.specialLocations.isNotEmpty()) {
+                val sText = "§6🏛 Coffres :§r §f${where.specialLocations.take(3).joinToString(", ")}§r"
+                val sLines = font.split(Component.literal(sText), cardW - 12)
+                for (sl in sLines) {
+                    guiGraphics.drawString(font, sl, cardX + 6, y, 0xFFFFFFFF.toInt(), false)
+                    y += 9
+                }
+            }
+
+            y += 5
+        }
+
+        // 5. Conseils pratiques Cobblemon
+        val tipsH = 46
+        guiGraphics.fill(contentX + 2, y, contentX + contentW - 2, y + tipsH, 0xFF141720.toInt())
+        guiGraphics.fill(contentX + 2, y, contentX + contentW - 2, y + 1, 0xFF2D3345.toInt())
+        guiGraphics.fill(contentX + 2, y + tipsH - 1, contentX + contentW - 2, y + tipsH, 0xFF2D3345.toInt())
+        guiGraphics.fill(contentX + 2, y, contentX + 3, y + tipsH, 0xFF2D3345.toInt())
+        guiGraphics.fill(contentX + contentW - 3, y, contentX + contentW - 2, y + tipsH, 0xFF2D3345.toInt())
+        guiGraphics.drawString(font, "§e💡 Bon à savoir :§r", contentX + 6, y + 3, 0xFFFFFF55.toInt(), false)
+        guiGraphics.drawString(font, "§7• Rayon d'action : 8 blocs autour du snack.§r", contentX + 6, y + 13, 0xFFCCCCCC.toInt(), false)
+        guiGraphics.drawString(font, "§7• Durabilité : 9 bouchées (1 spawn / bouchée).§r", contentX + 6, y + 23, 0xFFCCCCCC.toInt(), false)
+        guiGraphics.drawString(font, "§7• Les baies de type cumulent jusqu'à ×100 !§r", contentX + 6, y + 33, 0xFFCCCCCC.toInt(), false)
+        y += tipsH + 6
 
         return y + 4
     }
@@ -3697,6 +3949,26 @@ class CobblemonPokedexScreen(
             }
         }
 
+        // Clics dans l'onglet Zones (Sélecteur Naturel vs Poké Snack)
+        if (currentRightPanelTab == RightPanelTab.SPAWNS) {
+            spawnCategoryNaturalBtnRect?.let { (bx, by, bw, bh) ->
+                if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
+                    currentSpawnCategory = SpawnSubCategory.NATURAL
+                    rightPanelScrollOffset = 0.0
+                    Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+                    return true
+                }
+            }
+            spawnCategorySnackBtnRect?.let { (bx, by, bw, bh) ->
+                if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
+                    currentSpawnCategory = SpawnSubCategory.POKE_SNACK
+                    rightPanelScrollOffset = 0.0
+                    Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+                    return true
+                }
+            }
+        }
+
         // Clic sur la barre de défilement du panneau droit
         if (rightPanelMaxScroll > 0 && mouseX >= scrollTrackX - 3 && mouseX <= scrollTrackX + 5 && mouseY >= contentY && mouseY <= contentY + contentH) {
             isDraggingRightScrollbar = true
@@ -3705,8 +3977,8 @@ class CobblemonPokedexScreen(
             return true
         }
 
-        // Clic sur un Pokémon dans l'onglet Évolutions pour naviguer vers lui
-        if (currentRightPanelTab == RightPanelTab.EVOLUTIONS && mouseX >= panelX && mouseX <= panelX + panelW && mouseY >= contentY && mouseY <= contentY + contentH) {
+        // Clic sur un Pokémon dans l'onglet Évolutions ou Zones pour naviguer vers lui
+        if ((currentRightPanelTab == RightPanelTab.EVOLUTIONS || currentRightPanelTab == RightPanelTab.SPAWNS) && mouseX >= panelX && mouseX <= panelX + panelW && mouseY >= contentY && mouseY <= contentY + contentH) {
             for ((rect, clickedSp, _) in rightPanelClickablePokemon) {
                 val (rx, ry, rw, rh) = rect
                 if (mouseX >= rx && mouseX <= rx + rw && mouseY >= ry && mouseY <= ry + rh) {
