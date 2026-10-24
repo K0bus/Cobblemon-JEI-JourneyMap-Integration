@@ -41,15 +41,82 @@ object PokemonRadarService {
     private const val OVERLAY_GROUP_RADAR = "Cobblemon Radar"
     private val logger = LoggerFactory.getLogger("CobblemonJM/Radar")
 
-    // Textures des marqueurs JourneyMap pour le radar (Normal & Shiny)
-    private val ICON_NORMAL_LOC = ResourceLocation.fromNamespaceAndPath(MOD_ID, "textures/gui/radar_marker.png")
-    private val ICON_SHINY_LOC = ResourceLocation.fromNamespaceAndPath(MOD_ID, "textures/gui/radar_marker_shiny.png")
+    // Textures des marqueurs JourneyMap pour le radar (Normal & Shiny) selon l'élévation relative
+    val ICON_NORMAL_LOC = ResourceLocation.fromNamespaceAndPath(MOD_ID, "textures/gui/radar_marker.png")
+    val ICON_NORMAL_UP_LOC = ResourceLocation.fromNamespaceAndPath(MOD_ID, "textures/gui/radar_marker_up.png")
+    val ICON_NORMAL_DOWN_LOC = ResourceLocation.fromNamespaceAndPath(MOD_ID, "textures/gui/radar_marker_down.png")
 
-    private val mapImageNormal by lazy {
-        MapImage(ICON_NORMAL_LOC, 24, 24).centerAnchors()
+    val ICON_SHINY_LOC = ResourceLocation.fromNamespaceAndPath(MOD_ID, "textures/gui/radar_marker_shiny.png")
+    val ICON_SHINY_UP_LOC = ResourceLocation.fromNamespaceAndPath(MOD_ID, "textures/gui/radar_marker_shiny_up.png")
+    val ICON_SHINY_DOWN_LOC = ResourceLocation.fromNamespaceAndPath(MOD_ID, "textures/gui/radar_marker_shiny_down.png")
+
+    // Tolérance d'altitude en blocs pour considérer que le Pokémon est sur la même hauteur (ex: petites pentes)
+    const val HEIGHT_TOLERANCE = 3
+
+    enum class VerticalDirection {
+        SAME_LEVEL,
+        ABOVE,
+        BELOW
     }
-    private val mapImageShiny by lazy {
-        MapImage(ICON_SHINY_LOC, 26, 26).centerAnchors()
+
+    /**
+     * Détermine la direction verticale relative du Pokémon par rapport au joueur.
+     */
+    fun getVerticalDirection(deltaY: Int): VerticalDirection {
+        return when {
+            deltaY > HEIGHT_TOLERANCE -> VerticalDirection.ABOVE
+            deltaY < -HEIGHT_TOLERANCE -> VerticalDirection.BELOW
+            else -> VerticalDirection.SAME_LEVEL
+        }
+    }
+
+    /**
+     * Calcule la teinte RVB (assombrissement / grisage) et l'opacité selon l'écart vertical.
+     * Plus l'écart de hauteur est important, plus la Pokéball est grisée/assombrie et semi-transparente.
+     */
+    fun computeAltitudeTintAndOpacity(deltaY: Int): Pair<Int, Float> {
+        val absDeltaY = kotlin.math.abs(deltaY)
+        if (absDeltaY <= HEIGHT_TOLERANCE) {
+            return 0xFFFFFF to 1.0f
+        }
+        val maxDelta = (SCAN_RADIUS_Y - HEIGHT_TOLERANCE).toFloat().coerceAtLeast(1f)
+        val factor = ((absDeltaY - HEIGHT_TOLERANCE).toFloat() / maxDelta).coerceIn(0f, 1f)
+
+        // Progression linéaire de 255 (blanc pur = couleur d'origine) vers 85 (gris soutenu/assombri)
+        val gray = (255 - (factor * 170)).toInt().coerceIn(85, 255)
+        val color = (gray shl 16) or (gray shl 8) or gray
+
+        // Progression de 1.0f (opaque) vers 0.55f (semi-transparent)
+        val opacity = (1.0f - (factor * 0.45f)).coerceIn(0.55f, 1.0f)
+
+        return color to opacity
+    }
+
+    /**
+     * Instancie le [MapImage] adapté avec l'icône directionnelle appropriée (flèche haut/bas ou neutre)
+     * et la teinte/opacité calculée selon l'écart de hauteur.
+     */
+    fun createRadarMapImage(isShiny: Boolean, deltaY: Int): MapImage {
+        val direction = getVerticalDirection(deltaY)
+        val iconLoc = when {
+            isShiny -> when (direction) {
+                VerticalDirection.ABOVE -> ICON_SHINY_UP_LOC
+                VerticalDirection.BELOW -> ICON_SHINY_DOWN_LOC
+                VerticalDirection.SAME_LEVEL -> ICON_SHINY_LOC
+            }
+            else -> when (direction) {
+                VerticalDirection.ABOVE -> ICON_NORMAL_UP_LOC
+                VerticalDirection.BELOW -> ICON_NORMAL_DOWN_LOC
+                VerticalDirection.SAME_LEVEL -> ICON_NORMAL_LOC
+            }
+        }
+        val (tintColor, opacity) = computeAltitudeTintAndOpacity(deltaY)
+        val size = if (isShiny) 26 else 24
+
+        return MapImage(iconLoc, 0, 0, 32, 32, tintColor, opacity)
+            .setDisplayWidth(size.toDouble())
+            .setDisplayHeight(size.toDouble())
+            .centerAnchors()
     }
 
     private var clientApi: IClientAPI? = null
@@ -299,21 +366,31 @@ object PokemonRadarService {
         }
 
         val dimKey = level.dimension()
+        val playerY = player.blockPosition().y
 
-        // 2. Création ou mise à jour de la position des marqueurs actifs
+        // 2. Création ou mise à jour de la position et de l'apparence des marqueurs actifs
         for ((uuid, detected) in foundPokemons) {
+            val deltaY = detected.blockPos.y - playerY
             val existing = trackedEntities[uuid]
             if (existing != null && existing.marker != null) {
                 val marker = existing.marker!!
-                if (marker.point != detected.blockPos) {
-                    marker.point = detected.blockPos
+                val newIcon = createRadarMapImage(detected.isShiny, deltaY)
+                val posChanged = marker.point != detected.blockPos
+                val iconChanged = marker.icon != newIcon
+
+                if (posChanged || iconChanged) {
+                    if (posChanged) marker.point = detected.blockPos
+                    if (iconChanged) marker.icon = newIcon
+                    marker.title = buildMarkerTitle(detected, deltaY)
+                    marker.label = buildMarkerLabel(detected, deltaY)
+                    marker.flagForRerender()
                     try {
                         api.show(marker)
                     } catch (_: Throwable) {}
                 }
                 existing.blockPos = detected.blockPos
             } else {
-                val marker = createMarkerOverlay(detected, dimKey)
+                val marker = createMarkerOverlay(detected, dimKey, deltaY)
                 detected.marker = marker
                 trackedEntities[uuid] = detected
                 try {
@@ -336,19 +413,26 @@ object PokemonRadarService {
     }
 
     /**
-     * Crée et configure un [MarkerOverlay] JourneyMap pour le Pokémon détecté.
+     * Génère l'infobulle (tooltip) du marqueur incluant le Pokémon, son niveau, et son altitude relative.
      */
-    private fun createMarkerOverlay(detected: DetectedPokemon, dimension: ResourceKey<Level>): MarkerOverlay {
-        val icon = if (detected.isShiny) mapImageShiny else mapImageNormal
-        val marker = MarkerOverlay(MOD_ID, detected.blockPos, icon)
-
+    fun buildMarkerTitle(detected: DetectedPokemon, deltaY: Int): String {
         val shinyTag = if (detected.isShiny) " §6★ §eSHINY §6★" else ""
         val targetTag = if (!detected.isShiny) fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.getTargetTag(detected.species, detected.form) else ""
         val wildTag = if (detected.isWild) "§7(Sauvage)" else "§b(Dressé)"
-        val titleText = "§f${detected.species.translatedName.string}$shinyTag$targetTag\n" +
+        val altTag = when {
+            deltaY > HEIGHT_TOLERANCE -> " §b(▲ +${deltaY}m en haut)"
+            deltaY < -HEIGHT_TOLERANCE -> " §6(▼ ${deltaY}m en bas)"
+            else -> " §a(= même hauteur)"
+        }
+        return "§f${detected.species.translatedName.string}$shinyTag$targetTag\n" +
                 "§7Niveau: §e${detected.level} $wildTag\n" +
-                "§8Position: ${detected.blockPos.x}, ${detected.blockPos.y}, ${detected.blockPos.z}"
+                "§8Position: ${detected.blockPos.x}, §e${detected.blockPos.y}§8, ${detected.blockPos.z}$altTag"
+    }
 
+    /**
+     * Génère le label textuel affiché sous le marqueur sur la carte.
+     */
+    fun buildMarkerLabel(detected: DetectedPokemon, deltaY: Int): String {
         val labelPrefix = when {
             detected.isShiny -> "★ "
             fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.currentMode == fr.k0bus.cobblemon_jei.pokedex.TrackingMode.ALL_UNCAUGHT -> "[Dex] "
@@ -356,7 +440,23 @@ object PokemonRadarService {
             fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.currentMode == fr.k0bus.cobblemon_jei.pokedex.TrackingMode.CUSTOM_LIST -> "[★] "
             else -> ""
         }
-        val labelText = "$labelPrefix${detected.species.translatedName.string} Lv.${detected.level}"
+        val dirSuffix = when {
+            deltaY > HEIGHT_TOLERANCE -> " ▲"
+            deltaY < -HEIGHT_TOLERANCE -> " ▼"
+            else -> ""
+        }
+        return "$labelPrefix${detected.species.translatedName.string} Lv.${detected.level}$dirSuffix"
+    }
+
+    /**
+     * Crée et configure un [MarkerOverlay] JourneyMap pour le Pokémon détecté.
+     */
+    private fun createMarkerOverlay(detected: DetectedPokemon, dimension: ResourceKey<Level>, deltaY: Int): MarkerOverlay {
+        val icon = createRadarMapImage(detected.isShiny, deltaY)
+        val marker = MarkerOverlay(MOD_ID, detected.blockPos, icon)
+
+        val titleText = buildMarkerTitle(detected, deltaY)
+        val labelText = buildMarkerLabel(detected, deltaY)
 
         marker.overlayGroupName = OVERLAY_GROUP_RADAR
         marker.title = titleText

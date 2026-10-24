@@ -119,6 +119,30 @@ class CobblemonPokedexScreen(
     private var filteredTracked: List<TrackedPokemon> = emptyList()
     private var selectedTracked: TrackedPokemon? = null
 
+    // Caches pour les compteurs de filtres (Total | Manquants)
+    private var biomeCountsCache: Map<CobblemonBiomeFilter, PokedexFilterManager.FilterCount>? = null
+    private var rarityCountsCache: Map<SpawnRarityFilter, PokedexFilterManager.FilterCount>? = null
+    private var genCountsCache: Map<GenerationFilter, PokedexFilterManager.FilterCount>? = null
+    private var activeModalTooltip: List<Component>? = null
+
+    private fun invalidateFilterCountsCache() {
+        biomeCountsCache = null
+        rarityCountsCache = null
+        genCountsCache = null
+    }
+
+    private fun getBiomeCounts(): Map<CobblemonBiomeFilter, PokedexFilterManager.FilterCount> {
+        return biomeCountsCache ?: PokedexFilterManager.computeBiomeCounts(allTracked).also { biomeCountsCache = it }
+    }
+
+    private fun getRarityCounts(): Map<SpawnRarityFilter, PokedexFilterManager.FilterCount> {
+        return rarityCountsCache ?: PokedexFilterManager.computeRarityCounts(allTracked).also { rarityCountsCache = it }
+    }
+
+    private fun getGenCounts(): Map<GenerationFilter, PokedexFilterManager.FilterCount> {
+        return genCountsCache ?: PokedexFilterManager.computeGenCounts(allTracked).also { genCountsCache = it }
+    }
+
     private var allGoals: List<EvolutionGoal> = emptyList()
     private var filteredGoals: List<EvolutionGoal> = emptyList()
     private var selectedGoal: EvolutionGoal? = null
@@ -267,6 +291,7 @@ class CobblemonPokedexScreen(
     override fun init() {
         PokemonTrackerService.refresh()
         allTracked = PokemonTrackerService.getAllTracked()
+        invalidateFilterCountsCache()
         allGoals = PokemonTrackerService.getEvolutionGoals()
 
         if (selectedTracked == null) {
@@ -2742,6 +2767,8 @@ class CobblemonPokedexScreen(
     private fun renderFilterModal(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         if (!isFilterModalOpen) return
 
+        activeModalTooltip = null
+
         guiGraphics.flush()
         val pose = guiGraphics.pose()
         pose.pushPose()
@@ -2879,6 +2906,10 @@ class CobblemonPokedexScreen(
         guiGraphics.fill(closeApplyX + closeApplyW - 1, closeApplyY, closeApplyX + closeApplyW, closeApplyY + closeApplyH, applyBorder)
         guiGraphics.drawCenteredString(font, "§a✓ Appliquer§r", closeApplyX + closeApplyW / 2, closeApplyY + 4, 0xFFFFFFFF.toInt())
 
+        if (activeModalTooltip != null) {
+            guiGraphics.renderComponentTooltip(font, activeModalTooltip!!, mouseX, mouseY)
+        }
+
         guiGraphics.flush()
         pose.popPose()
     }
@@ -2939,6 +2970,7 @@ class CobblemonPokedexScreen(
         guiGraphics.drawString(font, "§7Rareté des apparitions sauvages :§r", x + 6, y + 6, 0xFFFFFFFF.toInt(), false)
 
         val rarities = SpawnRarityFilter.values()
+        val rarityCounts = getRarityCounts()
         val rowH = 20
         val startY = y + 20
 
@@ -2959,6 +2991,21 @@ class CobblemonPokedexScreen(
             val radio = if (isSel) "§6● §r" else "§7○ §r"
             val title = "$radio${opt.formatCode}§l${opt.displayName}§r"
             guiGraphics.drawString(font, title, x + 12, ry + 6, 0xFFFFFFFF.toInt(), false)
+
+            val counts = rarityCounts[opt] ?: PokedexFilterManager.FilterCount(0, 0)
+            val missingColor = if (counts.missing > 0) "§c" else "§a"
+            val countStr = "§7${counts.total} §8| $missingColor${counts.missing}§r"
+            val countW = font.width(countStr)
+            val countX = x + w - 6 - countW - 8
+            guiGraphics.drawString(font, countStr, countX, ry + 6, 0xFFFFFFFF.toInt(), false)
+
+            if (isHov) {
+                activeModalTooltip = listOf(
+                    Component.literal("${opt.formatCode}§l${opt.displayName}"),
+                    Component.literal("§7Total : §f${counts.total} §7Pokémon"),
+                    Component.literal(if (counts.missing > 0) "§cManquants : §f${counts.missing} §7à capturer" else "§a✔ Tous capturés (0 manquant)")
+                )
+            }
         }
     }
 
@@ -3017,6 +3064,7 @@ class CobblemonPokedexScreen(
         biomeScrollOffset = biomeScrollOffset.coerceIn(0.0, biomeMaxScroll)
 
         val usableW = if (biomeMaxScroll > 0) w - 18 else w - 12
+        val biomeCounts = getBiomeCounts()
 
         guiGraphics.enableScissor(x + 6, listY, x + w - 6, listY + listH)
 
@@ -3039,6 +3087,22 @@ class CobblemonPokedexScreen(
             val radio = if (isSel) "§6● " else "§7○ "
             val text = "$radio${opt.icon} ${if (isSel) "§e§l${opt.displayName}§r" else opt.displayName}"
             guiGraphics.drawString(font, text, x + 10, by + 4, 0xFFFFFFFF.toInt(), false)
+
+            // Affichage en bout de ligne : Nombre total dans le biome et nombre manquant (en couleur, pas de texte)
+            val counts = biomeCounts[opt] ?: PokedexFilterManager.FilterCount(0, 0)
+            val missingColor = if (counts.missing > 0) "§c" else "§a"
+            val countStr = "§7${counts.total} §8| $missingColor${counts.missing}§r"
+            val countW = font.width(countStr)
+            val countX = x + 6 + usableW - countW - 6
+            guiGraphics.drawString(font, countStr, countX, by + 4, 0xFFFFFFFF.toInt(), false)
+
+            if (isHov) {
+                activeModalTooltip = listOf(
+                    Component.literal("§e${opt.displayName}"),
+                    Component.literal("§7Total : §f${counts.total} §7Pokémon"),
+                    Component.literal(if (counts.missing > 0) "§cManquants : §f${counts.missing} §7à capturer" else "§a✔ Tous capturés (0 manquant)")
+                )
+            }
         }
 
         guiGraphics.disableScissor()
@@ -3060,6 +3124,7 @@ class CobblemonPokedexScreen(
         guiGraphics.drawString(font, "§7Génération et région d'origine du Pokémon :§r", x + 6, y + 6, 0xFFFFFFFF.toInt(), false)
 
         val gens = GenerationFilter.values()
+        val genCounts = getGenCounts()
         val colW = (w - 18) / 2
         val rowH = 21
         val startY = y + 18
@@ -3085,6 +3150,21 @@ class CobblemonPokedexScreen(
             val radio = if (isSel) "§6● " else "§7○ "
             val title = "$radio${if (isSel) "§e§l${gen.displayName}§r" else gen.displayName}"
             guiGraphics.drawString(font, title, gx + 6, gy + 6, 0xFFFFFFFF.toInt(), false)
+
+            val counts = genCounts[gen] ?: PokedexFilterManager.FilterCount(0, 0)
+            val missingColor = if (counts.missing > 0) "§c" else "§a"
+            val countStr = "§7${counts.total} §8| $missingColor${counts.missing}§r"
+            val countW = font.width(countStr)
+            val countX = gx + colW - countW - 5
+            guiGraphics.drawString(font, countStr, countX, gy + 6, 0xFFFFFFFF.toInt(), false)
+
+            if (isHov) {
+                activeModalTooltip = listOf(
+                    Component.literal("§e${gen.displayName}"),
+                    Component.literal("§7Total : §f${counts.total} §7Pokémon"),
+                    Component.literal(if (counts.missing > 0) "§cManquants : §f${counts.missing} §7à capturer" else "§a✔ Tous capturés (0 manquant)")
+                )
+            }
         }
     }
 

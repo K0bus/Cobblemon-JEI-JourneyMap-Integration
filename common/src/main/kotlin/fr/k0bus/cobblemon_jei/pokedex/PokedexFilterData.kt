@@ -375,4 +375,84 @@ object PokedexFilterManager {
             PokedexSortOrder.BST_ASC -> items.sortedBy { getBaseStatTotal(it.species) }
         }
     }
+
+    data class FilterCount(val total: Int, val missing: Int)
+
+    /**
+     * Calcule pour chaque biome le nombre total de Pokémon qui y apparaissent ainsi que le nombre de Pokémon manquants (non capturés).
+     */
+    fun computeBiomeCounts(items: List<TrackedPokemon>): Map<CobblemonBiomeFilter, FilterCount> {
+        val result = mutableMapOf<CobblemonBiomeFilter, FilterCount>()
+        val biomes = CobblemonBiomeFilter.values()
+        val itemMetaList = items.map { item ->
+            Triple(item, getSpawnMetadata(item.species), !item.isCaught)
+        }
+
+        for (biome in biomes) {
+            var total = 0
+            var missing = 0
+            for ((_, meta, isMissing) in itemMetaList) {
+                if (matchesBiome(meta, biome)) {
+                    total++
+                    if (isMissing) missing++
+                }
+            }
+            result[biome] = FilterCount(total, missing)
+        }
+        return result
+    }
+
+    /**
+     * Calcule pour chaque rareté le nombre total de Pokémon ainsi que le nombre de Pokémon manquants.
+     */
+    fun computeRarityCounts(items: List<TrackedPokemon>): Map<SpawnRarityFilter, FilterCount> {
+        val result = mutableMapOf<SpawnRarityFilter, FilterCount>()
+        val rarities = SpawnRarityFilter.values()
+        val itemMetaList = items.map { item ->
+            Triple(item, getSpawnMetadata(item.species), !item.isCaught)
+        }
+
+        for (rarity in rarities) {
+            var total = 0
+            var missing = 0
+            for ((_, meta, isMissing) in itemMetaList) {
+                val matches = when (rarity) {
+                    SpawnRarityFilter.ALL -> true
+                    SpawnRarityFilter.NO_WILD_SPAWN -> !meta.hasWildSpawns
+                    else -> rarity.rarity != null && meta.rarities.contains(rarity.rarity)
+                }
+                if (matches) {
+                    total++
+                    if (isMissing) missing++
+                }
+            }
+            result[rarity] = FilterCount(total, missing)
+        }
+        return result
+    }
+
+    /**
+     * Calcule pour chaque génération le nombre total de Pokémon ainsi que le nombre de Pokémon manquants.
+     */
+    fun computeGenCounts(items: List<TrackedPokemon>): Map<GenerationFilter, FilterCount> {
+        val result = mutableMapOf<GenerationFilter, FilterCount>()
+        val gens = GenerationFilter.values()
+        val itemInfoList = items.map { item ->
+            Pair(item.nationalDexNumber, !item.isCaught)
+        }
+
+        for (gen in gens) {
+            val range = gen.range
+            var total = 0
+            var missing = 0
+            for ((dexNum, isMissing) in itemInfoList) {
+                if (range == null || dexNum in range) {
+                    total++
+                    if (isMissing) missing++
+                }
+            }
+            result[gen] = FilterCount(total, missing)
+        }
+        return result
+    }
 }

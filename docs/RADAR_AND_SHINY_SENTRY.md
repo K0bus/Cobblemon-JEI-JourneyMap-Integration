@@ -37,20 +37,28 @@ Le radar fonctionne sous deux modes complémentaires exécutés en parallèle :
 Le service utilise des `MarkerOverlay` rattachés au groupe `"Cobblemon Radar"` :
 
 ### Marqueur Normal
-- **Texture** : `assets/cobblemon_jei/textures/gui/radar_marker.png` (Pokéball haute résolution avec anneau cyan).
-- **Label** : `NomDuPokemon Lv.X` (texte blanc avec ombre portée).
+- **Textures** :
+  - `radar_marker.png` : Pokéball haute résolution avec anneau cyan (même niveau, tolérance ±3 blocs).
+  - `radar_marker_up.png` : Pokéball avec flèche blanche ▲ en bas à droite (Pokémon situé plus haut).
+  - `radar_marker_down.png` : Pokéball avec flèche blanche ▼ en bas à droite (Pokémon situé plus bas).
+- **Grisage dynamique** : La teinte RVB s'assombrit (du blanc pur vers un gris soutenu `0x555555`) et l'opacité diminue progressivement (de 1.0 à 0.55) au fur et à mesure que l'écart d'altitude grandit.
+- **Label** : `NomDuPokemon Lv.X [▲/▼]` (texte blanc avec ombre portée).
 - **Z-Index** : 1500 (affiché au-dessus des polygones de spawn).
 
 ### Marqueur Shiny
-- **Texture** : `assets/cobblemon_jei/textures/gui/radar_marker_shiny.png` (Pokéball dorée avec éclats étoilés).
-- **Label** : `★ NomDuPokemon Lv.X` (texte doré `#FFD700`).
+- **Textures** :
+  - `radar_marker_shiny.png` : Pokéball dorée avec éclats étoilés (même niveau).
+  - `radar_marker_shiny_up.png` : Pokéball dorée avec flèche blanche ▲ en bas à droite.
+  - `radar_marker_shiny_down.png` : Pokéball dorée avec flèche blanche ▼ en bas à droite.
+- **Grisage dynamique** : Atténuation et semi-transparence progressives selon la différence de hauteur relative.
+- **Label** : `★ NomDuPokemon Lv.X [▲/▼]` (texte doré `#FFD700`).
 - **Z-Index** : 1600 (priorité absolue d'affichage).
 
 ### Infobulle au survol (Tooltip)
 ```text
 Pikachu ★ SHINY ★
 Niveau: 24 (Sauvage)
-Position: 124, 68, -342
+Position: 124, 68, -342 (▲ +18m en haut)
 ```
 
 ---

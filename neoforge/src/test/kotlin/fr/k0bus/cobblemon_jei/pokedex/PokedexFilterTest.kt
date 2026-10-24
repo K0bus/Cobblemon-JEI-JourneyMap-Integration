@@ -139,4 +139,28 @@ class PokedexFilterTest {
         val matchesBirch = searchBiomes("birch")
         assertTrue(matchesBirch.contains(CobblemonBiomeFilter.FOREST))
     }
+
+    @Test
+    fun `test FilterCount computations on empty list`() {
+        val biomeCounts = PokedexFilterManager.computeBiomeCounts(emptyList())
+        assertEquals(CobblemonBiomeFilter.values().size, biomeCounts.size)
+        for (b in CobblemonBiomeFilter.values()) {
+            assertEquals(0, biomeCounts[b]?.total)
+            assertEquals(0, biomeCounts[b]?.missing)
+        }
+
+        val rarityCounts = PokedexFilterManager.computeRarityCounts(emptyList())
+        assertEquals(SpawnRarityFilter.values().size, rarityCounts.size)
+        for (r in SpawnRarityFilter.values()) {
+            assertEquals(0, rarityCounts[r]?.total)
+            assertEquals(0, rarityCounts[r]?.missing)
+        }
+
+        val genCounts = PokedexFilterManager.computeGenCounts(emptyList())
+        assertEquals(GenerationFilter.values().size, genCounts.size)
+        for (g in GenerationFilter.values()) {
+            assertEquals(0, genCounts[g]?.total)
+            assertEquals(0, genCounts[g]?.missing)
+        }
+    }
 }
