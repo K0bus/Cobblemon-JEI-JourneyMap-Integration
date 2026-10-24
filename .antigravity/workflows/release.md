@@ -89,3 +89,9 @@ Uniquement si l'utilisateur valide explicitement, exécuter la séquence ordonn�
    ```bash
    git push && git push --tags
    ```
+
+---
+
+## 6. Déploiement Local Modpack (Optionnel / Recommandé)
+Une fois la publication terminée, exécuter ou proposer le déploiement direct dans le modpack de test local en suivant le workflow :
+[deploy-modpack.md](file:///home/k0bus/dev/minecraft/Cobblemon_JourneyMap/.antigravity/workflows/deploy-modpack.md).
