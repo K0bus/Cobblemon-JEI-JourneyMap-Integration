@@ -54,6 +54,7 @@ class CobblemonJourneyMapSearchScreen(
 
     private lateinit var searchBox: EditBox
     private lateinit var dimFilterBtn: Button
+    private lateinit var monumentModeBtn: Button
     private val allSpecies: List<Species> = PokemonSpecies.species.toList()
     private var filteredSpecies: List<Species> = allSpecies
     private var selectedSpecies: Species? = CobblemonOverlayManager.activeSpecies ?: allSpecies.firstOrNull()
@@ -144,6 +145,14 @@ class CobblemonJourneyMapSearchScreen(
             }.bounds(width - 130, 8, 95, 20).build()
         )
 
+        // Bouton Mode Monument Tracker (en haut à gauche)
+        monumentModeBtn = Button.builder(Component.literal("")) {
+            fr.k0bus.cobblemon_jei.journeymap.structure.StructureOverlayManager.cycleTrackingMode()
+            updateMonumentButton()
+        }.bounds(10, 8, 125, 20).build()
+        updateMonumentButton()
+        addRenderableWidget(monumentModeBtn)
+
         // Bouton Fermer (en haut à droite)
         addRenderableWidget(
             Button.builder(Component.literal("✕")) {
@@ -152,6 +161,21 @@ class CobblemonJourneyMapSearchScreen(
         )
 
         applyFilters()
+    }
+
+    private fun updateMonumentButton() {
+        val mode = fr.k0bus.cobblemon_jei.journeymap.structure.StructureOverlayManager.trackingMode
+        monumentModeBtn.message = Component.literal("${mode.icon} ${mode.shortLabel}")
+
+        val tooltipLines = mutableListOf<Component>()
+        tooltipLines.add(Component.translatable("gui.cobblemon_jm.monuments.tracker_title").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
+        tooltipLines.add(Component.translatable("gui.cobblemon_jm.filter.active", Component.translatable(mode.translationKey)).withStyle(ChatFormatting.AQUA))
+        tooltipLines.add(Component.empty())
+        tooltipLines.add(Component.translatable("gui.cobblemon_jm.monuments.tooltip_cycle").withStyle(ChatFormatting.DARK_GRAY))
+
+        monumentModeBtn.tooltip = Tooltip.create(
+            Component.literal(tooltipLines.joinToString("\n") { it.string })
+        )
     }
 
     private fun initDimensionFilters() {

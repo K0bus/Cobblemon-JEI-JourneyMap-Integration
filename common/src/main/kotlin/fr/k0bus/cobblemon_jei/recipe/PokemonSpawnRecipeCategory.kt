@@ -113,7 +113,9 @@ class PokemonSpawnRecipeCategory(
         }
 
         // 3. Contenu principal
-        if (!recipe.isNaturalSpawn) {
+        if (recipe.isMonumentSpawn) {
+            drawMonumentCard(guiGraphics, font, recipe)
+        } else if (!recipe.isNaturalSpawn) {
             drawNoSpawnCard(guiGraphics, font)
         } else {
             drawSpawnDetails(guiGraphics, font, recipe)
@@ -216,6 +218,42 @@ class PokemonSpawnRecipeCategory(
         }
     }
 
+    private fun drawMonumentCard(
+        guiGraphics: GuiGraphics,
+        font: net.minecraft.client.gui.Font,
+        recipe: PokemonSpawnRecipe
+    ) {
+        val startY = 32
+        // Cadre doré premium avec fond sombre
+        guiGraphics.fill(6, startY, WIDTH - 6, HEIGHT - 6, 0x33FFD700.toInt())
+        guiGraphics.fill(5, startY - 1, WIDTH - 5, HEIGHT - 5, 0x88FFD700.toInt())
+
+        // Badge doré
+        guiGraphics.drawString(font, "§6★ [MONUMENT LÉGENDAIRE]", 12, startY + 5, 0xFFFFD700.toInt(), false)
+
+        val info = fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.KNOWN_MONUMENTS[recipe.species.name.lowercase()]
+        val structTitle = info?.structureDisplayName ?: "Sanctuaire d'invocation"
+        guiGraphics.drawString(font, "§eStructure : §f$structTitle", 12, startY + 18, 0xFFFFFFFF.toInt(), false)
+
+        val pedestal = recipe.monumentPedestalBlock?.substringAfter(":")?.replace('_', ' ')?.replaceFirstChar { it.uppercase() }
+            ?: "Piédestal d'autel"
+        guiGraphics.drawString(font, "§7Bloc rituel : §b$pedestal", 12, startY + 30, 0xFFE0E0E0.toInt(), false)
+
+        val dim = formatDimension(recipe.dimensions)
+        guiGraphics.drawString(font, "§7Dimension : §a$dim", 12, startY + 42, 0xFFE0E0E0.toInt(), false)
+
+        // Statut de découverte
+        val discovered = fr.k0bus.cobblemon_jei.journeymap.structure.StructureOverlayManager.getDiscoveredMonumentForSpecies(recipe.species.name)
+        if (discovered != null) {
+            val p = discovered.pedestalPos ?: discovered.pos
+            guiGraphics.drawString(font, "§a✔ Découvert à [${p.x}, ${p.y}, ${p.z}]", 12, startY + 55, 0xFF2ED573.toInt(), false)
+            guiGraphics.drawString(font, "§6★ Waypoint actif sur la minimap", 12, startY + 67, 0xFFFFD700.toInt(), false)
+        } else {
+            guiGraphics.drawString(font, "§7Statut : §cNon localisé dans ce monde", 12, startY + 55, 0xFFAAAAAA.toInt(), false)
+            guiGraphics.drawString(font, "§8(Explorez les chunks pour le cartographier)", 12, startY + 67, 0xFF888888.toInt(), false)
+        }
+    }
+
     private fun drawNoSpawnCard(guiGraphics: GuiGraphics, font: net.minecraft.client.gui.Font) {
         val startY = 36
         // Cadre d'avertissement teinté
@@ -251,6 +289,25 @@ class PokemonSpawnRecipeCategory(
         mouseY: Double
     ): List<Component> {
         val tooltips = mutableListOf<Component>()
+
+        // Tooltip dédié pour les monuments légendaires
+        if (recipe.isMonumentSpawn) {
+            tooltips.add(Component.literal("★ Monument Légendaire").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
+            val info = fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.KNOWN_MONUMENTS[recipe.species.name.lowercase()]
+            tooltips.add(Component.literal("Structure : ${info?.structureDisplayName ?: "Sanctuaire d'invocation"}").withStyle(ChatFormatting.YELLOW))
+            if (recipe.monumentPedestalBlock != null) {
+                tooltips.add(Component.literal("Bloc rituel : ${recipe.monumentPedestalBlock}").withStyle(ChatFormatting.AQUA))
+            }
+            val discovered = fr.k0bus.cobblemon_jei.journeymap.structure.StructureOverlayManager.getDiscoveredMonumentForSpecies(recipe.species.name)
+            if (discovered != null) {
+                val p = discovered.pedestalPos ?: discovered.pos
+                tooltips.add(Component.literal("Position connue : [${p.x}, ${p.y}, ${p.z}]").withStyle(ChatFormatting.GREEN))
+                tooltips.add(Component.literal("Waypoint JourneyMap : Groupe 'Legendary Monument'").withStyle(ChatFormatting.GOLD))
+            } else {
+                tooltips.add(Component.literal("Non localisé : Détection automatique au chargement du chunk").withStyle(ChatFormatting.GRAY))
+            }
+            return tooltips
+        }
 
         // Tooltip complet si survol de la zone des détails (y entre 36 et 124)
         if (recipe.isNaturalSpawn && mouseY >= 36 && mouseY <= 124 && mouseX >= 6 && mouseX <= (WIDTH - 6)) {

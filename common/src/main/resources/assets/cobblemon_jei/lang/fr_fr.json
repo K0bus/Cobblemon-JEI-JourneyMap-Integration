@@ -239,5 +239,11 @@
   "gui.cobblemon_jei.pokedex.spawns.category.natural": "Naturel",
   "gui.cobblemon_jei.pokedex.spawns.category.snack": "Poké Snack",
   "gui.cobblemon_jei.pokedex.spawns.category.natural.tooltip": "Zones et conditions d'apparition sauvage",
-  "gui.cobblemon_jei.pokedex.spawns.category.snack.tooltip": "Assaisonnements optimaux et recette pour attirer ce Pokémon"
+  "gui.cobblemon_jei.pokedex.spawns.category.snack.tooltip": "Assaisonnements optimaux et recette pour attirer ce Pokémon",
+  "gui.cobblemon_jm.monuments.tracker_title": "Tracker de Monuments",
+  "gui.cobblemon_jm.monuments.mode.all": "Tous (Monuments & Empreintes)",
+  "gui.cobblemon_jm.monuments.mode.major": "Monuments Majeurs Uniquement",
+  "gui.cobblemon_jm.monuments.mode.footprints": "Empreintes Uniquement (Lames de la Justice)",
+  "gui.cobblemon_jm.monuments.mode.disabled": "Désactivé",
+  "gui.cobblemon_jm.monuments.tooltip_cycle": "Cliquer pour changer de mode de détection"
 }

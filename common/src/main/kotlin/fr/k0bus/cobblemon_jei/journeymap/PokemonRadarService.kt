@@ -213,17 +213,17 @@ object PokemonRadarService {
             } catch (_: Throwable) {}
         }
 
-        // Détection en direct des piédestaux et blocs suspects dans les chunks actifs autour du joueur
-        if (tickCounter % 40 == 0) {
+        // Détection en direct des monuments et blocs d'invocation dans les chunks actifs autour du joueur
+        if (tickCounter % 20 == 0) {
             try {
                 val pPos = player.blockPosition()
                 val pcx = pPos.x shr 4
                 val pcz = pPos.z shr 4
-                for (dx in -1..1) {
-                    for (dz in -1..1) {
+                for (dx in -2..2) {
+                    for (dz in -2..2) {
                         val chunk = level.getChunk(pcx + dx, pcz + dz)
                         if (chunk is net.minecraft.world.level.chunk.LevelChunk) {
-                            fr.k0bus.cobblemon_jei.journeymap.structure.StructureRegionScanner.onChunkLoaded(chunk)
+                            fr.k0bus.cobblemon_jei.journeymap.structure.StructureChunkScanner.onChunkLoaded(chunk)
                         }
                     }
                 }

@@ -39,7 +39,10 @@ data class PokemonSpawnRecipe(
     val bait: String? = null,
     val structures: Set<String> = emptySet(),
     val antiStructures: Set<String> = emptySet(),
-    val notes: String = ""
+    val notes: String = "",
+    val isMonumentSpawn: Boolean = false,
+    val monumentStructureId: String? = null,
+    val monumentPedestalBlock: String? = null
 ) {
     /**
      * Ingrédient lié à cette recette.

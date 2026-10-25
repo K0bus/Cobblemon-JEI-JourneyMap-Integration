@@ -78,6 +78,7 @@ class CobblemonPokedexScreen(
     private var currentSpawnCategory: SpawnSubCategory = SpawnSubCategory.NATURAL
     private var spawnCategoryNaturalBtnRect: IntArray? = null
     private var spawnCategorySnackBtnRect: IntArray? = null
+    private var monumentTrackerToggleRect: IntArray? = null
     private var hoveredPokeSnackStack: ItemStack? = null
     private var rightPanelScrollOffset: Double = 0.0
     private var rightPanelMaxScroll: Double = 0.0
@@ -2101,7 +2102,68 @@ class CobblemonPokedexScreen(
             return y + 6
         }
 
+        monumentTrackerToggleRect = null
         for (spawn in spawns.take(5)) {
+            if (spawn.isMonumentSpawn) {
+                guiGraphics.drawString(font, "§6★ [Monument Légendaire]§r", contentX + 2, y, 0xFFFFD700.toInt(), false)
+                y += 10
+
+                val info = fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.KNOWN_MONUMENTS[sp.name.lowercase()]
+                val structName = info?.structureDisplayName ?: "Sanctuaire d'invocation"
+                guiGraphics.drawString(font, "§eStructure : §f$structName§r", contentX + 4, y, 0xFFFFFFFF.toInt(), false)
+                y += 9
+
+                val pedestal = spawn.monumentPedestalBlock?.substringAfter(":")?.replace('_', ' ')?.replaceFirstChar { it.uppercase() } ?: "Piédestal d'autel"
+                guiGraphics.drawString(font, "§7Bloc rituel : §b$pedestal§r", contentX + 4, y, 0xFFE0E0E0.toInt(), false)
+                y += 9
+
+                val dim = spawn.dimensions.firstOrNull()?.substringAfter(":")?.replaceFirstChar { it.uppercase() } ?: "Overworld"
+                guiGraphics.drawString(font, "§7Dimension : §a$dim§r", contentX + 4, y, 0xFFE0E0E0.toInt(), false)
+                y += 9
+
+                // Badge interactif d'état du tracker
+                val currentMode = fr.k0bus.cobblemon_jei.journeymap.structure.StructureOverlayManager.trackingMode
+                val badgeX = contentX + 4
+                val badgeY = y
+                val badgeW = contentW - 12
+                val badgeH = 14
+                val isHovered = mouseX >= badgeX && mouseX <= badgeX + badgeW && mouseY >= badgeY && mouseY <= badgeY + badgeH
+
+                val (badgeBg, borderCol, modeText) = when (currentMode) {
+                    fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.MonumentTrackingMode.DISABLED ->
+                        Triple(if (isHovered) 0x66FF4757 else 0x44FF4757, 0xFFFF4757.toInt(), "§c⛔ Tracker : Désactivé (Cliquer pour activer)")
+                    fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.MonumentTrackingMode.MAJOR_ONLY ->
+                        Triple(if (isHovered) 0x662ED573 else 0x442ED573, 0xFF2ED573.toInt(), "§a🏛 Tracker : Monuments Majeurs (Actif)")
+                    fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.MonumentTrackingMode.FOOTPRINTS_ONLY ->
+                        Triple(if (isHovered) 0x661E90FF else 0x441E90FF, 0xFF1E90FF.toInt(), "§b🐾 Tracker : Empreintes Seules (Actif)")
+                    fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.MonumentTrackingMode.ALL ->
+                        Triple(if (isHovered) 0x66FFA502 else 0x44FFA502, 0xFFFFA502.toInt(), "§6🏛+🐾 Tracker : Tout Tracker (Actif)")
+                }
+
+                guiGraphics.fill(badgeX, badgeY, badgeX + badgeW, badgeY + badgeH, badgeBg.toInt())
+                guiGraphics.renderOutline(badgeX, badgeY, badgeW, badgeH, borderCol)
+                guiGraphics.drawString(font, modeText, badgeX + 4, badgeY + 3, 0xFFFFFFFF.toInt(), false)
+                monumentTrackerToggleRect = intArrayOf(badgeX, badgeY, badgeW, badgeH)
+                y += badgeH + 4
+
+                val discovered = fr.k0bus.cobblemon_jei.journeymap.structure.StructureOverlayManager.getDiscoveredMonumentForSpecies(sp.name)
+                if (discovered != null) {
+                    val p = discovered.pedestalPos ?: discovered.pos
+                    guiGraphics.drawString(font, "§a✔ Découvert à [${p.x}, ${p.y}, ${p.z}]§r", contentX + 4, y, 0xFF2ED573.toInt(), false)
+                    y += 9
+                    guiGraphics.drawString(font, "§6★ Waypoint actif sur la minimap§r", contentX + 4, y, 0xFFFFD700.toInt(), false)
+                    y += 10
+                } else {
+                    guiGraphics.drawString(font, "§c✗ Non localisé dans ce monde§r", contentX + 4, y, 0xFFFF7675.toInt(), false)
+                    y += 9
+                    guiGraphics.drawString(font, "§8(Explorez les chunks pour cartographier le monument)§r", contentX + 4, y, 0xFFAAAAAA.toInt(), false)
+                    y += 10
+                }
+                guiGraphics.fill(contentX + 2, y, contentX + contentW - 4, y + 1, 0xFF3D4050.toInt())
+                y += 5
+                continue
+            }
+
             val rarity = when (spawn.bucket.lowercase()) {
                 "ultra-rare" -> "§d§l★ Ultra-rare§r"
                 "rare" -> "§6§l★ Rare§r"
@@ -4029,8 +4091,15 @@ class CobblemonPokedexScreen(
             }
         }
 
-        // Clics dans l'onglet Zones (Sélecteur Naturel vs Poké Snack)
+        // Clics dans l'onglet Zones (Sélecteur Naturel vs Poké Snack, ou Toggle Monument Tracker)
         if (currentRightPanelTab == RightPanelTab.SPAWNS) {
+            monumentTrackerToggleRect?.let { (bx, by, bw, bh) ->
+                if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
+                    fr.k0bus.cobblemon_jei.journeymap.structure.StructureOverlayManager.cycleTrackingMode()
+                    Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+                    return true
+                }
+            }
             spawnCategoryNaturalBtnRect?.let { (bx, by, bw, bh) ->
                 if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
                     currentSpawnCategory = SpawnSubCategory.NATURAL

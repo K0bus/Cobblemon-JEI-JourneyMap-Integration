@@ -78,13 +78,13 @@ object PokemonEvolutionDataLoader {
         }
 
         // Si PokemonSpecies est vide (car le client est au menu principal), on injecte nos espèces préchargées
-        if (PokemonSpecies.species.isEmpty() && parsedMap.isNotEmpty()) {
-            try {
+        try {
+            if (PokemonSpecies.species.isEmpty() && parsedMap.isNotEmpty()) {
                 PokemonSpecies.reload(parsedMap)
                 logger.info("Cobblemon JEI: ${parsedMap.size} espèces enregistrées dans PokemonSpecies.reload.")
-            } catch (e: Throwable) {
-                logger.warn("Impossible d'injecter les espèces dans PokemonSpecies: {}", e.message)
             }
+        } catch (e: Throwable) {
+            logger.debug("Cobblemon JEI: PokemonSpecies indisponible: {}", e.message)
         }
 
         // Indexe également toutes les espèces déjà présentes dans PokemonSpecies

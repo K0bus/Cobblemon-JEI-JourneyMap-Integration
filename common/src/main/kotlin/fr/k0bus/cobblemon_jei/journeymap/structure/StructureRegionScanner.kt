@@ -230,16 +230,12 @@ object StructureRegionScanner {
      * les piédestaux et blocs de fouilles suspects.
      */
     fun onChunkLoaded(chunk: LevelChunk) {
+        StructureChunkScanner.onChunkLoaded(chunk)
+
         val level = chunk.level ?: return
         val dimension = level.dimension()
 
-        // 1. Recherche de piédestal
-        val pedestalPos = LegendaryStructureHandler.findPedestalBlockInChunk(chunk)
-        if (pedestalPos != null) {
-            StructureOverlayManager.refinePedestalPosition(dimension, chunk.pos, pedestalPos)
-        }
-
-        // 2. Recherche de blocs suspects archéologiques
+        // Recherche de blocs suspects archéologiques de fossiles
         val suspiciousPos = FossilStructureHandler.scanSuspiciousBlocksInChunk(chunk)
         if (suspiciousPos != null) {
             StructureOverlayManager.refineFossilSitePosition(dimension, chunk.pos, suspiciousPos)

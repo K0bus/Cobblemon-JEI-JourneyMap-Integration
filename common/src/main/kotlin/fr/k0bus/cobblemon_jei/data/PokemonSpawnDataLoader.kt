@@ -1,5 +1,6 @@
 package fr.k0bus.cobblemon_jei.data
 
+import fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat
 import fr.k0bus.cobblemon_jei.recipe.PokemonSpawnRecipe
 import com.cobblemon.mod.common.api.pokemon.PokemonProperties
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
@@ -47,12 +48,123 @@ object PokemonSpawnDataLoader {
         // Agrégation des règles similaires par Pokémon et conditions communes
         val aggregatedRecipes = aggregateRawEntries(rawRecipes)
 
-        // Ajout des fiches explicatives pour les Pokémon sans aucun spawn sauvage
-        val finalRecipes = addMissingNoSpawnSpecies(aggregatedRecipes)
+        // Filtrage des apparitions naturelles pour les légendaires régis par Legendary Monuments si nullifiés
+        val filteredRecipes = filterNullifiedLegendarySpawns(aggregatedRecipes)
+
+        // Intégration des fiches d'apparition par Monument Légendaire
+        val monumentRecipes = buildLegendaryMonumentRecipes()
+
+        // Combinaison des apparitions avec les fiches de monuments
+        val combinedRecipes = filteredRecipes + monumentRecipes
+
+        // Ajout des fiches explicatives pour les Pokémon restants sans aucun spawn sauvage
+        val finalRecipes = addMissingNoSpawnSpecies(combinedRecipes)
 
         cachedRecipes = finalRecipes
         logger.info("Cobblemon JEI: ${finalRecipes.size} fiches d'apparition prêtes.")
         return finalRecipes
+    }
+
+    /**
+     * Filtre et retire les apparitions naturelles sauvages pour les Pokémon légendaires
+     * dont le spawn a été nullifié par Legendary Monuments ou un datapack.
+     */
+    private fun filterNullifiedLegendarySpawns(recipes: List<PokemonSpawnRecipe>): List<PokemonSpawnRecipe> {
+        val isLMActive = LegendaryMonumentsCompat.isModLoaded
+
+        return recipes.filter { recipe ->
+            val speciesName = recipe.species.name
+            if (LegendaryMonumentsCompat.isCoveredSpecies(speciesName)) {
+                // Si le mod Legendary Monuments est actif, ses Pokémon n'apparaissent qu'en monuments
+                if (isLMActive) {
+                    return@filter false
+                }
+                // Si le spawn naturel a un poids nul, aucun biome ou est invalide
+                if (recipe.weight <= 0f || (recipe.biomes.isEmpty() && recipe.structures.isEmpty())) {
+                    return@filter false
+                }
+            }
+            true
+        }
+    }
+
+    /**
+     * Construit les fiches d'apparition dédiées aux monuments de Legendary Monuments.
+     */
+    private fun buildLegendaryMonumentRecipes(): List<PokemonSpawnRecipe> {
+        val list = mutableListOf<PokemonSpawnRecipe>()
+
+        for (speciesName in LegendaryMonumentsCompat.COVERED_LEGENDARY_SPECIES) {
+            val species = try {
+                PokemonSpecies.getByName(speciesName)
+            } catch (_: Throwable) {
+                null
+            } ?: createFallbackSpecies(speciesName) ?: continue
+
+            val form = try {
+                species.standardForm
+            } catch (_: Throwable) {
+                try { species.forms.firstOrNull() } catch (_: Throwable) { null } ?: FormData().apply { this.species = species }
+            }
+
+            val info = LegendaryMonumentsCompat.KNOWN_MONUMENTS[speciesName]
+            val structName = info?.structureDisplayName
+                ?: "Monument de ${speciesName.replaceFirstChar { it.uppercase() }}"
+            val pedestalBlock = info?.primaryPedestalBlock
+                ?: "${speciesName.replace("-", "_")}_pedestal"
+            val dim = info?.defaultDimension ?: "minecraft:overworld"
+
+            list.add(
+                PokemonSpawnRecipe(
+                    species = species,
+                    form = form,
+                    isNaturalSpawn = false,
+                    bucket = "monument",
+                    isMonumentSpawn = true,
+                    monumentStructureId = "legendarymonuments:${info?.primaryPedestalBlock?.removeSuffix("_pedestal") ?: speciesName}",
+                    monumentPedestalBlock = "legendarymonuments:$pedestalBlock",
+                    dimensions = setOf(dim),
+                    notes = "Apparaît exclusivement via invocation au Monument Légendaire : $structName."
+                )
+            )
+        }
+        return list
+    }
+
+    private fun createFallbackSpecies(name: String): Species? {
+        return try {
+            val unsafeField = sun.misc.Unsafe::class.java.getDeclaredField("theUnsafe").apply { isAccessible = true }
+            val unsafe = unsafeField.get(null) as sun.misc.Unsafe
+            val sp = unsafe.allocateInstance(Species::class.java) as Species
+            sp.name = name
+            sp.resourceIdentifier = ResourceLocation.fromNamespaceAndPath("cobblemon", name.lowercase())
+            val form = unsafe.allocateInstance(FormData::class.java) as FormData
+            form.species = sp
+            try {
+                val nameField = FormData::class.java.getDeclaredField("name").apply { isAccessible = true }
+                nameField.set(form, "normal")
+            } catch (_: Throwable) {}
+            try {
+                val aspectsField = FormData::class.java.getDeclaredField("aspects").apply { isAccessible = true }
+                aspectsField.set(form, emptyList<String>())
+            } catch (_: Throwable) {}
+            try {
+                val ptField = FormData::class.java.getDeclaredField("_primaryType").apply { isAccessible = true }
+                ptField.set(form, com.cobblemon.mod.common.api.types.ElementalTypes.NORMAL)
+            } catch (_: Throwable) {}
+            val formsList = mutableListOf(form)
+            try {
+                val formsField = Species::class.java.getDeclaredField("forms").apply { isAccessible = true }
+                formsField.set(sp, formsList)
+            } catch (_: Throwable) {}
+            try {
+                val delegateField = Species::class.java.getDeclaredField("standardForm\$delegate").apply { isAccessible = true }
+                delegateField.set(sp, lazyOf(form))
+            } catch (_: Throwable) {}
+            sp
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     /**
@@ -630,7 +742,13 @@ object PokemonSpawnDataLoader {
         val result = existingRecipes.toMutableList()
         val spawnedSpeciesForms = existingRecipes.map { Pair(it.species.name, it.form.name) }.toSet()
 
-        for (species in PokemonSpecies.species) {
+        val allSpecies = try {
+            PokemonSpecies.species
+        } catch (_: Throwable) {
+            emptyList()
+        }
+
+        for (species in allSpecies) {
             // Forme standard
             if (!spawnedSpeciesForms.contains(Pair(species.name, species.standardForm.name))) {
                 result.add(

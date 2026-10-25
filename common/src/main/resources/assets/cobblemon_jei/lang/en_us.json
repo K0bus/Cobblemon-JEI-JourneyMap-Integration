@@ -239,5 +239,11 @@
   "gui.cobblemon_jei.pokedex.spawns.category.natural": "Natural",
   "gui.cobblemon_jei.pokedex.spawns.category.snack": "Poké Snack",
   "gui.cobblemon_jei.pokedex.spawns.category.natural.tooltip": "Natural wild spawns and biomes",
-  "gui.cobblemon_jei.pokedex.spawns.category.snack.tooltip": "Optimal Poké Snack seasonings and recipes to attract this Pokémon"
+  "gui.cobblemon_jei.pokedex.spawns.category.snack.tooltip": "Optimal Poké Snack seasonings and recipes to attract this Pokémon",
+  "gui.cobblemon_jm.monuments.tracker_title": "Monument Tracker",
+  "gui.cobblemon_jm.monuments.mode.all": "All (Monuments & Footprints)",
+  "gui.cobblemon_jm.monuments.mode.major": "Major Monuments Only",
+  "gui.cobblemon_jm.monuments.mode.footprints": "Footprints Only (Swords of Justice)",
+  "gui.cobblemon_jm.monuments.mode.disabled": "Disabled",
+  "gui.cobblemon_jm.monuments.tooltip_cycle": "Click to cycle detection mode"
 }

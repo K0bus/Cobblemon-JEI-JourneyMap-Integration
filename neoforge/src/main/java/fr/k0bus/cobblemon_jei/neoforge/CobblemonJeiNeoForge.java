@@ -53,6 +53,12 @@ public class CobblemonJeiNeoForge {
                 fr.k0bus.cobblemon_jei.leaderboard.CobblemonLeaderboardHud.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
             });
 
+            net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.level.ChunkEvent.Load event) -> {
+                if (event.getChunk() instanceof net.minecraft.world.level.chunk.LevelChunk chunk) {
+                    fr.k0bus.cobblemon_jei.journeymap.structure.StructureChunkScanner.INSTANCE.onChunkLoaded(chunk);
+                }
+            });
+
             fr.k0bus.cobblemon_jei.pokedex.PokedexNotificationHud.INSTANCE.init();
             LOGGER.info("Cobblemon JEI: HUD de notification Pokédex initialisé et enregistré.");
         } catch (Throwable t) {
