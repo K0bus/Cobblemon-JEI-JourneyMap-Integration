@@ -2088,7 +2088,42 @@ class CobblemonPokedexScreen(
         }
 
         guiGraphics.drawString(font, "§e§lZones d'apparition§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
-        y += 14
+        y += 12
+
+        // Badge dynamique temps réel
+        val mc = Minecraft.getInstance()
+        val player = mc.player
+        val level = mc.level
+        val activeForm = selectedForm ?: sp.standardForm
+        val statusRes = fr.k0bus.cobblemon_jei.data.SpawnConditionEvaluator.evaluate(player, level, sp, activeForm)
+        
+        val badgeX = contentX + 2
+        val badgeY = y
+        val badgeW = contentW - 8
+        val badgeH = 14
+        val isBadgeHovered = mouseX >= badgeX && mouseX <= badgeX + badgeW && mouseY >= badgeY && mouseY <= badgeY + badgeH
+        
+        val badgeBg = when (statusRes.status) {
+            fr.k0bus.cobblemon_jei.data.SpawnEligibilityStatus.AVAILABLE_NOW -> if (isBadgeHovered) 0x662ED573 else 0x442ED573
+            fr.k0bus.cobblemon_jei.data.SpawnEligibilityStatus.ENVIRONMENT_MATCH -> if (isBadgeHovered) 0x66FFA502 else 0x44FFA502
+            fr.k0bus.cobblemon_jei.data.SpawnEligibilityStatus.UNAVAILABLE -> if (isBadgeHovered) 0x66FF4757 else 0x44FF4757
+        }
+        val badgeBorder = statusRes.status.badgeColor
+        
+        guiGraphics.fill(badgeX, badgeY, badgeX + badgeW, badgeY + badgeH, badgeBg.toInt())
+        guiGraphics.renderOutline(badgeX, badgeY, badgeW, badgeH, badgeBorder)
+        val badgeText = "${statusRes.status.icon} ${statusRes.summary.string}"
+        guiGraphics.drawString(font, badgeText, badgeX + 4, badgeY + 3, 0xFFFFFFFF.toInt(), false)
+        
+        if (isBadgeHovered && statusRes.blockingReasons.isNotEmpty()) {
+            val tooltipLines = mutableListOf<Component>()
+            tooltipLines.add(Component.literal("§6Conditions manquantes ici :"))
+            for (reason in statusRes.blockingReasons) {
+                tooltipLines.add(Component.literal("§7 • $reason"))
+            }
+            guiGraphics.renderComponentTooltip(font, tooltipLines, mouseX, mouseY)
+        }
+        y += badgeH + 6
 
         val spawns = PokemonSpawnDataLoader.getSpawnRecipesForSpecies(sp)
         if (spawns.isEmpty()) {
@@ -2149,7 +2184,8 @@ class CobblemonPokedexScreen(
                 val discovered = fr.k0bus.cobblemon_jei.journeymap.structure.StructureOverlayManager.getDiscoveredMonumentForSpecies(sp.name)
                 if (discovered != null) {
                     val p = discovered.pedestalPos ?: discovered.pos
-                    guiGraphics.drawString(font, "§a✔ Découvert à [${p.x}, ${p.y}, ${p.z}]§r", contentX + 4, y, 0xFF2ED573.toInt(), false)
+                    val sName = discovered.metadata.displayName
+                    guiGraphics.drawString(font, "§a✔ $sName à [${p.x}, ${p.y}, ${p.z}]§r", contentX + 4, y, 0xFF2ED573.toInt(), false)
                     y += 9
                     guiGraphics.drawString(font, "§6★ Waypoint actif sur la minimap§r", contentX + 4, y, 0xFFFFD700.toInt(), false)
                     y += 10

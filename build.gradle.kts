@@ -52,6 +52,10 @@ subprojects {
     repositories {
         mavenCentral()
         maven {
+            name = "TheDarkColour"
+            url = uri("https://thedarkcolour.github.io/KotlinForForge/")
+        }
+        maven {
             name = "ImpactDev"
             url = uri("https://maven.impactdev.net/repository/development/")
         }

@@ -101,8 +101,21 @@ object JourneyMapDiskScanner {
         playerY: Int,
         isCancelled: () -> Boolean,
         clientApi: IClientAPI? = null,
-        onProgress: ((completedRegions: Int, totalRegions: Int, chunkMap: Map<ChunkPos, Holder<Biome>>) -> Unit)? = null
+        onProgress: ((completedRegions: Int, totalRegions: Int, chunkMap: Map<ChunkPos, Holder<Biome>>) -> Unit)? = null,
+        forceRefresh: Boolean = false
     ): Map<ChunkPos, Holder<Biome>> {
+        val cachedForDim = getCachedChunksForDimension(currentDim)
+        if (!forceRefresh && cachedForDim.size > 100) {
+            logger.info("Cobblemon JM: Utilisation directe du cache de ${cachedForDim.size} chunks pour ${currentDim.location()}.")
+            for ((pos, holder) in cachedForDim) {
+                if (ChunkBiomeTagCache.getChunkProfile(currentDim, pos) == null) {
+                    ChunkBiomeTagCache.putChunkProfile(currentDim, pos, holder)
+                }
+            }
+            onProgress?.invoke(1, 1, cachedForDim)
+            return cachedForDim
+        }
+
         initJourneyMapReflection()
 
         val exploredRegions = findExploredRegions(currentDim, mc, clientApi)
@@ -171,6 +184,9 @@ object JourneyMapDiskScanner {
                     val cachedBiome = globalBiomeCache[cacheKey]
                     if (cachedBiome != null) {
                         result[chunkPos] = cachedBiome
+                        if (ChunkBiomeTagCache.getChunkProfile(currentDim, chunkPos) == null) {
+                            ChunkBiomeTagCache.putChunkProfile(currentDim, chunkPos, cachedBiome)
+                        }
                         continue
                     }
 
@@ -190,6 +206,7 @@ object JourneyMapDiskScanner {
                     if (biomeHolder != null) {
                         result[chunkPos] = biomeHolder
                         globalBiomeCache[cacheKey] = biomeHolder
+                        ChunkBiomeTagCache.putChunkProfile(currentDim, chunkPos, biomeHolder)
                     }
                 }
             }

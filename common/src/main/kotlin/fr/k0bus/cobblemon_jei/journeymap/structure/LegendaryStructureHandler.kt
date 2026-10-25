@@ -53,7 +53,8 @@ object LegendaryStructureHandler {
         isHighlighted: Boolean = false
     ): MarkerOverlay {
         val targetPos = pedestalPos ?: pos
-        val mapImage = getOrCreateMapImage(metadata.iconLocation, isHighlighted)
+        val iconLoc = StructureOverlayManager.LEGENDARY_STAR_ICON
+        val mapImage = getOrCreateMapImage(iconLoc, isHighlighted)
         val marker = MarkerOverlay(MOD_ID, targetPos, mapImage)
 
         marker.overlayGroupName = OVERLAY_GROUP_LEGENDARY
@@ -63,14 +64,19 @@ object LegendaryStructureHandler {
         marker.maxZoom = UIState.ZOOM_IN_MAX
         marker.displayOrder = if (isHighlighted) 1800 else 1600
 
-        // Label doré distinctif
+        // Label doré distinctif affichant le NOM DE LA STRUCTURE
         val pokeTag = metadata.targetPokemonName?.replaceFirstChar { it.uppercase() }
-        val labelPrefix = if (isHighlighted) "★ " else "🏛 "
-        marker.label = if (pokeTag != null) "$labelPrefix$pokeTag" else "$labelPrefix${metadata.displayName}"
+        val structName = metadata.displayName
+        val labelText = if (pokeTag != null && !structName.contains(pokeTag, ignoreCase = true)) {
+            "★ $structName ($pokeTag)"
+        } else {
+            "★ $structName"
+        }
+        marker.label = labelText
 
         // Tooltip complet, élégant et soigné
         val tooltipBuilder = StringBuilder()
-        tooltipBuilder.append("§6★ [Monument Légendaire] §e${metadata.displayName}\n")
+        tooltipBuilder.append("§6★ [Structure Légendaire] §e$structName\n")
 
         if (pokeTag != null) {
             tooltipBuilder.append("§dPokémon Légendaire lié : §f$pokeTag\n")
@@ -80,13 +86,13 @@ object LegendaryStructureHandler {
         tooltipBuilder.append("§8─────────────────────────\n")
 
         if (pedestalPos != null) {
-            tooltipBuilder.append("§a✔ Piédestal / Autel localisé précisément au centre !\n")
+            tooltipBuilder.append("§a✔ Bloc rituel / Autel localisé précisément au centre !\n")
         } else {
             tooltipBuilder.append("§7Position : Zone centrale de la structure\n")
         }
 
         if (isHighlighted) {
-            tooltipBuilder.append("§6✦ SÉLECTION EN COURS : Sanctuaire ciblé par la recherche !\n")
+            tooltipBuilder.append("§6✦ SÉLECTION EN COURS : Structure ciblée par la recherche !\n")
         }
 
         marker.title = tooltipBuilder.toString().trimEnd()
@@ -151,8 +157,11 @@ object LegendaryStructureHandler {
     private fun getOrCreateMapImage(iconLoc: ResourceLocation, isHighlighted: Boolean): MapImage {
         val key = if (isHighlighted) ResourceLocation.fromNamespaceAndPath(iconLoc.namespace, "${iconLoc.path}#highlight") else iconLoc
         return iconCache.computeIfAbsent(key) {
-            val size = if (isHighlighted) 32 else 26
-            MapImage(iconLoc, size, size).centerAnchors()
+            val size = if (isHighlighted) 28 else 24
+            MapImage(iconLoc, 0, 0, 16, 16, 0xFFFFFF, 1.0f)
+                .setDisplayWidth(size.toDouble())
+                .setDisplayHeight(size.toDouble())
+                .centerAnchors()
         }
     }
 }

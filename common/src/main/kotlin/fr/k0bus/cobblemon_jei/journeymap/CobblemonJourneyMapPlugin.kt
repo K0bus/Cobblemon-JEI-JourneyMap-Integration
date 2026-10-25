@@ -106,7 +106,7 @@ class CobblemonJourneyMapPlugin : IClientPlugin {
                     isActive
                 ) { btn ->
                     Minecraft.getInstance().setScreen(
-                        CobblemonJourneyMapSearchScreen(btn, event.fullscreen)
+                        fr.k0bus.cobblemon_jei.pokedex.CobblemonPokedexScreen(null)
                     )
                 }
 

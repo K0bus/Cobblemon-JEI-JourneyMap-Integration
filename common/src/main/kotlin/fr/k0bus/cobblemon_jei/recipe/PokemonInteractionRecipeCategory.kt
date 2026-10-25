@@ -62,11 +62,13 @@ class PokemonInteractionRecipeCategory(
 
         // Slot 1 : Pokémon en INPUT (recherchable via 'U' sur le Pokémon)
         builder.addSlot(RecipeIngredientRole.INPUT, pokeSlotX, 30)
+            .setBackground(guiHelper.getSlotDrawable(), -1, -1)
             .addIngredient(PokemonSpeciesIngredient.TYPE, recipe.pokemonIngredient)
 
         // Slot 2 : Outil requis en INPUT (recherchable via 'U' sur les cisailles, le seau, etc.)
         if (hasTool) {
             builder.addSlot(RecipeIngredientRole.INPUT, toolSlotX, 30)
+                .setBackground(guiHelper.getSlotDrawable(), -1, -1)
                 .addIngredients(VanillaTypes.ITEM_STACK, recipe.requiredTools)
         }
 
@@ -80,6 +82,7 @@ class PokemonInteractionRecipeCategory(
             val slotY = 30
 
             val slotBuilder = builder.addSlot(RecipeIngredientRole.OUTPUT, slotX, slotY)
+                .setBackground(guiHelper.getSlotDrawable(), -1, -1)
                 .addItemStack(drop.itemStack)
 
             slotBuilder.addTooltipCallback { _, tooltip ->
@@ -176,10 +179,9 @@ class PokemonInteractionRecipeCategory(
     }
 
     private fun drawSlotBorder(guiGraphics: GuiGraphics, x: Int, y: Int, borderColor: Int) {
-        guiGraphics.fill(x + 1, y + 1, x + 17, y + 17, 0xFF0E0F12.toInt())
         guiGraphics.fill(x, y, x + 18, y + 1, borderColor)
         guiGraphics.fill(x, y + 17, x + 18, y + 18, borderColor)
-        guiGraphics.fill(x, y, x + 1, y + 18, borderColor)
-        guiGraphics.fill(x + 17, y, x + 18, y + 18, borderColor)
+        guiGraphics.fill(x, y + 1, x + 1, y + 17, borderColor)
+        guiGraphics.fill(x + 17, y + 1, x + 18, y + 17, borderColor)
     }
 }

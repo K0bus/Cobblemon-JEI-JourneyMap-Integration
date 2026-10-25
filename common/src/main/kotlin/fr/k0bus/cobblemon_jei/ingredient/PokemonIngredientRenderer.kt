@@ -5,6 +5,7 @@ import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.TooltipFlag
 
 /**
@@ -80,26 +81,15 @@ class PokemonIngredientRenderer : IIngredientRenderer<PokemonSpeciesIngredient> 
     override fun getWidth(): Int = 16
     override fun getHeight(): Int = 16
 
+    companion object {
+        private val FALLBACK_ICON = ResourceLocation.fromNamespaceAndPath("cobblemon_jei", "textures/gui/cobblemon_icon.png")
+    }
+
     /**
-     * Dessine une icône stylisée 16x16 aux couleurs du type élémentaire si le modèle échoue.
+     * Dessine l'icône Pokéball 16x16 parfaitement cadrée si le modèle ou l'itemStack ne peut pas être généré.
      */
     private fun renderFallbackIcon(guiGraphics: GuiGraphics, ingredient: PokemonSpeciesIngredient) {
-        val primaryColor = (0xFF000000.toLong() or (ingredient.primaryType.hue.toLong() and 0xFFFFFFL)).toInt()
-        val secondaryColor = ingredient.secondaryType?.let {
-            (0xFF000000.toLong() or (it.hue.toLong() and 0xFFFFFFL)).toInt()
-        } ?: primaryColor
-
-        // Bordure
-        guiGraphics.fill(0, 0, 16, 16, 0xFF1E1E24.toInt())
-        guiGraphics.fill(1, 1, 15, 15, 0xFF2F3542.toInt())
-
-        // Demi-cercles / motif supérieur et inférieur
-        guiGraphics.fill(2, 2, 14, 8, primaryColor)
-        guiGraphics.fill(2, 8, 14, 14, secondaryColor)
-
-        // Centre Poké Ball
-        guiGraphics.fill(6, 6, 10, 10, 0xFFFFFFFF.toInt())
-        guiGraphics.fill(7, 7, 9, 9, 0xFF2F3542.toInt())
+        guiGraphics.blit(FALLBACK_ICON, 0, 0, 0f, 0f, 16, 16, 16, 16)
     }
 
     private fun getTypeColor(typeName: String): ChatFormatting {

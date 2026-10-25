@@ -48,9 +48,10 @@ public class CobblemonJeiNeoForge {
                 }
             });
 
-            net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.RenderGuiEvent.Post event) -> {
+            net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST, false, (net.neoforged.neoforge.client.event.RenderGuiEvent.Post event) -> {
                 fr.k0bus.cobblemon_jei.pokedex.PokedexNotificationHud.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
                 fr.k0bus.cobblemon_jei.leaderboard.CobblemonLeaderboardHud.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
+                fr.k0bus.cobblemon_jei.journeymap.RadarCompassHud.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
             });
 
             net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.level.ChunkEvent.Load event) -> {

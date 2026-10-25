@@ -614,12 +614,14 @@ class CobblemonJourneyMapSearchScreen(
             guiGraphics.drawString(font, structTitle, x, structY, 0xFFFFA502.toInt(), false)
             if (matchingStructs.isNotEmpty()) {
                 val first = matchingStructs.first()
-                val discovered = Component.translatable("gui.cobblemon_jm.detail.sites_discovered", matchingStructs.size).string
-                guiGraphics.drawString(font, discovered, x, structY + 11, 0xFF2ED573.toInt(), false)
-                guiGraphics.drawString(font, "  [${first.pos.x}, ${first.pos.z}]", x, structY + 22, 0xFFCCCCCC.toInt(), false)
+                val structName = first.metadata.displayName
+                guiGraphics.drawString(font, "  ★ $structName", x, structY + 11, 0xFFFFD700.toInt(), false)
+                guiGraphics.drawString(font, "  [${first.pos.x}, ${first.pos.z}]", x, structY + 22, 0xFF2ED573.toInt(), false)
             } else {
-                val notDiscovered = Component.translatable("gui.cobblemon_jm.detail.sites_not_discovered").string
-                guiGraphics.drawString(font, notDiscovered, x, structY + 11, 0xFFFF6B6B.toInt(), false)
+                val known = fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.KNOWN_MONUMENTS[sp.name.lowercase()]
+                val defaultName = known?.structureDisplayName ?: Component.translatable("gui.cobblemon_jm.detail.sites_not_discovered").string
+                guiGraphics.drawString(font, "  ★ $defaultName", x, structY + 11, 0xFFFFA500.toInt(), false)
+                guiGraphics.drawString(font, "  Inexploré dans ce monde", x, structY + 22, 0xFFFF7675.toInt(), false)
             }
         }
 

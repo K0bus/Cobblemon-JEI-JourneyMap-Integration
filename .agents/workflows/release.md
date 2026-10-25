@@ -1,3 +1,7 @@
+---
+description: Workflow Release & Déploiement CurseForge
+---
+
 # Workflow Release & Déploiement CurseForge
 
 Ce workflow s'applique dès que l'utilisateur demande : *"Release le mod"*, *"Fais une mise à jour"*, *"Publie une version"* ou une instruction équivalente.

@@ -69,12 +69,14 @@ class PokemonPastureRecipeCategory(
 
         // Slot 1 : Pokémon éligibles en INPUT (recherchable via 'U' sur le Pokémon)
         val pokeSlot = builder.addSlot(RecipeIngredientRole.INPUT, pokeSlotX, 32)
+            .setBackground(guiHelper.getSlotDrawable(), -1, -1)
         for (poke in recipe.eligiblePokemon) {
             pokeSlot.addIngredient(PokemonSpeciesIngredient.TYPE, poke)
         }
 
         // Slot 2 : Cible / Bloc requis dans l'enclos en INPUT
         builder.addSlot(RecipeIngredientRole.INPUT, targetSlotX, 32)
+            .setBackground(guiHelper.getSlotDrawable(), -1, -1)
             .addIngredients(VanillaTypes.ITEM_STACK, recipe.targetInputs)
 
         // Slot 3+ : Objets produits en OUTPUT (recherchables via 'R' sur les items)
@@ -86,6 +88,7 @@ class PokemonPastureRecipeCategory(
             val slotStacks = outputs[i]
             if (slotStacks.isNotEmpty()) {
                 builder.addSlot(RecipeIngredientRole.OUTPUT, slotX, slotY)
+                    .setBackground(guiHelper.getSlotDrawable(), -1, -1)
                     .addItemStacks(slotStacks)
             }
         }
@@ -178,11 +181,10 @@ class PokemonPastureRecipeCategory(
     }
 
     private fun drawSlotBorder(guiGraphics: GuiGraphics, x: Int, y: Int, borderColor: Int) {
-        guiGraphics.fill(x + 1, y + 1, x + 17, y + 17, 0xFF0E0F12.toInt())
         guiGraphics.fill(x, y, x + 18, y + 1, borderColor)
         guiGraphics.fill(x, y + 17, x + 18, y + 18, borderColor)
-        guiGraphics.fill(x, y, x + 1, y + 18, borderColor)
-        guiGraphics.fill(x + 17, y, x + 18, y + 18, borderColor)
+        guiGraphics.fill(x, y + 1, x + 1, y + 17, borderColor)
+        guiGraphics.fill(x + 17, y + 1, x + 18, y + 17, borderColor)
     }
 
     private fun calculateOutputSlotPosition(index: Int, total: Int): Pair<Int, Int> {

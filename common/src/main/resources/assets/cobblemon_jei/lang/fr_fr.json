@@ -245,5 +245,11 @@
   "gui.cobblemon_jm.monuments.mode.major": "Monuments Majeurs Uniquement",
   "gui.cobblemon_jm.monuments.mode.footprints": "Empreintes Uniquement (Lames de la Justice)",
   "gui.cobblemon_jm.monuments.mode.disabled": "Désactivé",
-  "gui.cobblemon_jm.monuments.tooltip_cycle": "Cliquer pour changer de mode de détection"
+  "gui.cobblemon_jm.monuments.tooltip_cycle": "Cliquer pour changer de mode de détection",
+  "gui.cobblemon_jei.spawn_badge.available_now": "Apparaît actuellement ici !",
+  "gui.cobblemon_jei.spawn_badge.environment_match": "Bon biome (Mauvaise heure / météo)",
+  "gui.cobblemon_jei.spawn_badge.unavailable": "Ne peut pas apparaître ici",
+  "gui.cobblemon_jei.pokedex.show_on_map": "Afficher sur la carte",
+  "gui.cobblemon_jei.compass.distance": "%dm %s",
+  "gui.cobblemon_jei.compass.tracking": "Guidage radar : %s (%dm %s)"
 }

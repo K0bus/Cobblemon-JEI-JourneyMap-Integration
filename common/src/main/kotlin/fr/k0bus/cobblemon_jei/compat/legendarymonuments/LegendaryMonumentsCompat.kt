@@ -95,8 +95,75 @@ object LegendaryMonumentsCompat {
         "chien-pao" to MonumentInfo("chien-pao", "Icescourge Shrine", "minecraft:overworld", "chien_pao_shrine"),
         "chi-yu" to MonumentInfo("chi-yu", "Firescourge Shrine", "minecraft:overworld", "chi_yu_shrine"),
         "ting-lu" to MonumentInfo("ting-lu", "Groundblight Shrine", "minecraft:overworld", "ting_lu_shrine"),
-        "wo-chien" to MonumentInfo("wo-chien", "Grasswither Shrine", "minecraft:overworld", "wo_chien_shrine")
+        "wo-chien" to MonumentInfo("wo-chien", "Grasswither Shrine", "minecraft:overworld", "wo_chien_shrine"),
+        "cobalion" to MonumentInfo("cobalion", "Empreinte de Cobaltium", "minecraft:overworld", "cobalion_footprint"),
+        "terrakion" to MonumentInfo("terrakion", "Empreinte de Terrakium", "minecraft:overworld", "terrakion_footprint"),
+        "virizion" to MonumentInfo("virizion", "Empreinte de Viridium", "minecraft:overworld", "virizion_footprint"),
+        "keldeo" to MonumentInfo("keldeo", "Empreinte de Keldeo", "minecraft:overworld", "keldeo_footprint"),
+        "articuno" to MonumentInfo("articuno", "Sanctuaire d'Artikodin", "minecraft:overworld", "articuno_shrine"),
+        "zapdos" to MonumentInfo("zapdos", "Sanctuaire d'Élector", "minecraft:overworld", "zapdos_shrine"),
+        "moltres" to MonumentInfo("moltres", "Sanctuaire de Sulfura", "minecraft:overworld", "moltres_shrine"),
+        "mewtwo" to MonumentInfo("mewtwo", "Cerulean Cave", "minecraft:overworld", "mewtwo_pedestal"),
+        "mew" to MonumentInfo("mew", "Faraway Island", "minecraft:overworld", "mew_pedestal"),
+        "solgaleo" to MonumentInfo("solgaleo", "Altar of the Sunne", "minecraft:overworld", "solgaleo_pedestal"),
+        "lunala" to MonumentInfo("lunala", "Altar of the Moone", "minecraft:overworld", "lunala_pedestal"),
+        "cosmog" to MonumentInfo("cosmog", "Altar of the Sunne", "minecraft:overworld", "cosmog_pedestal"),
+        "cosmoem" to MonumentInfo("cosmoem", "Altar of the Moone", "minecraft:overworld", "cosmoem_pedestal"),
+        "uxie" to MonumentInfo("uxie", "Lake Acuity", "minecraft:overworld", "uxie_pedestal"),
+        "mesprit" to MonumentInfo("mesprit", "Lake Verity", "minecraft:overworld", "mesprit_pedestal"),
+        "azelf" to MonumentInfo("azelf", "Lake Valor", "minecraft:overworld", "azelf_pedestal"),
+        "celebi" to MonumentInfo("celebi", "Ilex Shrine", "minecraft:overworld", "celebi_shrine"),
+        "darkrai" to MonumentInfo("darkrai", "Newmoon Island", "minecraft:overworld", "darkrai_pedestal"),
+        "cresselia" to MonumentInfo("cresselia", "Fullmoon Island", "minecraft:overworld", "cresselia_pedestal"),
+        "heatran" to MonumentInfo("heatran", "Stark Mountain", "minecraft:overworld", "heatran_pedestal"),
+        "victini" to MonumentInfo("victini", "Liberty Garden", "minecraft:overworld", "victini_pedestal"),
+        "zygarde" to MonumentInfo("zygarde", "Terminus Cave", "minecraft:overworld", "zygarde_altar"),
+        "enamorus" to MonumentInfo("enamorus", "Hisuian Altar", "minecraft:overworld", "enamorus_pedestal"),
+        "marshadow" to MonumentInfo("marshadow", "Mount Tensei", "minecraft:overworld", "marshadow_pedestal")
     )
+
+    /**
+     * Résout le nom d'affichage précis d'une structure ou empreinte.
+     */
+    fun resolveStructureName(blockId: ResourceLocation, speciesName: String?): String {
+        val isFootprint = isFootprintBlock(blockId)
+        val species = speciesName?.let {
+            try { com.cobblemon.mod.common.api.pokemon.PokemonSpecies.getByName(it) } catch (_: Throwable) { null }
+        }
+        val pokeDisplayName = species?.translatedName?.string ?: speciesName?.replaceFirstChar { it.uppercase() }
+
+        // 1. Dictionnaire des structures officielles connues
+        val known = speciesName?.let { KNOWN_MONUMENTS[it.lowercase()] }
+        if (known != null) {
+            return known.structureDisplayName
+        }
+
+        // 2. Si c'est une empreinte
+        if (isFootprint) {
+            return if (pokeDisplayName != null) "Empreinte de $pokeDisplayName" else "Empreinte Légendaire"
+        }
+
+        // 3. Déduction élégante depuis le nom de bloc (ex: zacian_pedestal -> "Sanctuaire de Zacian")
+        if (pokeDisplayName != null) {
+            val path = blockId.path.lowercase()
+            val type = when {
+                path.contains("pedestal") -> "Piédestal"
+                path.contains("shrine") -> "Sanctuaire"
+                path.contains("altar") -> "Autel"
+                path.contains("cocoon") -> "Cocon"
+                path.contains("jukebox") -> "Jukebox"
+                path.contains("temple") -> "Temple"
+                else -> "Monument"
+            }
+            return "$type de $pokeDisplayName"
+        }
+
+        // 4. Nettoyage de l'identifiant brut du bloc (ex: "legendarymonuments:sword_temple" -> "Sword Temple")
+        return blockId.path
+            .replace('_', ' ')
+            .split(' ')
+            .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+    }
 
     /**
      * Indique si le mod [legendarymonuments] est actuellement chargé dans l'environnement de jeu.

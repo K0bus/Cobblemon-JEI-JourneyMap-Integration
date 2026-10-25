@@ -245,5 +245,11 @@
   "gui.cobblemon_jm.monuments.mode.major": "Major Monuments Only",
   "gui.cobblemon_jm.monuments.mode.footprints": "Footprints Only (Swords of Justice)",
   "gui.cobblemon_jm.monuments.mode.disabled": "Disabled",
-  "gui.cobblemon_jm.monuments.tooltip_cycle": "Click to cycle detection mode"
+  "gui.cobblemon_jm.monuments.tooltip_cycle": "Click to cycle detection mode",
+  "gui.cobblemon_jei.spawn_badge.available_now": "Spawning here right now!",
+  "gui.cobblemon_jei.spawn_badge.environment_match": "Matching biome (Wrong time/weather)",
+  "gui.cobblemon_jei.spawn_badge.unavailable": "Cannot spawn here",
+  "gui.cobblemon_jei.pokedex.show_on_map": "Show on Map",
+  "gui.cobblemon_jei.compass.distance": "%dm %s",
+  "gui.cobblemon_jei.compass.tracking": "Radar Guidance: %s (%dm %s)"
 }

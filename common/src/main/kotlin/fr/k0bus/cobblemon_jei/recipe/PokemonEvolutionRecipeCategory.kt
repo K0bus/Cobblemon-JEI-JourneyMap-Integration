@@ -65,16 +65,19 @@ class PokemonEvolutionRecipeCategory(
     ) {
         // Slot 1 : Pokémon de départ (Sous-évolution)
         builder.addSlot(RecipeIngredientRole.INPUT, 16, 20)
+            .setBackground(guiHelper.getSlotDrawable(), -1, -1)
             .addIngredient(PokemonSpeciesIngredient.TYPE, recipe.inputIngredient)
 
         // Slot 2 : Objet d'évolution (si requis : Pierre Foudre, objet tenu, etc.)
         if (recipe.requiredItems.isNotEmpty()) {
             builder.addSlot(RecipeIngredientRole.INPUT, 80, 10)
+                .setBackground(guiHelper.getSlotDrawable(), -1, -1)
                 .addIngredients(VanillaTypes.ITEM_STACK, recipe.requiredItems)
         }
 
         // Slot 3 : Pokémon évolué (Résultat)
         builder.addSlot(RecipeIngredientRole.OUTPUT, 142, 20)
+            .setBackground(guiHelper.getSlotDrawable(), -1, -1)
             .addIngredient(PokemonSpeciesIngredient.TYPE, recipe.outputIngredient)
     }
 
@@ -91,28 +94,13 @@ class PokemonEvolutionRecipeCategory(
         guiGraphics.fill(0, 0, WIDTH, HEIGHT, 0xFF141519.toInt())
         guiGraphics.fill(1, 1, WIDTH - 1, HEIGHT - 1, 0xFF1C1E24.toInt())
 
-        // 2. Cadres des slots Pokémon (Origine et Résultat)
-        // Slot Origine (15, 19 à 34, 38)
-        guiGraphics.fill(15, 19, 34, 38, 0xFF0E0F12.toInt())
-        guiGraphics.fill(14, 18, 35, 19, 0xFF3D4050.toInt())
-        guiGraphics.fill(14, 37, 35, 38, 0xFF3D4050.toInt())
-        guiGraphics.fill(14, 18, 15, 38, 0xFF3D4050.toInt())
-        guiGraphics.fill(34, 18, 35, 38, 0xFF3D4050.toInt())
+        // 2. Cadres des slots Pokémon (Origine à 15, 19 et Résultat à 141, 19)
+        drawSlotBorder(guiGraphics, 15, 19, 0xFF3D4050.toInt())
+        drawSlotBorder(guiGraphics, 141, 19, 0xFF2ED573.toInt())
 
-        // Slot Résultat (141, 19 à 160, 38)
-        guiGraphics.fill(141, 19, 160, 38, 0xFF0E0F12.toInt())
-        guiGraphics.fill(140, 18, 161, 19, 0xFF3D4050.toInt())
-        guiGraphics.fill(140, 37, 161, 38, 0xFF3D4050.toInt())
-        guiGraphics.fill(140, 18, 141, 38, 0xFF3D4050.toInt())
-        guiGraphics.fill(160, 18, 161, 38, 0xFF3D4050.toInt())
-
-        // 3. Cadre central de l'objet si requis
+        // 3. Cadre central de l'objet si requis (à 79, 9)
         if (recipe.requiredItems.isNotEmpty()) {
-            guiGraphics.fill(79, 9, 98, 28, 0xFF0E0F12.toInt())
-            guiGraphics.fill(78, 8, 99, 9, 0xFFE1B12C.toInt())
-            guiGraphics.fill(78, 27, 99, 28, 0xFFE1B12C.toInt())
-            guiGraphics.fill(78, 8, 79, 28, 0xFFE1B12C.toInt())
-            guiGraphics.fill(97, 8, 98, 28, 0xFFE1B12C.toInt())
+            drawSlotBorder(guiGraphics, 79, 9, 0xFFE1B12C.toInt())
         }
 
         // 4. Flèche d'évolution centrale stylisée
@@ -217,5 +205,12 @@ class PokemonEvolutionRecipeCategory(
         }
 
         return tooltips
+    }
+
+    private fun drawSlotBorder(guiGraphics: GuiGraphics, x: Int, y: Int, borderColor: Int) {
+        guiGraphics.fill(x, y, x + 18, y + 1, borderColor)
+        guiGraphics.fill(x, y + 17, x + 18, y + 18, borderColor)
+        guiGraphics.fill(x, y + 1, x + 1, y + 17, borderColor)
+        guiGraphics.fill(x + 17, y + 1, x + 18, y + 17, borderColor)
     }
 }

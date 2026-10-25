@@ -121,7 +121,7 @@ object CobblemonJourneyMapOverlayHud {
         val font = mc.font
 
         val cardWidth = 180
-        val cardHeight = 82
+        val cardHeight = 94
 
         // Positionnement horizontal avec contrainte d'écran
         var cardX = btnX
@@ -213,11 +213,16 @@ object CobblemonJourneyMapOverlayHud {
         }
 
         // Ligne 3 : Rareté estimée
-        val naturalRecipes = PokemonSpawnDataLoader.getSpawnRecipesForSpecies(species).filter { it.isNaturalSpawn }
-        val bestRecipe = naturalRecipes.maxByOrNull { it.weight } ?: naturalRecipes.firstOrNull()
-        val rarity = bestRecipe?.let { SpawnRarity.fromBucketOrWeight(it.bucket, it.weight) } ?: SpawnRarity.COMMON
-        val rarityColor = (0xFF000000 or RarityColorPalette.createShapeProperties(rarity).strokeColor.toLong()).toInt()
-        val rarityText = "Rareté : ${rarity.displayName}"
+        val isLegendaryMonument = fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.isCoveredSpecies(species.name)
+        val (rarityText, rarityColor) = if (isLegendaryMonument) {
+            "Rareté : §6★ Légendaire" to 0xFFFFD700.toInt()
+        } else {
+            val naturalRecipes = PokemonSpawnDataLoader.getSpawnRecipesForSpecies(species).filter { it.isNaturalSpawn }
+            val bestRecipe = naturalRecipes.maxByOrNull { it.weight } ?: naturalRecipes.firstOrNull()
+            val rarity = bestRecipe?.let { SpawnRarity.fromBucketOrWeight(it.bucket, it.weight) } ?: SpawnRarity.COMMON
+            val color = (0xFF000000 or RarityColorPalette.createShapeProperties(rarity).strokeColor.toLong()).toInt()
+            "Rareté : ${rarity.displayName}" to color
+        }
         guiGraphics.drawString(font, rarityText, textX, cardY + 37, rarityColor, false)
 
         // 7. Ligne de séparation
@@ -257,7 +262,35 @@ object CobblemonJourneyMapOverlayHud {
             val radarCount = PokemonRadarService.detectedCount
             val isShiny = PokemonRadarService.hasShinyNearby
 
-            if (totalEligible > 0) {
+            val discoveredMonument = fr.k0bus.cobblemon_jei.journeymap.structure.StructureOverlayManager.getDiscoveredMonumentForSpecies(species.name)
+            val knownInfo = fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.KNOWN_MONUMENTS[species.name.lowercase()]
+            val hasMonument = knownInfo != null || isLegendaryMonument
+
+            if (hasMonument && totalEligible == 0) {
+                // Pokémon régi par un monument légendaire
+                if (discoveredMonument != null) {
+                    val p = discoveredMonument.pedestalPos ?: discoveredMonument.pos
+                    val structName = discoveredMonument.metadata.displayName
+                    val foundText = "§6★ $structName §a✔ Découvert"
+                    guiGraphics.drawString(font, foundText, cardX + 6, cardY + 51, 0xFFFFD700.toInt(), false)
+
+                    // Barre or légendaire
+                    guiGraphics.fill(barX, barY + 1, barX + barW, barY + 3, 0xFFFFD700.toInt())
+
+                    val coordText = "§7Coord : §e[${p.x}, ${p.y}, ${p.z}] §8• Waypoint actif"
+                    guiGraphics.drawString(font, coordText, cardX + 6, cardY + 69, 0xFFE0E0E0.toInt(), false)
+                } else {
+                    val structName = knownInfo?.structureDisplayName ?: "Structure Légendaire"
+                    val foundText = "§6★ $structName §7(Inexploré)"
+                    guiGraphics.drawString(font, foundText, cardX + 6, cardY + 51, 0xFFFFA500.toInt(), false)
+
+                    // Barre orange/ambre
+                    guiGraphics.fill(barX, barY + 1, barX + barW, barY + 3, 0xFFFFA500.toInt())
+
+                    val hintText = if (isHovered) "§e▶ Cliquer pour changer" else "§8Explorez les chunks pour cartographier"
+                    guiGraphics.drawString(font, hintText, cardX + 6, cardY + 69, 0xFFAAAAAA.toInt(), false)
+                }
+            } else if (totalEligible > 0) {
                 val foundText = if (isShiny) {
                     "§6★ SHINY détecté ! §7($totalEligible zones)"
                 } else if (radarCount > 0) {
@@ -272,8 +305,41 @@ object CobblemonJourneyMapOverlayHud {
                 guiGraphics.fill(barX, barY + 1, barX + barW, barY + 3, barColor)
 
                 val radarStatus = PokemonRadarService.getStatusSummary(species.translatedName.string)
-                val subText = if (isHovered) "§e▶ Cliquer pour changer" else "§7Radar : $radarStatus"
-                guiGraphics.drawString(font, subText, cardX + 6, cardY + 69, 0xFFAAAAAA.toInt(), false)
+                val guidance = RadarCompassService.getCurrentGuidance()
+
+                val line1 = if (guidance != null) {
+                    when {
+                        guidance.isPhysicallyPresent -> "§b⚡ Présent §f: §e${guidance.arrowSymbol} §f${guidance.distanceBlocks}m"
+                        guidance.isInZone -> {
+                            if (guidance.canSpawnNow) "§a✔ Dans la zone §8• §aPeut apparaître !"
+                            else "§6⏳ Dans la zone §8• §6En attente"
+                        }
+                        else -> "§a✦ Zone proche §f: §e${guidance.arrowSymbol} §f${guidance.distanceBlocks}m"
+                    }
+                } else {
+                    "§7Radar : $radarStatus"
+                }
+
+                val line2 = if (isHovered) {
+                    "§e▶ Cliquer pour ouvrir Pokédex"
+                } else if (guidance != null) {
+                    when {
+                        guidance.isPhysicallyPresent -> {
+                            val altSuffix = if (guidance.relativeY != 0) " (${if (guidance.relativeY > 0) "+" else ""}${guidance.relativeY}m Y)" else ""
+                            "§8Guidage : vers ${guidance.targetName}$altSuffix"
+                        }
+                        guidance.isInZone -> {
+                            if (guidance.canSpawnNow) "§aConditions de spawn réunies à 100%"
+                            else "§eManque : ${guidance.waitingReason ?: "Heure / Météo"}"
+                        }
+                        else -> "§8Guidage : vers ${guidance.targetName}"
+                    }
+                } else {
+                    "§8Explorez les chunks pour cartographier"
+                }
+
+                guiGraphics.drawString(font, line1, cardX + 6, cardY + 68, 0xFFFFFFFF.toInt(), false)
+                guiGraphics.drawString(font, line2, cardX + 6, cardY + 79, 0xFFAAAAAA.toInt(), false)
             } else {
                 val noneText = "§c✗ Aucun spawn trouvé"
                 guiGraphics.drawString(font, noneText, cardX + 6, cardY + 51, 0xFFFF4757.toInt(), false)
@@ -306,10 +372,7 @@ object CobblemonJourneyMapOverlayHud {
         if (bounds != null && bounds.contains(event.mouseX, event.mouseY)) {
             val mc = Minecraft.getInstance()
             mc.setScreen(
-                CobblemonJourneyMapSearchScreen(
-                    CobblemonJourneyMapPlugin.currentThemeButton,
-                    CobblemonJourneyMapPlugin.currentFullscreen
-                )
+                fr.k0bus.cobblemon_jei.pokedex.CobblemonPokedexScreen(null)
             )
             event.isCanceled = true
             return

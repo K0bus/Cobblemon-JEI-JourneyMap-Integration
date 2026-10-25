@@ -159,7 +159,10 @@ object FossilStructureHandler {
         val key = if (isHighlighted) ResourceLocation.fromNamespaceAndPath(iconLoc.namespace, "${iconLoc.path}#highlight") else iconLoc
         return iconCache.computeIfAbsent(key) {
             val size = if (isHighlighted) 28 else 24
-            MapImage(iconLoc, size, size).centerAnchors()
+            MapImage(iconLoc, 0, 0, 32, 32, 0xFFFFFF, 1.0f)
+                .setDisplayWidth(size.toDouble())
+                .setDisplayHeight(size.toDouble())
+                .centerAnchors()
         }
     }
 }

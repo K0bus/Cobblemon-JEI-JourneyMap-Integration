@@ -56,6 +56,7 @@ class PokemonDropRecipeCategory(
     ) {
         // Slot 1 : Pokémon en INPUT (recherchable via 'U' sur le Pokémon)
         builder.addSlot(RecipeIngredientRole.INPUT, 14, 30)
+            .setBackground(guiHelper.getSlotDrawable(), -1, -1)
             .addIngredient(PokemonSpeciesIngredient.TYPE, recipe.pokemonIngredient)
 
         // Slots OUTPUT : Butins lâchés à la défaite
@@ -67,6 +68,7 @@ class PokemonDropRecipeCategory(
             val (slotX, slotY) = calculateDropSlotPosition(i, total)
 
             val slotBuilder = builder.addSlot(RecipeIngredientRole.OUTPUT, slotX, slotY)
+                .setBackground(guiHelper.getSlotDrawable(), -1, -1)
                 .addItemStack(drop.itemStack)
 
             slotBuilder.addTooltipCallback { _, tooltip ->
@@ -179,11 +181,10 @@ class PokemonDropRecipeCategory(
     }
 
     private fun drawSlotBorder(guiGraphics: GuiGraphics, x: Int, y: Int, borderColor: Int) {
-        guiGraphics.fill(x + 1, y + 1, x + 17, y + 17, 0xFF0E0F12.toInt())
         guiGraphics.fill(x, y, x + 18, y + 1, borderColor)
         guiGraphics.fill(x, y + 17, x + 18, y + 18, borderColor)
-        guiGraphics.fill(x, y, x + 1, y + 18, borderColor)
-        guiGraphics.fill(x + 17, y, x + 18, y + 18, borderColor)
+        guiGraphics.fill(x, y + 1, x + 1, y + 17, borderColor)
+        guiGraphics.fill(x + 17, y + 1, x + 18, y + 17, borderColor)
     }
 
     private fun calculateDropSlotPosition(index: Int, total: Int): Pair<Int, Int> {

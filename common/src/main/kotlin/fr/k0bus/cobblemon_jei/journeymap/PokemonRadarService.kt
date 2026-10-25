@@ -50,6 +50,11 @@ object PokemonRadarService {
     val ICON_SHINY_UP_LOC = ResourceLocation.fromNamespaceAndPath(MOD_ID, "textures/gui/radar_marker_shiny_up.png")
     val ICON_SHINY_DOWN_LOC = ResourceLocation.fromNamespaceAndPath(MOD_ID, "textures/gui/radar_marker_shiny_down.png")
 
+    val ICON_UNCAUGHT_LOC = ResourceLocation.fromNamespaceAndPath(MOD_ID, "textures/gui/radar_marker_uncaught.png")
+    val ICON_UNCAUGHT_UP_LOC = ResourceLocation.fromNamespaceAndPath(MOD_ID, "textures/gui/radar_marker_uncaught_up.png")
+    val ICON_UNCAUGHT_DOWN_LOC = ResourceLocation.fromNamespaceAndPath(MOD_ID, "textures/gui/radar_marker_uncaught_down.png")
+
+
     // Tolérance d'altitude en blocs pour considérer que le Pokémon est sur la même hauteur (ex: petites pentes)
     const val HEIGHT_TOLERANCE = 3
 
@@ -96,13 +101,39 @@ object PokemonRadarService {
      * Instancie le [MapImage] adapté avec l'icône directionnelle appropriée (flèche haut/bas ou neutre)
      * et la teinte/opacité calculée selon l'écart de hauteur.
      */
-    fun createRadarMapImage(isShiny: Boolean, deltaY: Int): MapImage {
+    
+    private fun isSpeciesUncaught(species: Species, form: FormData? = null): Boolean {
+        return try {
+            val dexData = com.cobblemon.mod.common.client.CobblemonClient.clientPokedexData
+            val specRecord = dexData.speciesRecords[species.resourceIdentifier]
+            if (specRecord == null || specRecord.getKnowledge() != com.cobblemon.mod.common.api.pokedex.PokedexEntryProgress.CAUGHT) {
+                return true
+            }
+            if (form != null && species.forms.size > 1) {
+                val formName = form.name.lowercase().ifBlank { "normal" }
+                val formRecord = specRecord.getFormRecord(formName)
+                    ?: specRecord.getFormRecord(form.name.lowercase())
+                    ?: specRecord.getFormRecord("")
+                return formRecord == null || formRecord.knowledge != com.cobblemon.mod.common.api.pokedex.PokedexEntryProgress.CAUGHT
+            }
+            false
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    fun createRadarMapImage(isShiny: Boolean, deltaY: Int, isUncaught: Boolean = false): MapImage {
         val direction = getVerticalDirection(deltaY)
         val iconLoc = when {
             isShiny -> when (direction) {
                 VerticalDirection.ABOVE -> ICON_SHINY_UP_LOC
                 VerticalDirection.BELOW -> ICON_SHINY_DOWN_LOC
                 VerticalDirection.SAME_LEVEL -> ICON_SHINY_LOC
+            }
+            isUncaught -> when (direction) {
+                VerticalDirection.ABOVE -> ICON_UNCAUGHT_UP_LOC
+                VerticalDirection.BELOW -> ICON_UNCAUGHT_DOWN_LOC
+                VerticalDirection.SAME_LEVEL -> ICON_UNCAUGHT_LOC
             }
             else -> when (direction) {
                 VerticalDirection.ABOVE -> ICON_NORMAL_UP_LOC
@@ -166,6 +197,12 @@ object PokemonRadarService {
     /**
      * Initialise la liaison avec l'API JourneyMap v2.
      */
+    
+    /**
+     * Retourne une copie en lecture seule des entités actuellement suivies.
+     */
+    fun getTrackedEntities(): Map<UUID, DetectedPokemon> = trackedEntities
+
     fun initialize(api: IClientAPI) {
         this.clientApi = api
         registerEvents()
@@ -368,30 +405,56 @@ object PokemonRadarService {
         val dimKey = level.dimension()
         val playerY = player.blockPosition().y
 
-        // 2. Création ou mise à jour de la position et de l'apparence des marqueurs actifs
-        for ((uuid, detected) in foundPokemons) {
-            val deltaY = detected.blockPos.y - playerY
+        // 2. Regroupement intelligent par cluster (les Shiny, Légendaires et cibles isolées restent exclus)
+        val clusters = RadarClusteringEngine.clusterEntities(foundPokemons.values)
+        val clusterRepresentativeUuids = clusters.map { it.representative.uuid }.toSet()
+
+        // Retire les marqueurs des membres secondaires pour ne pas saturer la carte
+        for (cluster in clusters) {
+            if (cluster.count > 1) {
+                for (member in cluster.members) {
+                    if (member.uuid != cluster.representative.uuid) {
+                        val existing = trackedEntities[member.uuid]
+                        existing?.marker?.let { m ->
+                            try { api.remove(m) } catch (_: Throwable) {}
+                            existing.marker = null
+                        }
+                    }
+                }
+            }
+        }
+
+        // Met à jour les marqueurs actifs
+        for (cluster in clusters) {
+            val detected = cluster.representative
+            val uuid = detected.uuid
+            val clusterPos = cluster.centerPos
+            val deltaY = clusterPos.y - playerY
+            val isUncaught = !detected.isShiny && isSpeciesUncaught(detected.species, detected.form)
+
             val existing = trackedEntities[uuid]
             if (existing != null && existing.marker != null) {
                 val marker = existing.marker!!
-                val newIcon = createRadarMapImage(detected.isShiny, deltaY)
-                val posChanged = marker.point != detected.blockPos
+                val newIcon = createRadarMapImage(detected.isShiny, deltaY, isUncaught)
+                val posChanged = marker.point != clusterPos
                 val iconChanged = marker.icon != newIcon
 
                 if (posChanged || iconChanged) {
-                    if (posChanged) marker.point = detected.blockPos
+                    if (posChanged) marker.point = clusterPos
                     if (iconChanged) marker.icon = newIcon
-                    marker.title = buildMarkerTitle(detected, deltaY)
-                    marker.label = buildMarkerLabel(detected, deltaY)
+                    marker.title = buildMarkerTitle(detected, deltaY, cluster.count)
+                    marker.label = buildMarkerLabel(detected, deltaY, cluster.count)
                     marker.flagForRerender()
                     try {
                         api.show(marker)
                     } catch (_: Throwable) {}
                 }
-                existing.blockPos = detected.blockPos
+                existing.blockPos = clusterPos
             } else {
-                val marker = createMarkerOverlay(detected, dimKey, deltaY)
+                val marker = createMarkerOverlay(detected, dimKey, deltaY, cluster.count)
+                marker.point = clusterPos
                 detected.marker = marker
+                detected.blockPos = clusterPos
                 trackedEntities[uuid] = detected
                 try {
                     api.show(marker)
@@ -415,7 +478,7 @@ object PokemonRadarService {
     /**
      * Génère l'infobulle (tooltip) du marqueur incluant le Pokémon, son niveau, et son altitude relative.
      */
-    fun buildMarkerTitle(detected: DetectedPokemon, deltaY: Int): String {
+    fun buildMarkerTitle(detected: DetectedPokemon, deltaY: Int, clusterCount: Int = 1): String {
         val shinyTag = if (detected.isShiny) " §6★ §eSHINY §6★" else ""
         val targetTag = if (!detected.isShiny) fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.getTargetTag(detected.species, detected.form) else ""
         val wildTag = if (detected.isWild) "§7(Sauvage)" else "§b(Dressé)"
@@ -432,7 +495,7 @@ object PokemonRadarService {
     /**
      * Génère le label textuel affiché sous le marqueur sur la carte.
      */
-    fun buildMarkerLabel(detected: DetectedPokemon, deltaY: Int): String {
+    fun buildMarkerLabel(detected: DetectedPokemon, deltaY: Int, clusterCount: Int = 1): String {
         val labelPrefix = when {
             detected.isShiny -> "★ "
             fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.currentMode == fr.k0bus.cobblemon_jei.pokedex.TrackingMode.ALL_UNCAUGHT -> "[Dex] "
@@ -445,18 +508,20 @@ object PokemonRadarService {
             deltaY < -HEIGHT_TOLERANCE -> " ▼"
             else -> ""
         }
-        return "$labelPrefix${detected.species.translatedName.string} Lv.${detected.level}$dirSuffix"
+        val countSuffix = if (clusterCount > 1) " (x$clusterCount)" else ""
+        return "$labelPrefix${detected.species.translatedName.string}$countSuffix Lv.${detected.level}$dirSuffix"
     }
 
     /**
      * Crée et configure un [MarkerOverlay] JourneyMap pour le Pokémon détecté.
      */
-    private fun createMarkerOverlay(detected: DetectedPokemon, dimension: ResourceKey<Level>, deltaY: Int): MarkerOverlay {
-        val icon = createRadarMapImage(detected.isShiny, deltaY)
+    private fun createMarkerOverlay(detected: DetectedPokemon, dimension: ResourceKey<Level>, deltaY: Int, clusterCount: Int = 1): MarkerOverlay {
+        val isUncaught = !detected.isShiny && isSpeciesUncaught(detected.species, detected.form)
+        val icon = createRadarMapImage(detected.isShiny, deltaY, isUncaught)
         val marker = MarkerOverlay(MOD_ID, detected.blockPos, icon)
 
-        val titleText = buildMarkerTitle(detected, deltaY)
-        val labelText = buildMarkerLabel(detected, deltaY)
+        val titleText = buildMarkerTitle(detected, deltaY, clusterCount)
+        val labelText = buildMarkerLabel(detected, deltaY, clusterCount)
 
         marker.overlayGroupName = OVERLAY_GROUP_RADAR
         marker.title = titleText

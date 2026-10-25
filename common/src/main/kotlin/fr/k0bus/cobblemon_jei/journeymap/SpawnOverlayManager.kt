@@ -55,6 +55,7 @@ object SpawnOverlayManager {
         private set
 
     var activeRarityCounts: Map<SpawnRarity, Int> = emptyMap()
+    var activeEligibleChunks: Set<ChunkPos> = emptySet()
         private set
 
     var scanProgress: ScanProgress = ScanProgress()
@@ -62,6 +63,29 @@ object SpawnOverlayManager {
 
     private val generationCounter = AtomicInteger(0)
     private var lastDimension: net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level>? = null
+
+    
+    /**
+     * Recherche le chunk éligible le plus proche de la position donnée.
+     */
+    fun findClosestEligibleChunk(pos: net.minecraft.core.BlockPos): ChunkPos? {
+        val chunks = activeEligibleChunks
+        if (chunks.isEmpty()) return null
+        val px = pos.x shr 4
+        val pz = pos.z shr 4
+        var bestDistSq = Long.MAX_VALUE
+        var bestChunk: ChunkPos? = null
+        for (chunk in chunks) {
+            val dx = (chunk.x - px).toLong()
+            val dz = (chunk.z - pz).toLong()
+            val dSq = dx * dx + dz * dz
+            if (dSq < bestDistSq) {
+                bestDistSq = dSq
+                bestChunk = chunk
+            }
+        }
+        return bestChunk
+    }
 
     fun initialize(api: IClientAPI) {
         this.clientApi = api
@@ -122,13 +146,21 @@ object SpawnOverlayManager {
         // ==========================================
         // ÉTAPE 1 : Rendu immédiat (< 15ms) depuis le cache mémoire persistant
         // ==========================================
+        val cachedProfiles = ChunkBiomeTagCache.getChunkProfilesForDimension(currentDim)
         val immediateChunkBiomes = mutableMapOf<ChunkPos, Holder<net.minecraft.world.level.biome.Biome>>()
         immediateChunkBiomes.putAll(JourneyMapDiskScanner.getCachedChunksForDimension(currentDim))
 
-        if (immediateChunkBiomes.isNotEmpty()) {
-            val immediateChunksByRarity = CobblemonSpawnMatcher.groupChunksByRarity(immediateChunkBiomes, validRecipes)
+        val hasCompleteCache = cachedProfiles.size > 100 || immediateChunkBiomes.size > 100
+        if (hasCompleteCache) {
+            val immediateChunksByRarity = if (cachedProfiles.isNotEmpty()) {
+                CobblemonSpawnMatcher.groupChunksByProfile(cachedProfiles, validRecipes, species.name, targetForm.name)
+            } else {
+                CobblemonSpawnMatcher.groupChunksByRarity(immediateChunkBiomes, validRecipes)
+            }
+
             if (immediateChunksByRarity.isNotEmpty()) {
                 activeRarityCounts = immediateChunksByRarity.mapValues { it.value.size }
+                activeEligibleChunks = immediateChunksByRarity.values.flatten().toSet()
                 val initialOverlays = buildOverlays(species, currentDim, playerY, immediateChunksByRarity, validRecipes)
                 if (initialOverlays.isNotEmpty()) {
                     try {
@@ -136,16 +168,31 @@ object SpawnOverlayManager {
                         for (overlay in initialOverlays) {
                             api.show(overlay)
                         }
-                        logger.info("Cobblemon JM: [Stage 1] ${initialOverlays.size} overlays immédiats affichés depuis le cache (${immediateChunkBiomes.size} chunks).")
+                        logger.info("Cobblemon JM: [Stage 1] ${initialOverlays.size} overlays immédiats affichés depuis le cache (${immediateChunksByRarity.values.sumOf { it.size }} chunks éligibles).")
                     } catch (e: Exception) {
                         logger.error("Cobblemon JM: Erreur affichage initial : {}", e.message)
                     }
                 }
+            } else {
+                activeRarityCounts = emptyMap()
+                activeEligibleChunks = emptySet()
+                try {
+                    api.removeAll(MOD_ID, DisplayType.Polygon)
+                } catch (_: Exception) {}
             }
+
+            // Si le cache est déjà complet (ex: 50 000+ chunks), on évite de rescanner tout le disque en boucle
+            scanProgress = ScanProgress(
+                isScanning = false,
+                scannedChunks = if (cachedProfiles.isNotEmpty()) cachedProfiles.size else immediateChunkBiomes.size,
+                eligibleChunks = activeEligibleChunks.size,
+                progressPercent = 100
+            )
+            return
         }
 
         // ==========================================
-        // ÉTAPE 2 : Scan asynchrone des régions disque en arrière-plan
+        // ÉTAPE 2 : Scan asynchrone des régions disque en arrière-plan (premier chargement)
         // ==========================================
         logger.info("Cobblemon JM: [Stage 2] Lancement de l'analyse persistante pour ${species.name} (Génération $currentGen)...")
 
@@ -177,6 +224,7 @@ object SpawnOverlayManager {
 
                         if (progressChunksByRarity.isNotEmpty()) {
                             activeRarityCounts = progressChunksByRarity.mapValues { it.value.size }
+                            activeEligibleChunks = progressChunksByRarity.values.flatten().toSet()
                             val progressOverlays = buildOverlays(species, currentDim, playerY, progressChunksByRarity, validRecipes)
                             mc.execute {
                                 if (isCancelled()) return@execute
@@ -221,6 +269,7 @@ object SpawnOverlayManager {
 
                 val finalEligibleCount = chunksByRarity.values.sumOf { it.size }
                 activeRarityCounts = chunksByRarity.mapValues { it.value.size }
+                activeEligibleChunks = chunksByRarity.values.flatten().toSet()
                 val totalReg = scanProgress.totalRegions.coerceAtLeast(scanProgress.completedRegions).coerceAtLeast(1)
                 scanProgress = ScanProgress(
                     isScanning = false,
@@ -331,6 +380,7 @@ object SpawnOverlayManager {
         activeSpecies = null
         activeForm = null
         activeRarityCounts = emptyMap()
+        activeEligibleChunks = emptySet()
         isOverlayActive = false
         try {
             PokemonRadarService.clearTrackedOnly()

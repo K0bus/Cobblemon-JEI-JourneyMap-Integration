@@ -183,6 +183,17 @@ object StructureOverlayManager {
         ensureConfigLoaded()
         DynamicStructureRegistryService.refreshRegistry(null)
         StructureChunkScanner.clearCache()
+        
+        // Chargement du cache persistant de structures
+        val cached = StructureCacheStorage.loadCache()
+        for ((key, struct) in cached) {
+            if (key.first == dimension && !discoveredStructures.containsKey(key)) {
+                discoveredStructures[key] = struct
+                if (shouldScanBlock(struct.id)) {
+                    renderStructureMarker(struct)
+                }
+            }
+        }
         logger.info("Cobblemon JM: Nouveau monde/dimension chargé : {}", dimension.location())
     }
 
@@ -200,16 +211,13 @@ object StructureOverlayManager {
         val key = Pair(dimension, pos)
         if (discoveredStructures.containsKey(key)) return
 
-        // 1. Déduction de l'espèce de Pokémon et des métadonnées
+        // 1. Déduction du nom précis de la structure et des métadonnées
         val speciesName = LegendaryMonumentsCompat.extractSpeciesNameFromBlock(blockId)
         val species = speciesName?.let {
             try { PokemonSpecies.getByName(it) } catch (_: Throwable) { null }
         }
 
-        val knownInfo = speciesName?.let { LegendaryMonumentsCompat.KNOWN_MONUMENTS[it] }
-        val displayName = knownInfo?.structureDisplayName
-            ?: (species?.translatedName?.string ?: speciesName?.replaceFirstChar { it.uppercase() } ?: "Monument Légendaire")
-
+        val displayName = LegendaryMonumentsCompat.resolveStructureName(blockId, speciesName)
         val iconLoc = resolveMonumentIcon(blockId, speciesName)
 
         val metadata = StructureMetadata(
@@ -252,8 +260,16 @@ object StructureOverlayManager {
         val api = clientApi ?: return
         try {
             val isFootprint = LegendaryMonumentsCompat.isFootprintBlock(blockId)
-            val pokeDisplayName = speciesName?.replaceFirstChar { it.uppercase() } ?: metadata.displayName
-            val waypointName = if (isFootprint) "Empreinte : $pokeDisplayName" else "Monument : $pokeDisplayName"
+            val pokeDisplayName = speciesName?.let {
+                val sp = try { PokemonSpecies.getByName(it) } catch (_: Throwable) { null }
+                sp?.translatedName?.string ?: it.replaceFirstChar { c -> c.uppercase() }
+            }
+            val structName = metadata.displayName
+            val waypointName = if (pokeDisplayName != null && !structName.contains(pokeDisplayName, ignoreCase = true)) {
+                "★ $structName ($pokeDisplayName)"
+            } else {
+                "★ $structName"
+            }
 
             // Vérification si un waypoint similaire n'existe pas déjà
             // Pour les empreintes, on applique une déduplication à 32 blocs pour éviter de saturer la liste
@@ -276,9 +292,10 @@ object StructureOverlayManager {
                     dimension,
                     true
                 )
-                waypoint.color = if (isFootprint) 0x2ED573 else 0xFFD700 // Vert émeraude pour empreintes, Or pour monuments
+                waypoint.color = 0xFFD700 // Or étincelant légendaire
                 try {
                     waypoint.setIconResourceLoctaion(metadata.iconLocation)
+                    waypoint.setIconTextureSize(16, 16)
                 } catch (_: Throwable) {}
 
                 api.addWaypoint(MOD_ID, waypoint)
@@ -293,14 +310,10 @@ object StructureOverlayManager {
     /**
      * Résout l'icône JourneyMap la plus pertinente pour un bloc de monument.
      */
+    val LEGENDARY_STAR_ICON = ResourceLocation.fromNamespaceAndPath("cobblemon_jei", "textures/gui/legendary_star_marker.png")
+
     private fun resolveMonumentIcon(blockId: ResourceLocation, speciesName: String?): ResourceLocation {
-        if (blockId.namespace == "legendarymonuments") {
-            // Tente d'utiliser une icône de structure officielle du mod
-            val simple = blockId.path.removeSuffix("_pedestal").removeSuffix("_shrine").removeSuffix("_altar")
-            val candidate = ResourceLocation.fromNamespaceAndPath("legendarymonuments", "textures/gui/structure_icons/$simple.png")
-            return candidate
-        }
-        return DynamicStructureRegistryService.DEFAULT_LEGENDARY_ICON
+        return LEGENDARY_STAR_ICON
     }
 
     /**
@@ -326,6 +339,7 @@ object StructureOverlayManager {
 
         discoveredStructures[key] = structure
         renderStructureMarker(structure)
+        StructureCacheStorage.saveCacheAsync(discoveredStructures)
     }
 
     /**

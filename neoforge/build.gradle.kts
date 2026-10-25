@@ -31,6 +31,7 @@ neoForge {
 
 dependencies {
     implementation("com.cobblemon:neoforge:$cobblemonVersion")
+    runtimeOnly("thedarkcolour:kotlinforforge-neoforge:5.5.0")
     compileOnly("mezz.jei:jei-1.21.1-neoforge:$jeiVersion")
     runtimeOnly("mezz.jei:jei-1.21.1-neoforge:$jeiVersion")
     compileOnly("info.journeymap:journeymap-api-neoforge:2.0.0-1.21.1-SNAPSHOT")

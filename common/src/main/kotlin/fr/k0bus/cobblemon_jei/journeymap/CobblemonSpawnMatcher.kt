@@ -12,8 +12,7 @@ import net.minecraft.world.level.biome.Biome
 
 /**
  * Moteur de validation des biomes éligibles et résolution du palier de rareté Cobblemon.
- * Filtre les règles de spawn Cobblemon, associe les biomes explorés et partitionne
- * les chunks en groupes homogènes par rareté [SpawnRarity].
+ * Optimisé avec [ChunkBiomeTagCache] pour une résolution en temps constant O(1).
  */
 object CobblemonSpawnMatcher {
 
@@ -23,22 +22,6 @@ object CobblemonSpawnMatcher {
     data class BiomeMatchResult(
         val rarity: SpawnRarity,
         val matchingRecipes: List<PokemonSpawnRecipe>
-    )
-
-    private val NETHER_BIOMES = setOf(
-        "minecraft:nether_wastes",
-        "minecraft:basalt_deltas",
-        "minecraft:crimson_forest",
-        "minecraft:warped_forest",
-        "minecraft:soul_sand_valley"
-    )
-
-    private val END_BIOMES = setOf(
-        "minecraft:the_end",
-        "minecraft:end_highlands",
-        "minecraft:end_midlands",
-        "minecraft:small_end_islands",
-        "minecraft:end_barrens"
     )
 
     /**
@@ -81,73 +64,12 @@ object CobblemonSpawnMatcher {
     }
 
     /**
-     * Teste si un holder de biome satisfait les conditions d'une recette.
+     * Teste si un profil de tags de biome satisfait les conditions d'une recette en O(1).
      */
-    fun matchesRecipe(holder: Holder<Biome>, recipe: PokemonSpawnRecipe): Boolean {
-        val biomeId = holder.unwrapKey().map { it.location().toString() }.orElse("")
-        val biomePath = if (biomeId.contains(":")) biomeId.substringAfter(":") else biomeId
-
-        val tagLocations = holder.tags().map { it.location().toString() }.toList().toMutableSet()
-
-        val isNether = biomeId.contains("nether") || biomeId in NETHER_BIOMES ||
-                biomeId == "biomesoplenty:crystalline_chasm" || biomeId == "byg:warped_desert" ||
-                biomeId.startsWith("incendium:") || biomeId.startsWith("betternether:") ||
-                tagLocations.any { it.contains("is_nether") || it.contains("in_nether") }
-
-        val isEnd = biomeId.contains("the_end") || biomeId in END_BIOMES ||
-                biomeId.startsWith("nullscape:") || biomeId.startsWith("betterend:") ||
-                tagLocations.any { it.contains("is_end") || it.contains("in_the_end") }
-
-        val isAether = biomeId.startsWith("aether:") || biomeId.contains("aether") ||
-                tagLocations.any { it.contains("is_aether") }
-
-        // Enrichissement synthétique des balises
-        if (isNether) {
-            tagLocations.add("minecraft:is_nether")
-            tagLocations.add("cobblemon:is_nether")
-            if (biomeId.contains("basalt")) {
-                tagLocations.add("cobblemon:nether/is_basalt")
-                tagLocations.add("cobblemon:is_volcanic")
-            }
-            if (biomeId.contains("waste") || biomeId == "minecraft:nether_wastes") {
-                tagLocations.add("cobblemon:nether/is_wasteland")
-            }
-            if (biomeId.contains("crimson")) {
-                tagLocations.add("cobblemon:nether/is_crimson")
-                tagLocations.add("cobblemon:nether/is_forest")
-            }
-            if (biomeId.contains("warped") || biomeId == "byg:warped_desert") {
-                tagLocations.add("cobblemon:nether/is_warped")
-                tagLocations.add("cobblemon:nether/is_fungus")
-            }
-            if (biomeId.contains("soul")) {
-                tagLocations.add("cobblemon:nether/is_soul_sand")
-            }
-        }
-        if (isAether) {
-            tagLocations.add("aether:is_aether")
-        }
-        if (isEnd) {
-            tagLocations.add("minecraft:is_end")
-            tagLocations.add("cobblemon:is_end")
-        }
-        if (!isNether && !isEnd && !isAether) {
-            tagLocations.add("minecraft:is_overworld")
-            tagLocations.add("cobblemon:is_overworld")
-        }
-
-        val prefixedTags = tagLocations.map { "#$it" }.toSet()
-
+    fun matchesProfile(profile: BiomeTagProfile, recipe: PokemonSpawnRecipe): Boolean {
         // 1. Anti-biomes (exclusions prioritaires)
-        if (recipe.antiBiomes.isNotEmpty()) {
-            if (recipe.antiBiomes.contains(biomeId) ||
-                recipe.antiBiomes.contains(biomePath) ||
-                recipe.antiBiomes.any { b ->
-                    prefixedTags.contains(b) || tagLocations.contains(b.removePrefix("#"))
-                }
-            ) {
-                return false
-            }
+        if (recipe.antiBiomes.isNotEmpty() && profile.matchesAny(recipe.antiBiomes)) {
+            return false
         }
 
         // 2. Si aucune restriction de biome n'est définie, le biome est accepté
@@ -155,22 +77,25 @@ object CobblemonSpawnMatcher {
             return true
         }
 
-        // 3. Correspondance directe par ID ou par tag
-        if (recipe.biomes.contains(biomeId) || recipe.biomes.contains(biomePath)) return true
-        return recipe.biomes.any { b ->
-            prefixedTags.contains(b) || tagLocations.contains(b.removePrefix("#"))
-        }
+        // 3. Correspondance directe par ID ou par tag (incluant is_*)
+        return profile.matchesAny(recipe.biomes)
     }
 
     /**
-     * Évalue un biome face à une liste de recettes et retourne la rareté maximale applicable.
+     * Teste si un holder de biome satisfait les conditions d'une recette.
      */
-    fun evaluateBiome(holder: Holder<Biome>, recipes: List<PokemonSpawnRecipe>): BiomeMatchResult? {
-        val matching = recipes.filter { matchesRecipe(holder, it) }
+    fun matchesRecipe(holder: Holder<Biome>, recipe: PokemonSpawnRecipe): Boolean {
+        val profile = ChunkBiomeTagCache.getOrCreateProfile(holder)
+        return matchesProfile(profile, recipe)
+    }
+
+    /**
+     * Évalue un profil de biome face à une liste de recettes et retourne la rareté maximale applicable.
+     */
+    fun evaluateProfile(profile: BiomeTagProfile, recipes: List<PokemonSpawnRecipe>): BiomeMatchResult? {
+        val matching = recipes.filter { matchesProfile(profile, it) }
         if (matching.isEmpty()) return null
 
-        // En cas de règles multiples (ex. rare de nuit, commun de jour), on sélectionne
-        // le palier de rareté le plus élevé pour mettre en valeur les spawns notables
         val bestRarity = matching.map { SpawnRarity.fromBucketOrWeight(it.bucket, it.weight) }
             .maxByOrNull { it.rank } ?: SpawnRarity.COMMON
 
@@ -178,30 +103,62 @@ object CobblemonSpawnMatcher {
     }
 
     /**
-     * Groupe l'ensemble des chunks explorés par palier de rareté [SpawnRarity].
-     *
-     * @param chunkBiomes Association des positions de chunk avec leur biome de surface respectif.
-     * @param recipes Règles de spawn actives.
-     * @return Map associant chaque [SpawnRarity] au set des [ChunkPos] éligibles.
+     * Évalue un biome face à une liste de recettes et retourne la rareté maximale applicable.
      */
-    fun groupChunksByRarity(
-        chunkBiomes: Map<ChunkPos, Holder<Biome>>,
-        recipes: List<PokemonSpawnRecipe>
-    ): Map<SpawnRarity, Set<ChunkPos>> {
-        if (recipes.isEmpty() || chunkBiomes.isEmpty()) return emptyMap()
+    fun evaluateBiome(holder: Holder<Biome>, recipes: List<PokemonSpawnRecipe>): BiomeMatchResult? {
+        val profile = ChunkBiomeTagCache.getOrCreateProfile(holder)
+        return evaluateProfile(profile, recipes)
+    }
 
-        // Cache des résultats par Holder<Biome> pour éviter de réévaluer le matching sur des milliers de chunks
-        val biomeEvaluationCache = mutableMapOf<Holder<Biome>, BiomeMatchResult?>()
+    /**
+     * Groupe l'ensemble des profils de chunks explorés par palier de rareté [SpawnRarity].
+     * Utilise le cache de profils et le cache d'évaluation O(1) [ChunkBiomeTagCache].
+     */
+    fun groupChunksByProfile(
+        chunkProfiles: Map<ChunkPos, BiomeTagProfile>,
+        recipes: List<PokemonSpawnRecipe>,
+        speciesName: String = "",
+        formName: String = ""
+    ): Map<SpawnRarity, Set<ChunkPos>> {
+        if (recipes.isEmpty() || chunkProfiles.isEmpty()) return emptyMap()
+
+        val profileEvaluationCache = mutableMapOf<BiomeTagProfile, BiomeMatchResult?>()
         val result = mutableMapOf<SpawnRarity, MutableSet<ChunkPos>>()
 
-        for ((chunkPos, biomeHolder) in chunkBiomes) {
-            val match = biomeEvaluationCache.computeIfAbsent(biomeHolder) { holder ->
-                evaluateBiome(holder, recipes)
+        for ((chunkPos, profile) in chunkProfiles) {
+            val match = profileEvaluationCache.computeIfAbsent(profile) { p ->
+                val cacheKey = if (speciesName.isNotEmpty()) "$speciesName:$formName:${p.biomeId}" else null
+                if (cacheKey != null) {
+                    val cached = ChunkBiomeTagCache.getCachedMatchResult(cacheKey)
+                    if (cached === ChunkBiomeTagCache.NO_MATCH) return@computeIfAbsent null
+                    if (cached is BiomeMatchResult) return@computeIfAbsent cached
+                }
+                val evaluated = evaluateProfile(p, recipes)
+                if (cacheKey != null) {
+                    ChunkBiomeTagCache.putCachedMatchResult(cacheKey, evaluated)
+                }
+                evaluated
             } ?: continue
 
             result.computeIfAbsent(match.rarity) { mutableSetOf() }.add(chunkPos)
         }
 
         return result
+    }
+
+    /**
+     * Groupe l'ensemble des chunks explorés par palier de rareté [SpawnRarity].
+     * Utilise le cache de profils [ChunkBiomeTagCache] pour éliminer les recalculs.
+     */
+    fun groupChunksByRarity(
+        chunkBiomes: Map<ChunkPos, Holder<Biome>>,
+        recipes: List<PokemonSpawnRecipe>
+    ): Map<SpawnRarity, Set<ChunkPos>> {
+        if (recipes.isEmpty() || chunkBiomes.isEmpty()) return emptyMap()
+        val profiles = chunkBiomes.mapValues { ChunkBiomeTagCache.getOrCreateProfile(it.value) }
+        val first = recipes.firstOrNull()
+        val speciesName = try { first?.species?.name ?: "" } catch (_: Throwable) { "" }
+        val formName = try { first?.form?.name ?: "" } catch (_: Throwable) { "" }
+        return groupChunksByProfile(profiles, recipes, speciesName, formName)
     }
 }

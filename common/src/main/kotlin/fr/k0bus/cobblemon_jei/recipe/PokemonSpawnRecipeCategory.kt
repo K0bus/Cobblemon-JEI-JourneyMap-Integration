@@ -48,12 +48,14 @@ class PokemonSpawnRecipeCategory(
     }
 
     override fun getIcon(): IDrawable {
-        val stack = try {
-            ItemStack(CobblemonItems.POKE_BALL)
+        return try {
+            guiHelper.drawableBuilder(
+                ResourceLocation.fromNamespaceAndPath("cobblemon_jei", "textures/gui/cobblemon_icon.png"),
+                0, 0, 16, 16
+            ).setTextureSize(16, 16).build()
         } catch (_: Throwable) {
-            ItemStack(Items.COMPASS)
+            guiHelper.createDrawableItemStack(ItemStack(Items.COMPASS))
         }
-        return guiHelper.createDrawableItemStack(stack)
     }
 
     override fun setRecipe(
@@ -63,6 +65,7 @@ class PokemonSpawnRecipeCategory(
     ) {
         // Emplacement de l'ingrédient Pokémon en haut à gauche (OUTPUT = recherchable via R pour Recipe)
         builder.addSlot(RecipeIngredientRole.OUTPUT, 7, 7)
+            .setBackground(guiHelper.getSlotDrawable(), -1, -1)
             .addIngredient(PokemonSpeciesIngredient.TYPE, recipe.pokemonIngredient)
     }
 
@@ -82,18 +85,29 @@ class PokemonSpawnRecipeCategory(
         // Cadre de l'en-tête
         guiGraphics.fill(2, 2, WIDTH - 2, 28, 0xFF242630.toInt())
 
-        // Cadre du slot Pokémon
-        guiGraphics.fill(6, 6, 24, 24, 0xFF0E0F12.toInt())
+        // Cadre du slot Pokémon (18x18 à 6, 6, item à 7, 7)
         guiGraphics.fill(5, 5, 25, 6, 0xFF3D4050.toInt())
         guiGraphics.fill(5, 24, 25, 25, 0xFF3D4050.toInt())
-        guiGraphics.fill(5, 5, 6, 25, 0xFF3D4050.toInt())
-        guiGraphics.fill(24, 5, 25, 25, 0xFF3D4050.toInt())
+        guiGraphics.fill(5, 6, 6, 24, 0xFF3D4050.toInt())
+        guiGraphics.fill(24, 6, 25, 24, 0xFF3D4050.toInt())
 
         // 2. En-tête : Numéro de Dex + Nom du Pokémon
         val dexStr = String.format("#%04d", recipe.species.nationalPokedexNumber)
         val nameText = recipe.species.translatedName.string
         val headerTitle = "$dexStr $nameText"
         guiGraphics.drawString(font, headerTitle, 28, 6, 0xFFFFFFFF.toInt(), false)
+
+        // Indicateur badge temps réel (icône compacte en haut à droite)
+        val mc = Minecraft.getInstance()
+        val player = mc.player
+        val level = mc.level
+        if (player != null && level != null) {
+            val eval = fr.k0bus.cobblemon_jei.data.SpawnConditionEvaluator.evaluate(player, level, recipe.species, recipe.form)
+            val badgeIconX = WIDTH - 20
+            val badgeIconY = 6
+            guiGraphics.fill(badgeIconX, badgeIconY, badgeIconX + 14, badgeIconY + 12, eval.status.badgeColor)
+            guiGraphics.drawString(font, eval.status.icon, badgeIconX + 4, badgeIconY + 2, 0xFFFFFFFF.toInt(), false)
+        }
 
         // Badges des types élémentaires
         var typeX = 28
