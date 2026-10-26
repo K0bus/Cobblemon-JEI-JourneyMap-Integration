@@ -59,13 +59,38 @@ object WorldSessionManager {
     }
 
     /**
+     * Résout un identifiant stable et déterministe pour le monde solo ou serveur multijoueur actuel.
+     * Permet la persistance des caches et objectifs entre les relancements du jeu.
+     */
+    fun resolveCurrentWorldId(): String {
+        val mc = try { net.minecraft.client.Minecraft.getInstance() } catch (_: Throwable) { null } ?: return "offline_world"
+        val server = mc.singleplayerServer
+        if (server != null) {
+            val levelName = try { server.worldData.levelName } catch (_: Throwable) { "singleplayer" }
+            val clean = levelName.replace(Regex("[^a-zA-Z0-9._-]"), "_")
+            return "sp_$clean"
+        }
+        val serverData = mc.currentServer
+        if (serverData != null) {
+            val cleanIp = serverData.ip.replace(Regex("[^a-zA-Z0-9._-]"), "_")
+            return "mp_$cleanIp"
+        }
+        val level = mc.level
+        if (level != null) {
+            val dim = level.dimension().location().toString().replace(Regex("[^a-zA-Z0-9._-]"), "_")
+            return "world_$dim"
+        }
+        return "default_world"
+    }
+
+    /**
      * Démarre une nouvelle session (ex: connexion à un monde solo ou serveur multijoueur).
      */
     @Synchronized
     fun startNewSession(dimension: ResourceKey<Level>? = null, customId: String? = null): String {
         endSession()
 
-        val newId = customId ?: UUID.randomUUID().toString()
+        val newId = customId ?: resolveCurrentWorldId()
         sessionEpoch.incrementAndGet()
         currentSessionId.set(newId)
         currentDimensionKey.set(dimension)

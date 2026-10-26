@@ -25,7 +25,8 @@ enum class TrackingMode(val translationKey: String) {
     ALL_UNCAUGHT("gui.cobblemon_jei.tracker.mode.all_uncaught"),
     SINGLE("gui.cobblemon_jei.tracker.mode.single"),
     EVOLUTION_LINE("gui.cobblemon_jei.tracker.mode.evolution_line"),
-    CUSTOM_LIST("gui.cobblemon_jei.tracker.mode.custom_list")
+    CUSTOM_LIST("gui.cobblemon_jei.tracker.mode.custom_list"),
+    GOALS("gui.cobblemon_jei.tracker.mode.goals")
 }
 
 /**
@@ -155,6 +156,30 @@ object PokemonTrackingManager {
     }
 
     /**
+     * Active le suivi de l'ensemble des objectifs actifs du compagnon d'exploration.
+     */
+    fun trackGoals(notifyPlayer: Boolean = true) {
+        val activeGoals = fr.k0bus.cobblemon_jei.application.goals.GoalService.getActiveGoals()
+        if (activeGoals.isEmpty()) {
+            displayMessage(Component.literal("§eAucun objectif d'exploration actif. Ajoutez-en depuis JEI ou le Pokédex !"))
+            return
+        }
+        currentMode = TrackingMode.GOALS
+        targetSpecies = null
+        targetForm = null
+        evolutionBaseSpecies = null
+        evolutionFamily = emptySet()
+
+        try { SpawnOverlayManager.clearOverlay() } catch (_: Throwable) {}
+        try { PokemonRadarService.clearTrackedOnly() } catch (_: Throwable) {}
+        saveConfig()
+
+        if (notifyPlayer) {
+            displayMessage(Component.literal("§6§lRadar d'Objectifs :§r §aSuivi de ${activeGoals.size} objectif(s) actif(s)."))
+        }
+    }
+
+    /**
      * Désactive le tracking (la Sentinelle Shiny reste active).
      */
     fun stopTracking(notifyPlayer: Boolean = true) {
@@ -181,11 +206,15 @@ object PokemonTrackingManager {
         val alreadyPresent = customWatchlist.any { isSameSpecies(it, species) }
         if (!alreadyPresent) {
             customWatchlist.add(species)
+            fr.k0bus.cobblemon_jei.application.goals.GoalService.addGoal(
+                fr.k0bus.cobblemon_jei.domain.goals.PokemonTarget(species.resourceIdentifier),
+                fr.k0bus.cobblemon_jei.domain.goals.GoalType.CAPTURE
+            )
             saveConfig()
             if (notifyPlayer) {
                 displayMessage(Component.translatable("chat.cobblemon_jm.tracker.list_added", species.translatedName))
             }
-            if (currentMode == TrackingMode.CUSTOM_LIST) {
+            if (currentMode == TrackingMode.CUSTOM_LIST || currentMode == TrackingMode.GOALS) {
                 PokemonRadarService.clearTrackedOnly()
             }
             return true
@@ -200,13 +229,17 @@ object PokemonTrackingManager {
         ensureConfigLoaded()
         val removed = customWatchlist.removeIf { isSameSpecies(it, species) }
         if (removed) {
+            val goal = fr.k0bus.cobblemon_jei.application.goals.GoalService.findActiveGoal(species.resourceIdentifier)
+            if (goal != null) {
+                fr.k0bus.cobblemon_jei.application.goals.GoalService.removeGoal(goal.id)
+            }
             saveConfig()
             if (notifyPlayer) {
                 displayMessage(Component.translatable("chat.cobblemon_jm.tracker.list_removed", species.translatedName))
             }
-            if (currentMode == TrackingMode.CUSTOM_LIST) {
+            if (currentMode == TrackingMode.CUSTOM_LIST || currentMode == TrackingMode.GOALS) {
                 PokemonRadarService.clearTrackedOnly()
-                if (customWatchlist.isEmpty()) {
+                if (customWatchlist.isEmpty() && currentMode == TrackingMode.CUSTOM_LIST) {
                     currentMode = TrackingMode.OFF
                 }
             }
@@ -315,6 +348,13 @@ object PokemonTrackingManager {
             TrackingMode.CUSTOM_LIST -> {
                 customWatchlist.any { isSameSpecies(species, it) }
             }
+            TrackingMode.GOALS -> {
+                val resId = try { species.resourceIdentifier } catch (_: Throwable) { null } ?: return false
+                val formResId = try {
+                    form?.name?.takeIf { it.isNotBlank() }?.let { net.minecraft.resources.ResourceLocation.parse(it.lowercase()) }
+                } catch (_: Throwable) { null }
+                fr.k0bus.cobblemon_jei.application.goals.GoalService.isTargetActive(resId, formResId)
+            }
         }
     }
 
@@ -366,6 +406,7 @@ object PokemonTrackingManager {
             TrackingMode.ALL_UNCAUGHT -> " §c[Non capturé]"
             TrackingMode.EVOLUTION_LINE -> " §b[Lignée]"
             TrackingMode.CUSTOM_LIST -> " §a[Liste]"
+            TrackingMode.GOALS -> " §6[Objectif]"
             TrackingMode.SINGLE -> " §3[Cible]"
             TrackingMode.OFF -> ""
         }
@@ -381,6 +422,7 @@ object PokemonTrackingManager {
             TrackingMode.SINGLE -> targetSpecies?.translatedName?.string ?: "Cible unique"
             TrackingMode.EVOLUTION_LINE -> "Lignée de ${evolutionBaseSpecies?.translatedName?.string ?: "Inconnu"}"
             TrackingMode.CUSTOM_LIST -> "Liste (${customWatchlist.size})"
+            TrackingMode.GOALS -> "Objectifs (${fr.k0bus.cobblemon_jei.application.goals.GoalService.getActiveGoals().size})"
         }
     }
 
@@ -453,6 +495,9 @@ object PokemonTrackingManager {
             }
             root.add("customWatchlist", listArray)
             root.add("advancedFilter", advancedFilter.toJson())
+            root.addProperty("hudNotificationsEnabled", fr.k0bus.cobblemon_jei.config.CobblemonModConfig.hudNotificationsEnabled)
+            root.addProperty("hudSoundEnabled", fr.k0bus.cobblemon_jei.config.CobblemonModConfig.hudSoundEnabled)
+            root.addProperty("autoWaypointOnTracking", fr.k0bus.cobblemon_jei.config.CobblemonModConfig.autoWaypointOnTracking)
 
             file.writeText(gson.toJson(root), Charsets.UTF_8)
         } catch (e: Throwable) {
@@ -503,6 +548,16 @@ object PokemonTrackingManager {
 
             if (root.has("advancedFilter") && root.get("advancedFilter").isJsonObject) {
                 advancedFilter.fromJson(root.getAsJsonObject("advancedFilter"))
+            }
+
+            if (root.has("hudNotificationsEnabled")) {
+                fr.k0bus.cobblemon_jei.config.CobblemonModConfig.hudNotificationsEnabled = root.get("hudNotificationsEnabled").asBoolean
+            }
+            if (root.has("hudSoundEnabled")) {
+                fr.k0bus.cobblemon_jei.config.CobblemonModConfig.hudSoundEnabled = root.get("hudSoundEnabled").asBoolean
+            }
+            if (root.has("autoWaypointOnTracking")) {
+                fr.k0bus.cobblemon_jei.config.CobblemonModConfig.autoWaypointOnTracking = root.get("autoWaypointOnTracking").asBoolean
             }
         } catch (e: Throwable) {
             logger.debug("Erreur chargement config tracker: {}", e.message)

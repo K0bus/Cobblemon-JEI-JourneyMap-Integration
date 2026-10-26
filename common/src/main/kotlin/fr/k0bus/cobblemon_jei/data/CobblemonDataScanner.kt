@@ -83,7 +83,7 @@ object CobblemonDataScanner {
                             pathStream.filter { p ->
                                 val norm = p.toString().replace('\\', '/')
                                 Files.isRegularFile(p) &&
-                                        norm.contains("/$subPath/") &&
+                                        matchesSubPath(norm, subPath) &&
                                         norm.endsWith(".json")
                             }.forEach { p ->
                                 val name = dataPath.relativize(p).toString().replace('\\', '/')
@@ -269,7 +269,7 @@ object CobblemonDataScanner {
                 while (entries.hasMoreElements()) {
                     val entry = entries.nextElement()
                     val name = entry.name
-                    if (!entry.isDirectory && name.contains("/$subPath/") && name.endsWith(".json")) {
+                    if (!entry.isDirectory && matchesSubPath(name, subPath) && name.endsWith(".json")) {
                         if (seen.add(name)) {
                             try {
                                 zip.getInputStream(entry).use { stream ->
@@ -295,7 +295,7 @@ object CobblemonDataScanner {
             dir.walkTopDown().forEach { file ->
                 if (file.isFile && file.name.endsWith(".json")) {
                     val relPath = file.relativeTo(dir).path.replace('\\', '/')
-                    if (relPath.contains("/$subPath/")) {
+                    if (matchesSubPath(relPath, subPath)) {
                         if (seen.add(relPath)) {
                             try {
                                 file.inputStream().use { stream ->
@@ -309,6 +309,13 @@ object CobblemonDataScanner {
         } catch (e: Throwable) {
             logger.debug("Scan dossier {} exception: {}", dir.name, e.message)
         }
+    }
+
+    private fun matchesSubPath(path: String, subPath: String): Boolean {
+        if (subPath == "species") {
+            return path.contains("/species/") && !path.contains("species_additions") && !path.contains("species_feature")
+        }
+        return path.contains("/$subPath/")
     }
 
     /**

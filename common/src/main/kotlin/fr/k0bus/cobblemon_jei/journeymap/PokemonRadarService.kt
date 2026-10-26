@@ -533,6 +533,7 @@ object PokemonRadarService {
             fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.currentMode == fr.k0bus.cobblemon_jei.pokedex.TrackingMode.ALL_UNCAUGHT -> "[Dex] "
             fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.currentMode == fr.k0bus.cobblemon_jei.pokedex.TrackingMode.EVOLUTION_LINE -> "[Évo] "
             fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.currentMode == fr.k0bus.cobblemon_jei.pokedex.TrackingMode.CUSTOM_LIST -> "[★] "
+            fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.currentMode == fr.k0bus.cobblemon_jei.pokedex.TrackingMode.GOALS -> "[Obj] "
             else -> ""
         }
         val dirSuffix = when {
@@ -637,6 +638,8 @@ object PokemonRadarService {
                         Component.translatable("chat.cobblemon_jm.radar.nearby_line", species.translatedName)
                     fr.k0bus.cobblemon_jei.pokedex.TrackingMode.CUSTOM_LIST ->
                         Component.translatable("chat.cobblemon_jm.radar.nearby_list", species.translatedName)
+                    fr.k0bus.cobblemon_jei.pokedex.TrackingMode.GOALS ->
+                        Component.literal("§6§l[Objectif Détecté !]§r §f${species.translatedName.string} §7est à proximité !")
                     else ->
                         Component.translatable("chat.cobblemon_jm.radar.nearby", species.translatedName)
                 }

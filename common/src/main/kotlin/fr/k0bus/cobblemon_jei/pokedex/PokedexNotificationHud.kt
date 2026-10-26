@@ -64,6 +64,7 @@ object PokedexNotificationHud {
     private var worldJoinTime = 0L
 
     private fun isReadyForNotifications(): Boolean {
+        if (!fr.k0bus.cobblemon_jei.config.CobblemonModConfig.hudNotificationsEnabled) return false
         val mc = Minecraft.getInstance()
         if (mc.player == null || mc.level == null) return false
         if (!isSnapshotInitialized) return false
@@ -76,6 +77,7 @@ object PokedexNotificationHud {
      * Initialisation des écouteurs d'événements Cobblemon.
      */
     fun init() {
+        fr.k0bus.cobblemon_jei.application.progression.ProgressionService.init()
         try {
             CobblemonEvents.POKEMON_CAPTURED.subscribe { event ->
                 if (!isReadyForNotifications()) return@subscribe
@@ -200,13 +202,15 @@ object PokedexNotificationHud {
         )
 
         // Effet sonore immersif
-        try {
-            val sound = when (type) {
-                NotificationType.CAPTURED -> CobblemonSounds.POKEDEX_SCAN_REGISTER_POKEMON
-                NotificationType.SCANNED -> CobblemonSounds.POKEDEX_SCAN_REGISTER_ASPECT
-            }
-            Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(sound, 1.0F))
-        } catch (_: Throwable) {}
+        if (fr.k0bus.cobblemon_jei.config.CobblemonModConfig.hudSoundEnabled) {
+            try {
+                val sound = when (type) {
+                    NotificationType.CAPTURED -> CobblemonSounds.POKEDEX_SCAN_REGISTER_POKEMON
+                    NotificationType.SCANNED -> CobblemonSounds.POKEDEX_SCAN_REGISTER_ASPECT
+                }
+                Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(sound, 1.0F))
+            } catch (_: Throwable) {}
+        }
     }
 
     /**

@@ -86,6 +86,11 @@ class CobblemonJourneyMapPlugin : IClientPlugin {
             logger.error("Cobblemon JourneyMap Plugin: Erreur initialisation RadarService: {}", t.message)
         }
         try {
+            ExpeditionMapOverlay.initialize(api)
+        } catch (t: Throwable) {
+            logger.error("Cobblemon JourneyMap Plugin: Erreur initialisation ExpeditionMapOverlay: {}", t.message)
+        }
+        try {
             CobblemonJourneyMapOverlayHud.register()
         } catch (_: Throwable) {}
 

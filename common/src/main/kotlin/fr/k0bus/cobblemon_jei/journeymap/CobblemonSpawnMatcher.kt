@@ -67,17 +67,28 @@ object CobblemonSpawnMatcher {
      * Teste si un profil de tags de biome satisfait les conditions d'une recette en O(1).
      */
     fun matchesProfile(profile: BiomeTagProfile, recipe: PokemonSpawnRecipe): Boolean {
+        // Les invocations de monuments légendaires et recettes sans apparition naturelle ne correspondent à aucun biome sauvage
+        if (!recipe.isNaturalSpawn || recipe.isMonumentSpawn) {
+            return false
+        }
+
         // 1. Anti-biomes (exclusions prioritaires)
         if (recipe.antiBiomes.isNotEmpty() && profile.matchesAny(recipe.antiBiomes)) {
             return false
         }
 
-        // 2. Si aucune restriction de biome n'est définie, le biome est accepté
+        // 2. Si aucune restriction de biome n'est définie, ne correspond à aucun biome sauvage
         if (recipe.biomes.isEmpty()) {
-            return true
+            return false
         }
 
-        // 3. Correspondance directe par ID ou par tag (incluant is_*)
+        // 3. Si la recette requiert des éléments particuliers (arbres spécifiques, PC, paratonnerres, structures, etc.),
+        // un profil de biome seul ne peut pas garantir cette condition
+        if (fr.k0bus.cobblemon_jei.application.expedition.ExpeditionPlannerService.hasSpecialSpawnRequirement(recipe)) {
+            return false
+        }
+
+        // 4. Correspondance directe par ID ou par tag (incluant is_*)
         return profile.matchesAny(recipe.biomes)
     }
 

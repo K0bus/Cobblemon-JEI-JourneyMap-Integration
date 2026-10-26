@@ -55,71 +55,88 @@ object PokemonDropDataLoader {
         speciesToProcess.addAll(PokemonEvolutionDataLoader.getAllSpecies())
 
         for (species in speciesToProcess) {
-            val formsToProcess = mutableListOf(species.standardForm)
-            formsToProcess.addAll(species.forms.filter { it != species.standardForm })
+            try {
+                if (species.name.isBlank()) continue
+                val standard = try { species.standardForm } catch (_: Throwable) { null } ?: continue
+                val formsToProcess = mutableListOf(standard)
+                try {
+                    formsToProcess.addAll(species.forms.filter { it !== standard && it.name != standard.name })
+                } catch (_: Throwable) {}
 
-            for (form in formsToProcess) {
-                val dropTable = if (form.drops.entries.isNotEmpty()) form.drops else species.drops
-                val entries = dropTable.entries
-                if (entries.isEmpty()) continue
-
-                val dropItems = mutableListOf<PokemonDropItem>()
-
-                for (entry in entries) {
-                    if (entry !is ItemDropEntry) continue
-
-                    val itemRes = entry.item
-                    val item = BuiltInRegistries.ITEM.get(itemRes)
-                    if (item == Items.AIR) continue
-
-                    val itemStack = ItemStack(item)
+                for (form in formsToProcess) {
                     try {
-                        val components = entry.components
-                        if (components != null && !components.isEmpty) {
-                            itemStack.applyComponents(components)
+                        val dropTable = try {
+                            if (form.drops.entries.isNotEmpty()) form.drops else species.drops
+                        } catch (_: Throwable) {
+                            species.drops
                         }
-                    } catch (_: Throwable) {}
+                        val entries = dropTable.entries
+                        if (entries.isEmpty()) continue
 
-                    val percentage = entry.percentage
-                    val qRange = entry.quantityRange
-                    val minCount = qRange?.first ?: entry.quantity.coerceAtLeast(1)
-                    val maxCount = qRange?.last ?: minCount
+                        val dropItems = mutableListOf<PokemonDropItem>()
 
-                    val isEvo = entry is EvolutionItemDropEntry
+                        for (entry in entries) {
+                            if (entry !is ItemDropEntry) continue
 
-                    dropItems.add(
-                        PokemonDropItem(
-                            itemStack = itemStack,
-                            percentage = percentage,
-                            minCount = minCount,
-                            maxCount = maxCount,
-                            isEvolutionItem = isEvo
+                            val itemRes = entry.item
+                            val item = BuiltInRegistries.ITEM.get(itemRes)
+                            if (item == Items.AIR) continue
+
+                            val itemStack = ItemStack(item)
+                            try {
+                                val components = entry.components
+                                if (components != null && !components.isEmpty) {
+                                    itemStack.applyComponents(components)
+                                }
+                            } catch (_: Throwable) {}
+
+                            val percentage = entry.percentage
+                            val qRange = entry.quantityRange
+                            val minCount = qRange?.first ?: entry.quantity.coerceAtLeast(1)
+                            val maxCount = qRange?.last ?: minCount
+
+                            val isEvo = entry is EvolutionItemDropEntry
+
+                            dropItems.add(
+                                PokemonDropItem(
+                                    itemStack = itemStack,
+                                    percentage = percentage,
+                                    minCount = minCount,
+                                    maxCount = maxCount,
+                                    isEvolutionItem = isEvo
+                                )
+                            )
+                        }
+
+                        if (dropItems.isEmpty()) continue
+
+                        // Dédoublonnage : évite les doublons pour les formes cosmétiques ayant exactement les mêmes drops
+                        val formKey = form.name.trim().lowercase()
+                        val dropsSignature = dropItems.joinToString(";") { "${it.itemStack.item}:${it.percentage}:${it.minCount}-${it.maxCount}" }
+                        val spId = try { species.showdownId() } catch (_: Throwable) { species.name }
+                        val recipeKey = "$spId:$formKey:$dropsSignature"
+
+                        if (!seenRecipes.add(recipeKey)) continue
+
+                        val amountRange = dropTable.amount
+                        val minRolls = amountRange.first
+                        val maxRolls = amountRange.last
+
+                        recipes.add(
+                            PokemonDropRecipe(
+                                species = species,
+                                form = form,
+                                drops = dropItems,
+                                minRolls = minRolls,
+                                maxRolls = maxRolls
+                            )
                         )
-                    )
+                    } catch (e: Throwable) {
+                        logger.debug("Erreur analyse drops pour forme {} de {}: {}", form.name, species.name, e.message)
+                    }
                 }
-
-                if (dropItems.isEmpty()) continue
-
-                // Dédoublonnage : évite les doublons pour les formes cosmétiques ayant exactement les mêmes drops
-                val formKey = form.name.trim().lowercase()
-                val dropsSignature = dropItems.joinToString(";") { "${it.itemStack.item}:${it.percentage}:${it.minCount}-${it.maxCount}" }
-                val recipeKey = "${species.showdownId()}:$formKey:$dropsSignature"
-
-                if (!seenRecipes.add(recipeKey)) continue
-
-                val amountRange = dropTable.amount
-                val minRolls = amountRange.first
-                val maxRolls = amountRange.last
-
-                recipes.add(
-                    PokemonDropRecipe(
-                        species = species,
-                        form = form,
-                        drops = dropItems,
-                        minRolls = minRolls,
-                        maxRolls = maxRolls
-                    )
-                )
+            } catch (e: Throwable) {
+                logger.debug("Erreur analyse drops pour espèce: {}", e.message)
             }
         }
 

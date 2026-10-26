@@ -100,10 +100,16 @@ class ChunkBiomeTagCacheTest {
         assertTrue(profile.matchesTagOrId("is_plains"))
         assertTrue(profile.matchesTagOrId("is_overworld"))
 
-        // jungle doit matcher #cobblemon:is_jungle
+        // jungle doit matcher #cobblemon:is_jungle mais PAS is_lush (les Pokémon souterrains lush caves ne doivent pas spawner en jungle de surface)
         val jungleBiome = createMockHolder("minecraft:jungle")
         val jungleProfile = ChunkBiomeTagCache.getOrCreateProfile(jungleBiome)
         assertTrue(jungleProfile.matchesTagOrId("#cobblemon:is_jungle"))
-        assertTrue(jungleProfile.matchesTagOrId("is_lush"))
+        assertFalse(jungleProfile.matchesTagOrId("is_lush"))
+
+        // lush_caves doit matcher is_lush et is_cave
+        val lushCavesBiome = createMockHolder("minecraft:lush_caves")
+        val lushProfile = ChunkBiomeTagCache.getOrCreateProfile(lushCavesBiome)
+        assertTrue(lushProfile.matchesTagOrId("is_lush"))
+        assertTrue(lushProfile.matchesTagOrId("is_cave"))
     }
 }

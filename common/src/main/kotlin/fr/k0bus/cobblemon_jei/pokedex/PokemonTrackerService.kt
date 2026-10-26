@@ -151,6 +151,18 @@ object PokemonTrackerService {
     private var lastScanTime: Long = 0L
 
     /**
+     * Résout le nom traduit / localisé d'une espèce de Pokémon selon la langue du client.
+     */
+    fun getSpeciesTranslatedName(speciesId: net.minecraft.resources.ResourceLocation): String {
+        return try {
+            val sp = PokemonSpecies.getByIdentifier(speciesId)
+            sp?.translatedName?.string ?: speciesId.path.replaceFirstChar { it.uppercase() }
+        } catch (_: Throwable) {
+            speciesId.path.replaceFirstChar { it.uppercase() }
+        }
+    }
+
+    /**
      * Analyse et met à jour l'ensemble des données de Pokédex et d'évolutions.
      */
     @Synchronized

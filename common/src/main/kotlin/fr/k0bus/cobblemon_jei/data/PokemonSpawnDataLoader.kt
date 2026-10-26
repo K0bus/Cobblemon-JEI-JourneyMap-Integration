@@ -195,7 +195,7 @@ object PokemonSpawnDataLoader {
         val all = loadSpawnRecipes()
         return all.filter { recipe ->
             recipe.species.name.equals(species.name, ignoreCase = true) &&
-                    (form == null || recipe.form.name.equals(form.name, ignoreCase = true))
+                    (form == null || recipe.isMonumentSpawn || recipe.form.name.equals(form.name, ignoreCase = true) || recipe.form.name.isEmpty())
         }
     }
 

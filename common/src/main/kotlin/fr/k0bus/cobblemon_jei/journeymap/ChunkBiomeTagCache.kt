@@ -72,6 +72,9 @@ object ChunkBiomeTagCache {
     // Cache des profils par Holder<Biome> (1 instance par biome unique rencontré)
     private val biomeProfileCache = ConcurrentHashMap<Holder<Biome>, BiomeTagProfile>()
 
+    // Cache des profils résolus par ID de biome (pour restauration disque sans Holder immédiat)
+    private val profileByIdCache = ConcurrentHashMap<String, BiomeTagProfile>()
+
     // Cache d'association (Dimension + ChunkPos) -> BiomeTagProfile
     private val chunkProfileCache = ConcurrentHashMap<Pair<ResourceKey<Level>, ChunkPos>, BiomeTagProfile>()
 
@@ -108,6 +111,62 @@ object ChunkBiomeTagCache {
                     addSyntheticTag(allTags, isTagSet, p)
                 }
             }
+
+            enrichBiomeTags(biomePath, biomeId, allTags, isTagSet)
+
+            // Ajoute aussi les versions avec préfixe '#' dans allTags
+            val prefixed = allTags.map { "#$it" }.toSet()
+            allTags.addAll(prefixed)
+
+            BiomeTagProfile(
+                biomeId = biomeId,
+                biomePath = biomePath,
+                tags = allTags,
+                isTags = isTagSet
+            )
+        }
+    }
+
+    /**
+     * Résout ou reconstruit un profil directement depuis son identifiant (ex: minecraft:plains).
+     */
+    fun getOrCreateProfileById(biomeId: String, biomeRegistry: net.minecraft.core.Registry<Biome>? = null): BiomeTagProfile {
+        if (biomeRegistry != null) {
+            try {
+                val loc = net.minecraft.resources.ResourceLocation.parse(biomeId)
+                val holder = biomeRegistry.getHolder(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.BIOME, loc)).orElse(null)
+                if (holder != null) {
+                    return getOrCreateProfile(holder)
+                }
+            } catch (_: Throwable) {}
+        }
+
+        return profileByIdCache.computeIfAbsent(biomeId) { id ->
+            val cleanId = if (id.startsWith("#")) id.substring(1) else id
+            val path = if (cleanId.contains(":")) cleanId.substringAfter(":") else cleanId
+            val allTags = mutableSetOf(cleanId, "#$cleanId", path, "#$path")
+            val isTagSet = mutableSetOf<String>()
+
+            enrichBiomeTags(path, cleanId, allTags, isTagSet)
+
+            val prefixed = allTags.map { "#$it" }.toSet()
+            allTags.addAll(prefixed)
+
+            BiomeTagProfile(
+                biomeId = cleanId,
+                biomePath = path,
+                tags = allTags,
+                isTags = isTagSet
+            )
+        }
+    }
+
+    private fun enrichBiomeTags(
+        path: String,
+        biomeId: String,
+        allTags: MutableSet<String>,
+        isTagSet: MutableSet<String>
+    ) {
 
             val hasNetherTag = allTags.any { it.contains("is_nether") || it.contains("in_nether") }
             val isNether = biomeId.contains("nether") || biomeId in NETHER_BIOMES ||
@@ -157,7 +216,6 @@ object ChunkBiomeTagCache {
             }
 
             // Enrichissement synthétique des biomes de l'Overworld selon leurs IDs/noms
-            val path = biomePath.lowercase()
 
             // Plaines & Prairies
             if (path.contains("plains") || path == "meadow" || path.contains("prairie") ||
@@ -180,7 +238,6 @@ object ChunkBiomeTagCache {
             // Jungles & Bambous
             if (path.contains("jungle") || path.contains("bamboo") || path.contains("rainforest")) {
                 addSyntheticTag(allTags, isTagSet, "is_jungle")
-                addSyntheticTag(allTags, isTagSet, "is_lush")
                 if (path.contains("bamboo")) addSyntheticTag(allTags, isTagSet, "is_bamboo")
             }
 
@@ -257,10 +314,14 @@ object ChunkBiomeTagCache {
             if (path.contains("cave") || path.contains("underground") || path == "lush_caves" ||
                 path == "dripstone_caves" || path == "deep_dark") {
                 addSyntheticTag(allTags, isTagSet, "is_cave")
+                addSyntheticTag(allTags, isTagSet, "is_underground")
                 if (path.contains("lush")) addSyntheticTag(allTags, isTagSet, "is_lush")
                 if (path.contains("dripstone")) addSyntheticTag(allTags, isTagSet, "is_dripstone")
                 if (path.contains("deep_dark")) {
                     addSyntheticTag(allTags, isTagSet, "is_deep_dark")
+                    addSyntheticTag(allTags, isTagSet, "deep_dark")
+                    addSyntheticTag(allTags, isTagSet, "ancient_city")
+                    addSyntheticTag(allTags, isTagSet, "is_ancient_city")
                     addSyntheticTag(allTags, isTagSet, "is_spooky")
                 }
             }
@@ -275,18 +336,15 @@ object ChunkBiomeTagCache {
                 addSyntheticTag(allTags, isTagSet, "is_mushroom")
                 addSyntheticTag(allTags, isTagSet, "is_magical")
             }
+    }
 
-            // Ajoute aussi les versions avec préfixe '#' dans allTags
-            val prefixed = allTags.map { "#$it" }.toSet()
-            allTags.addAll(prefixed)
-
-            BiomeTagProfile(
-                biomeId = biomeId,
-                biomePath = biomePath,
-                tags = allTags,
-                isTags = isTagSet
-            )
-        }
+    fun isSubterraneanProfile(profile: BiomeTagProfile): Boolean {
+        val path = profile.biomePath.lowercase()
+        return path == "lush_caves" || path == "dripstone_caves" || path == "deep_dark" ||
+                path.contains("cave") || path.contains("underground") ||
+                profile.isTags.contains("is_cave") || profile.isTags.contains("is_lush") ||
+                profile.isTags.contains("is_dripstone") || profile.isTags.contains("is_deep_dark") ||
+                profile.tags.contains("is_cave")
     }
 
     private fun addCustomTag(allTags: MutableSet<String>, isTagSet: MutableSet<String>, fullTag: String) {
@@ -313,11 +371,65 @@ object ChunkBiomeTagCache {
         addCustomTag(allTags, isTagSet, suffix)
     }
 
+    data class SubterraneanProfileEntry(
+        val yLevel: Int,
+        val profile: BiomeTagProfile
+    )
+
+    private val subterraneanProfileCache = ConcurrentHashMap<Pair<ResourceKey<Level>, ChunkPos>, java.util.concurrent.CopyOnWriteArrayList<SubterraneanProfileEntry>>()
+
+    fun putSubterraneanProfile(
+        dimension: ResourceKey<Level>,
+        chunkPos: ChunkPos,
+        yLevel: Int,
+        holder: Holder<Biome>
+    ): BiomeTagProfile {
+        val profile = getOrCreateProfile(holder)
+        return putSubterraneanProfile(dimension, chunkPos, yLevel, profile)
+    }
+
+    fun putSubterraneanProfile(
+        dimension: ResourceKey<Level>,
+        chunkPos: ChunkPos,
+        yLevel: Int,
+        profile: BiomeTagProfile
+    ): BiomeTagProfile {
+        val list = subterraneanProfileCache.computeIfAbsent(Pair(dimension, chunkPos)) { java.util.concurrent.CopyOnWriteArrayList() }
+        if (list.none { it.profile.biomePath == profile.biomePath && it.yLevel == yLevel }) {
+            list.add(SubterraneanProfileEntry(yLevel, profile))
+        }
+        return profile
+    }
+
+    fun getSubterraneanProfiles(
+        dimension: ResourceKey<Level>,
+        chunkPos: ChunkPos
+    ): List<SubterraneanProfileEntry> {
+        return subterraneanProfileCache[Pair(dimension, chunkPos)] ?: emptyList()
+    }
+
+    fun getAllSubterraneanProfiles(
+        dimension: ResourceKey<Level>
+    ): Map<ChunkPos, List<SubterraneanProfileEntry>> {
+        val result = mutableMapOf<ChunkPos, List<SubterraneanProfileEntry>>()
+        for ((key, list) in subterraneanProfileCache) {
+            if (key.first == dimension && list.isNotEmpty()) {
+                result[key.second] = list.toList()
+            }
+        }
+        return result
+    }
+
     /**
      * Associe un chunk à son profil de biome dans le cache.
      */
     fun putChunkProfile(dimension: ResourceKey<Level>, chunkPos: ChunkPos, holder: Holder<Biome>): BiomeTagProfile {
         val profile = getOrCreateProfile(holder)
+        chunkProfileCache[Pair(dimension, chunkPos)] = profile
+        return profile
+    }
+
+    fun putChunkProfile(dimension: ResourceKey<Level>, chunkPos: ChunkPos, profile: BiomeTagProfile): BiomeTagProfile {
         chunkProfileCache[Pair(dimension, chunkPos)] = profile
         return profile
     }
@@ -372,7 +484,9 @@ object ChunkBiomeTagCache {
      */
     fun clearAll() {
         biomeProfileCache.clear()
+        profileByIdCache.clear()
         chunkProfileCache.clear()
+        subterraneanProfileCache.clear()
         spawnMatchEvaluationCache.clear()
     }
 }

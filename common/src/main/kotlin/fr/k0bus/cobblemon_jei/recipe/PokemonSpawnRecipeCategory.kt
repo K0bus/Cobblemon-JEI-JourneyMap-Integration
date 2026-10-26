@@ -109,6 +109,36 @@ class PokemonSpawnRecipeCategory(
             guiGraphics.drawString(font, eval.status.icon, badgeIconX + 4, badgeIconY + 2, 0xFFFFFFFF.toInt(), false)
         }
 
+        // Bouton d'objectif d'exploration (x = WIDTH - 38)
+        val goalBtnX = WIDTH - 38
+        val goalBtnY = 6
+        val isGoalActive = fr.k0bus.cobblemon_jei.application.goals.GoalService.isTargetActive(recipe.species.resourceIdentifier)
+        val goalBg = if (isGoalActive) 0xFFD35400.toInt() else 0xFF2C3E50.toInt()
+        val goalBorder = if (isGoalActive) 0xFFF39C12.toInt() else 0xFF4A6572.toInt()
+
+        guiGraphics.fill(goalBtnX, goalBtnY, goalBtnX + 14, goalBtnY + 12, goalBg)
+        guiGraphics.fill(goalBtnX, goalBtnY, goalBtnX + 14, goalBtnY + 1, goalBorder)
+        guiGraphics.fill(goalBtnX, goalBtnY + 11, goalBtnX + 14, goalBtnY + 12, goalBorder)
+        guiGraphics.fill(goalBtnX, goalBtnY, goalBtnX + 1, goalBtnY + 12, goalBorder)
+        guiGraphics.fill(goalBtnX + 13, goalBtnY, goalBtnX + 14, goalBtnY + 12, goalBorder)
+
+        val goalIcon = if (isGoalActive) "★" else "☆"
+        guiGraphics.drawString(font, goalIcon, goalBtnX + 4, goalBtnY + 2, 0xFFFFFFFF.toInt(), false)
+
+        // Badge de Confiance des Données (x = WIDTH - 56)
+        val confBtnX = WIDTH - 56
+        val confBtnY = 6
+        val snapshot = fr.k0bus.cobblemon_jei.data.repository.PokemonDataRepository.getSnapshot()
+        val confidence = snapshot.getSpawnConfidence(recipe.species.name)
+        val (confBg, confChar) = when (confidence) {
+            fr.k0bus.cobblemon_jei.domain.model.SpawnDataConfidence.EXACT_DATA -> 0xFF27AE60.toInt() to "✓"
+            fr.k0bus.cobblemon_jei.domain.model.SpawnDataConfidence.PARTIALLY_SUPPORTED -> 0xFFF1C40F.toInt() to "~"
+            fr.k0bus.cobblemon_jei.domain.model.SpawnDataConfidence.FALLBACK_SCANNED -> 0xFF3498DB.toInt() to "•"
+            fr.k0bus.cobblemon_jei.domain.model.SpawnDataConfidence.UNKNOWN -> 0xFF7F8C8D.toInt() to "?"
+        }
+        guiGraphics.fill(confBtnX, confBtnY, confBtnX + 14, confBtnY + 12, confBg)
+        guiGraphics.drawString(font, confChar, confBtnX + 4, confBtnY + 2, 0xFFFFFFFF.toInt(), false)
+
         // Badges des types élémentaires
         var typeX = 28
         val primaryTypeName = recipe.form.primaryType.displayName.string.uppercase()
@@ -304,6 +334,50 @@ class PokemonSpawnRecipeCategory(
     ): List<Component> {
         val tooltips = mutableListOf<Component>()
 
+        // 1. Tooltip survol Bouton Objectif d'exploration
+        val goalBtnX = WIDTH - 38
+        val goalBtnY = 6
+        if (mouseY >= goalBtnY && mouseY <= goalBtnY + 12 && mouseX >= goalBtnX && mouseX <= goalBtnX + 14) {
+            val isGoalActive = fr.k0bus.cobblemon_jei.application.goals.GoalService.isTargetActive(recipe.species.resourceIdentifier)
+            tooltips.add(Component.literal("§6🎯 Objectif d'Exploration").withStyle(ChatFormatting.BOLD))
+            if (isGoalActive) {
+                tooltips.add(Component.literal("§a✔ Objectif ACTIF").withStyle(ChatFormatting.GREEN))
+                tooltips.add(Component.literal("§7Cliquez pour retirer des objectifs"))
+            } else {
+                tooltips.add(Component.literal("§e+ Ajouter aux objectifs").withStyle(ChatFormatting.YELLOW))
+                tooltips.add(Component.literal("§7Suivi au radar et dans les expéditions"))
+            }
+            return tooltips
+        }
+
+        // 2. Tooltip survol Badge Confiance des Données
+        val confBtnX = WIDTH - 56
+        val confBtnY = 6
+        if (mouseY >= confBtnY && mouseY <= confBtnY + 12 && mouseX >= confBtnX && mouseX <= confBtnX + 14) {
+            val snapshot = fr.k0bus.cobblemon_jei.data.repository.PokemonDataRepository.getSnapshot()
+            val confidence = snapshot.getSpawnConfidence(recipe.species.name)
+            tooltips.add(Component.literal("§bIndice de Confiance").withStyle(ChatFormatting.BOLD))
+            when (confidence) {
+                fr.k0bus.cobblemon_jei.domain.model.SpawnDataConfidence.EXACT_DATA -> {
+                    tooltips.add(Component.literal("§a✓ Données Exactes").withStyle(ChatFormatting.GREEN))
+                    tooltips.add(Component.literal("§7Conditions de spawn confirmées par les données du jeu."))
+                }
+                fr.k0bus.cobblemon_jei.domain.model.SpawnDataConfidence.PARTIALLY_SUPPORTED -> {
+                    tooltips.add(Component.literal("§e~ Données Partiellement Supportées").withStyle(ChatFormatting.YELLOW))
+                    tooltips.add(Component.literal("§7Certaines conditions avancées peuvent être approximées."))
+                }
+                fr.k0bus.cobblemon_jei.domain.model.SpawnDataConfidence.FALLBACK_SCANNED -> {
+                    tooltips.add(Component.literal("§b• Données Extraites du Disque").withStyle(ChatFormatting.BLUE))
+                    tooltips.add(Component.literal("§7Conditions dérivées du scan de fichiers."))
+                }
+                fr.k0bus.cobblemon_jei.domain.model.SpawnDataConfidence.UNKNOWN -> {
+                    tooltips.add(Component.literal("§7? Données Incomplètes").withStyle(ChatFormatting.GRAY))
+                    tooltips.add(Component.literal("§7Conditions de spawn non documentées."))
+                }
+            }
+            return tooltips
+        }
+
         // Tooltip dédié pour les monuments légendaires
         if (recipe.isMonumentSpawn) {
             tooltips.add(Component.literal("★ Monument Légendaire").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
@@ -433,6 +507,38 @@ class PokemonSpawnRecipeCategory(
             }
         }
         return tooltips
+    }
+
+    override fun handleInput(
+        recipe: PokemonSpawnRecipe,
+        mouseX: Double,
+        mouseY: Double,
+        input: com.mojang.blaze3d.platform.InputConstants.Key
+    ): Boolean {
+        if (input.type == com.mojang.blaze3d.platform.InputConstants.Type.MOUSE && input.value == 0) {
+            val goalBtnX = WIDTH - 38
+            val goalBtnY = 6
+            if (mouseX >= goalBtnX && mouseX <= goalBtnX + 14 && mouseY >= goalBtnY && mouseY <= goalBtnY + 12) {
+                val target = fr.k0bus.cobblemon_jei.domain.goals.PokemonTarget(recipe.species.resourceIdentifier)
+                val isNowActive = fr.k0bus.cobblemon_jei.application.goals.GoalService.toggleGoal(target)
+                try {
+                    Minecraft.getInstance().soundManager.play(
+                        net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(
+                            net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK, 1.0f
+                        )
+                    )
+                } catch (_: Throwable) {}
+                val name = recipe.species.translatedName.string
+                val msg = if (isNowActive) {
+                    "§6🎯 [Compagnon]§r §f$name §aajouté à vos objectifs d'exploration !"
+                } else {
+                    "§7🎯 [Compagnon]§r §f$name §7retiré de vos objectifs."
+                }
+                Minecraft.getInstance().player?.displayClientMessage(Component.literal(msg), true)
+                return true
+            }
+        }
+        return super.handleInput(recipe, mouseX, mouseY, input)
     }
 
     // --- Helpers de formatage ---

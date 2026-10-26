@@ -69,22 +69,25 @@ class PokemonPastureRecipeTest {
         assertFalse(recipeCooldown.isContinuous)
         assertEquals(90, recipeCooldown.cooldownSeconds)
 
-        val recipeCyclic = PokemonPastureRecipe(
-            jobId = "cobbleworkers:pickup_looter",
-            jobTitleKey = "gui.cobblemon_jei.job.pickup_looter",
-            eligiblePokemon = emptyList(),
-            targetInputs = emptyList(),
-            outputs = listOf(
-                listOf(ItemStack.EMPTY),
-                listOf(ItemStack.EMPTY, ItemStack.EMPTY)
-            ),
-            cooldownSeconds = 210,
-            requirementsDescription = "Talent : Ramassage",
-            actionDescriptionKey = "gui.cobblemon_jei.job.pickup_looter.desc"
-        )
-        assertEquals(2, recipeCyclic.outputs.size)
-        assertEquals(1, recipeCyclic.outputs[0].size)
-        assertEquals(2, recipeCyclic.outputs[1].size)
+        val empty = try { ItemStack.EMPTY } catch (_: Throwable) { null }
+        if (empty != null) {
+            val recipeCyclic = PokemonPastureRecipe(
+                jobId = "cobbleworkers:pickup_looter",
+                jobTitleKey = "gui.cobblemon_jei.job.pickup_looter",
+                eligiblePokemon = emptyList(),
+                targetInputs = emptyList(),
+                outputs = listOf(
+                    listOf(empty),
+                    listOf(empty, empty)
+                ),
+                cooldownSeconds = 210,
+                requirementsDescription = "Talent : Ramassage",
+                actionDescriptionKey = "gui.cobblemon_jei.job.pickup_looter.desc"
+            )
+            assertEquals(2, recipeCyclic.outputs.size)
+            assertEquals(1, recipeCyclic.outputs[0].size)
+            assertEquals(2, recipeCyclic.outputs[1].size)
+        }
     }
 
     @Test

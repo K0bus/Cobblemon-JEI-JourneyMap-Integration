@@ -20,7 +20,8 @@ object LegendaryMonumentsCompat {
      */
     val MONUMENT_BLOCK_KEYWORDS = listOf(
         "pedestal", "shrine", "altar", "cocoon", "jukebox", "statue",
-        "urn", "tablet", "summon", "boss_summon", "lock", "footprint"
+        "urn", "tablet", "summon", "boss_summon", "lock", "footprint",
+        "tomb", "spawner", "origin", "pillar"
     )
 
     /**
@@ -36,6 +37,8 @@ object LegendaryMonumentsCompat {
         "eternatus",
         "reshiram", "zekrom", "kyurem",
         "latias", "latios",
+        "groudon", "kyogre", "rayquaza",
+        "jirachi", "deoxys",
         "hoopa",
         "ho-oh", "lugia",
         "cresselia", "darkrai", "heatran", "celebi",
@@ -119,7 +122,12 @@ object LegendaryMonumentsCompat {
         "victini" to MonumentInfo("victini", "Liberty Garden", "minecraft:overworld", "victini_pedestal"),
         "zygarde" to MonumentInfo("zygarde", "Terminus Cave", "minecraft:overworld", "zygarde_altar"),
         "enamorus" to MonumentInfo("enamorus", "Hisuian Altar", "minecraft:overworld", "enamorus_pedestal"),
-        "marshadow" to MonumentInfo("marshadow", "Mount Tensei", "minecraft:overworld", "marshadow_pedestal")
+        "marshadow" to MonumentInfo("marshadow", "Mount Tensei", "minecraft:overworld", "marshadow_pedestal"),
+        "groudon" to MonumentInfo("groudon", "Origin Tomb", "minecraft:overworld", "origin_tomb"),
+        "kyogre" to MonumentInfo("kyogre", "Origin Cave", "minecraft:overworld", "origin_cave"),
+        "rayquaza" to MonumentInfo("rayquaza", "Sky Pillar", "minecraft:overworld", "sky_pillar"),
+        "jirachi" to MonumentInfo("jirachi", "Millennium Comet Shrine", "minecraft:overworld", "jirachi_pedestal"),
+        "deoxys" to MonumentInfo("deoxys", "Meteorite Crater", "minecraft:overworld", "deoxys_pedestal")
     )
 
     /**
@@ -169,6 +177,10 @@ object LegendaryMonumentsCompat {
      * Indique si le mod [legendarymonuments] est actuellement chargé dans l'environnement de jeu.
      */
     val isModLoaded: Boolean by lazy {
+        isModPresent(MOD_ID) || isModPresent("cobblemonextrastructures")
+    }
+
+    private fun isModPresent(modId: String): Boolean {
         // 1. Détection NeoForge
         try {
             val modListClass = Class.forName("net.neoforged.fml.ModList")
@@ -176,8 +188,8 @@ object LegendaryMonumentsCompat {
             val modList = getMethod.invoke(null)
             if (modList != null) {
                 val isLoadedMethod = modList.javaClass.getMethod("isLoaded", String::class.java)
-                val loaded = isLoadedMethod.invoke(modList, MOD_ID) as? Boolean
-                if (loaded == true) return@lazy true
+                val loaded = isLoadedMethod.invoke(modList, modId) as? Boolean
+                if (loaded == true) return true
             }
         } catch (_: Throwable) {}
 
@@ -188,12 +200,12 @@ object LegendaryMonumentsCompat {
             val loader = getInstanceMethod.invoke(null)
             if (loader != null) {
                 val isModLoadedMethod = loader.javaClass.getMethod("isModLoaded", String::class.java)
-                val loaded = isModLoadedMethod.invoke(loader, MOD_ID) as? Boolean
-                if (loaded == true) return@lazy true
+                val loaded = isModLoadedMethod.invoke(loader, modId) as? Boolean
+                if (loaded == true) return true
             }
         } catch (_: Throwable) {}
 
-        false
+        return false
     }
 
     /**
@@ -203,7 +215,7 @@ object LegendaryMonumentsCompat {
         val ns = blockId.namespace.lowercase(Locale.ROOT)
         val path = blockId.path.lowercase(Locale.ROOT)
 
-        if (ns == MOD_ID) {
+        if (ns == MOD_ID || ns == "cobblemonextrastructures") {
             // Dans le mod, les blocs significatifs sont les piédestaux, sanctuaires, cocons, autels, etc.
             return MONUMENT_BLOCK_KEYWORDS.any { path.contains(it) } ||
                     COVERED_LEGENDARY_SPECIES.any { path.contains(it.replace("-", "_")) }

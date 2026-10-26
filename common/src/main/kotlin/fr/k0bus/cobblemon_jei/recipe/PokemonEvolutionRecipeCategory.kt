@@ -98,6 +98,23 @@ class PokemonEvolutionRecipeCategory(
         drawSlotBorder(guiGraphics, 15, 19, 0xFF3D4050.toInt())
         drawSlotBorder(guiGraphics, 141, 19, 0xFF2ED573.toInt())
 
+        // Bouton Objectif d'évolution (x = 141, y = 4)
+        val goalBtnX = 141
+        val goalBtnY = 4
+        val targetRes = recipe.targetSpecies.resourceIdentifier
+        val isGoalActive = fr.k0bus.cobblemon_jei.application.goals.GoalService.isTargetActive(targetRes)
+        val goalBg = if (isGoalActive) 0xFFD35400.toInt() else 0xFF2C3E50.toInt()
+        val goalBorder = if (isGoalActive) 0xFFF39C12.toInt() else 0xFF4A6572.toInt()
+
+        guiGraphics.fill(goalBtnX, goalBtnY, goalBtnX + 18, goalBtnY + 13, goalBg)
+        guiGraphics.fill(goalBtnX, goalBtnY, goalBtnX + 18, goalBtnY + 1, goalBorder)
+        guiGraphics.fill(goalBtnX, goalBtnY + 12, goalBtnX + 18, goalBtnY + 13, goalBorder)
+        guiGraphics.fill(goalBtnX, goalBtnY + 1, goalBtnX + 1, goalBtnY + 13, goalBorder)
+        guiGraphics.fill(goalBtnX + 17, goalBtnY + 1, goalBtnX + 18, goalBtnY + 13, goalBorder)
+
+        val goalIcon = if (isGoalActive) "★" else "☆"
+        guiGraphics.drawString(font, goalIcon, goalBtnX + 6, goalBtnY + 3, 0xFFFFFFFF.toInt(), false)
+
         // 3. Cadre central de l'objet si requis (à 79, 9)
         if (recipe.requiredItems.isNotEmpty()) {
             drawSlotBorder(guiGraphics, 79, 9, 0xFFE1B12C.toInt())
@@ -180,6 +197,21 @@ class PokemonEvolutionRecipeCategory(
     ): List<Component> {
         val tooltips = mutableListOf<Component>()
 
+        // 1. Tooltip survol Bouton Objectif d'évolution (x = 141, y = 4..17)
+        if (mouseY >= 4 && mouseY <= 17 && mouseX >= 141 && mouseX <= 159) {
+            val targetRes = recipe.targetSpecies.resourceIdentifier
+            val isGoalActive = fr.k0bus.cobblemon_jei.application.goals.GoalService.isTargetActive(targetRes)
+            tooltips.add(Component.literal("§6🎯 Objectif d'Évolution").withStyle(ChatFormatting.BOLD))
+            if (isGoalActive) {
+                tooltips.add(Component.literal("§a✔ Objectif ACTIF").withStyle(ChatFormatting.GREEN))
+                tooltips.add(Component.literal("§7Cliquez pour retirer des objectifs"))
+            } else {
+                tooltips.add(Component.literal("§e+ Ajouter aux objectifs d'évolution").withStyle(ChatFormatting.YELLOW))
+                tooltips.add(Component.literal("§7Se validera automatiquement à l'évolution !"))
+            }
+            return tooltips
+        }
+
         // Tooltip complet si survol de la carte inférieure
         if (mouseY >= 52 && mouseY <= (HEIGHT - 5) && mouseX >= 6 && mouseX <= (WIDTH - 6)) {
             tooltips.add(
@@ -205,6 +237,39 @@ class PokemonEvolutionRecipeCategory(
         }
 
         return tooltips
+    }
+
+    override fun handleInput(
+        recipe: PokemonEvolutionRecipe,
+        mouseX: Double,
+        mouseY: Double,
+        input: com.mojang.blaze3d.platform.InputConstants.Key
+    ): Boolean {
+        if (input.type == com.mojang.blaze3d.platform.InputConstants.Type.MOUSE && input.value == 0) {
+            if (mouseY >= 4 && mouseY <= 17 && mouseX >= 141 && mouseX <= 159) {
+                val target = fr.k0bus.cobblemon_jei.domain.goals.PokemonTarget(recipe.targetSpecies.resourceIdentifier)
+                val isNowActive = fr.k0bus.cobblemon_jei.application.goals.GoalService.toggleGoal(
+                    target,
+                    fr.k0bus.cobblemon_jei.domain.goals.GoalType.EVOLVE
+                )
+                try {
+                    Minecraft.getInstance().soundManager.play(
+                        net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(
+                            net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK, 1.0f
+                        )
+                    )
+                } catch (_: Throwable) {}
+                val name = recipe.targetSpecies.translatedName.string
+                val msg = if (isNowActive) {
+                    "§6🎯 [Compagnon]§r §f$name §aajouté à vos objectifs d'évolution !"
+                } else {
+                    "§7🎯 [Compagnon]§r §f$name §7retiré de vos objectifs."
+                }
+                Minecraft.getInstance().player?.displayClientMessage(Component.literal(msg), true)
+                return true
+            }
+        }
+        return super.handleInput(recipe, mouseX, mouseY, input)
     }
 
     private fun drawSlotBorder(guiGraphics: GuiGraphics, x: Int, y: Int, borderColor: Int) {

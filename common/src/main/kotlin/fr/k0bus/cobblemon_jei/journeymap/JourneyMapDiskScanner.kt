@@ -30,6 +30,14 @@ object JourneyMapDiskScanner {
 
     init {
         WorldSessionManager.addListener(object : SessionLifecycleListener {
+            override fun onSessionStarted(sessionId: String, dimension: ResourceKey<Level>?) {
+                val dim = dimension ?: Level.OVERWORLD
+                val loaded = fr.k0bus.cobblemon_jei.infrastructure.persistence.DiskChunkCacheStorage.loadIntoCache(sessionId, dim)
+                if (loaded > 0) {
+                    logger.info("Cobblemon JM: Pré-chargement automatique de $loaded chunks depuis le cache disque pour $sessionId.")
+                }
+            }
+
             override fun onSessionEnded(sessionId: String) {
                 clearCache()
                 logger.info("Cobblemon JM: Session $sessionId terminée, cache mémoire réinitialisé.")
@@ -105,6 +113,10 @@ object JourneyMapDiskScanner {
         return result
     }
 
+    fun putCachedChunk(dimension: ResourceKey<Level>, chunkPos: ChunkPos, holder: Holder<Biome>) {
+        globalBiomeCache[Pair(dimension, chunkPos)] = holder
+    }
+
     /**
      * Scanne l'ensemble des régions explorées et associe chaque chunk éligible à son biome.
      * Priorise les régions autour du joueur et parallélise les régions distantes.
@@ -126,7 +138,15 @@ object JourneyMapDiskScanner {
         onProgress: ((completedRegions: Int, totalRegions: Int, chunkMap: Map<ChunkPos, Holder<Biome>>) -> Unit)? = null,
         forceRefresh: Boolean = false
     ): Map<ChunkPos, Holder<Biome>> {
-        val cachedForDim = getCachedChunksForDimension(currentDim)
+        var cachedForDim = getCachedChunksForDimension(currentDim)
+        if (cachedForDim.isEmpty()) {
+            val worldId = fr.k0bus.cobblemon_jei.domain.session.WorldSessionManager.activeSessionId
+                ?: fr.k0bus.cobblemon_jei.domain.session.WorldSessionManager.resolveCurrentWorldId()
+            val restored = fr.k0bus.cobblemon_jei.infrastructure.persistence.DiskChunkCacheStorage.loadIntoCache(worldId, currentDim)
+            if (restored > 0) {
+                cachedForDim = getCachedChunksForDimension(currentDim)
+            }
+        }
         if (!forceRefresh && cachedForDim.size > 100) {
             logger.info("Cobblemon JM: Utilisation directe du cache de ${cachedForDim.size} chunks pour ${currentDim.location()}.")
             for ((pos, holder) in cachedForDim) {
@@ -233,6 +253,18 @@ object JourneyMapDiskScanner {
                         globalBiomeCache[cacheKey] = biomeHolder
                         ChunkBiomeTagCache.putChunkProfile(currentDim, chunkPos, biomeHolder)
                     }
+
+                    if (currentDim == Level.OVERWORLD) {
+                        extractSubterraneanBiomes(
+                            chunkPos = chunkPos,
+                            centerX = centerX,
+                            centerZ = centerZ,
+                            biomeSource = biomeSource,
+                            sampler = sampler,
+                            clientLevel = clientLevel,
+                            currentDim = currentDim
+                        )
+                    }
                 }
             }
             completedCount.incrementAndGet()
@@ -268,6 +300,18 @@ object JourneyMapDiskScanner {
         notifyProgress(force = true)
 
         logger.info("Cobblemon JM: Scan terminé : ${result.size} chunks cartographiés extraits.")
+
+        // Persistance asynchrone sur disque
+        try {
+            val worldId = fr.k0bus.cobblemon_jei.domain.session.WorldSessionManager.activeSessionId
+                ?: fr.k0bus.cobblemon_jei.domain.session.WorldSessionManager.resolveCurrentWorldId()
+            val chunkBiomeIdMap = result.mapValues {
+                it.value.unwrapKey().map { k -> k.location().toString() }.orElse("")
+            }.filterValues { it.isNotEmpty() }
+            fr.k0bus.cobblemon_jei.infrastructure.persistence.DiskChunkCacheStorage.saveCacheAsync(worldId, currentDim, chunkBiomeIdMap)
+        } catch (t: Throwable) {
+            logger.warn("Cobblemon JM: Erreur lors de la sauvegarde du cache de chunks: ${t.message}")
+        }
         return result
     }
 
@@ -414,6 +458,37 @@ object JourneyMapDiskScanner {
         }
 
         return null
+    }
+
+    private val SUBTERRANEAN_Y_LEVELS = intArrayOf(16, -20, -45)
+
+    private fun extractSubterraneanBiomes(
+        chunkPos: ChunkPos,
+        centerX: Int,
+        centerZ: Int,
+        biomeSource: net.minecraft.world.level.biome.BiomeSource?,
+        sampler: net.minecraft.world.level.biome.Climate.Sampler?,
+        clientLevel: net.minecraft.client.multiplayer.ClientLevel?,
+        currentDim: ResourceKey<Level>
+    ) {
+        val quartX = QuartPos.fromBlock(centerX)
+        val quartZ = QuartPos.fromBlock(centerZ)
+
+        for (y in SUBTERRANEAN_Y_LEVELS) {
+            val quartY = QuartPos.fromBlock(y)
+            val caveHolder = if (biomeSource != null && sampler != null) {
+                biomeSource.getNoiseBiome(quartX, quartY, quartZ, sampler)
+            } else {
+                clientLevel?.getNoiseBiome(quartX, quartY, quartZ)
+            }
+
+            if (caveHolder != null) {
+                val profile = ChunkBiomeTagCache.getOrCreateProfile(caveHolder)
+                if (ChunkBiomeTagCache.isSubterraneanProfile(profile)) {
+                    ChunkBiomeTagCache.putSubterraneanProfile(currentDim, chunkPos, y, profile)
+                }
+            }
+        }
     }
 
     /**

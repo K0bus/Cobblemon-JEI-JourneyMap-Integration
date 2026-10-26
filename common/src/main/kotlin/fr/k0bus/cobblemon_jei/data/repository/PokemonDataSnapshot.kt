@@ -32,7 +32,7 @@ data class PokemonDataSnapshot(
     fun getSpawnsForSpecies(speciesName: String, formName: String? = null): List<SpawnEntryInfo> {
         return allSpawns.filter { entry ->
             entry.speciesName.equals(speciesName, ignoreCase = true) &&
-                    (formName == null || entry.formName.equals(formName, ignoreCase = true))
+                    (formName == null || entry.isMonumentSpawn || entry.formName.equals(formName, ignoreCase = true) || entry.formName.isEmpty())
         }
     }
 
@@ -61,6 +61,15 @@ data class PokemonDataSnapshot(
 
             dimMatches && biomeMatches && !antiBiomeMatches
         }
+    }
+
+    /**
+     * Calcule le niveau de confiance global des données de spawn pour une espèce.
+     */
+    fun getSpawnConfidence(speciesName: String): fr.k0bus.cobblemon_jei.domain.model.SpawnDataConfidence {
+        val spawns = getSpawnsForSpecies(speciesName)
+        if (spawns.isEmpty()) return fr.k0bus.cobblemon_jei.domain.model.SpawnDataConfidence.UNKNOWN
+        return spawns.minByOrNull { it.confidence.ordinal }?.confidence ?: fr.k0bus.cobblemon_jei.domain.model.SpawnDataConfidence.EXACT_DATA
     }
 
     companion object {

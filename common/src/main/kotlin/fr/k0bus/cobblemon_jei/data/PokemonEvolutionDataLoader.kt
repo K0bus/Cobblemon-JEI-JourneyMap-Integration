@@ -85,8 +85,14 @@ object PokemonEvolutionDataLoader {
 
                 if (parsedSpecies != null) {
                     try { parsedSpecies.resourceIdentifier = resLoc } catch (_: Throwable) {}
-                    parsedMap[resLoc] = parsedSpecies
-                    indexSpeciesLocally(parsedSpecies, cleanFileId)
+                    val spName = try { parsedSpecies.name } catch (_: Throwable) { "" }
+                    if (spName.isNotBlank()) {
+                        try {
+                            parsedSpecies.initialize()
+                        } catch (_: Throwable) {}
+                        parsedMap[resLoc] = parsedSpecies
+                        indexSpeciesLocally(parsedSpecies, cleanFileId)
+                    }
                 }
             } catch (e: Throwable) {
                 logger.debug("Erreur lecture JSON espèce {}: {}", name, e.message)
@@ -115,16 +121,21 @@ object PokemonEvolutionDataLoader {
     }
 
     private fun indexSpeciesLocally(sp: Species, fileId: String) {
+        val spName = try { sp.name } catch (_: Throwable) { "" }
+        if (spName.isBlank()) return
         val path = try { sp.resourceIdentifier.path.lowercase() } catch (_: Throwable) { fileId }
         localSpeciesById[path] = sp
         localSpeciesById[fileId] = sp
-        localSpeciesByName[sp.name.lowercase()] = sp
+        localSpeciesByName[spName.lowercase()] = sp
 
-        val clean = sp.name.lowercase().replace(" ", "").replace("'", "").replace(".", "").replace("-", "")
+        val clean = spName.lowercase().replace(" ", "").replace("'", "").replace(".", "").replace("-", "")
         localSpeciesByName[clean] = sp
 
         try {
-            localSpeciesByName[sp.translatedName.string.lowercase()] = sp
+            val trans = sp.translatedName.string.lowercase()
+            if (trans.isNotBlank()) {
+                localSpeciesByName[trans] = sp
+            }
         } catch (_: Throwable) {}
     }
 

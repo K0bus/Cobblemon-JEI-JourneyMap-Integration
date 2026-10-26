@@ -94,6 +94,7 @@ class CobblemonPokedexScreen(
     private lateinit var tabEvolutionsBtn: Button
     private lateinit var togglePcEvolutionsBtn: Button
     private lateinit var trackerBtn: Button
+    private lateinit var expeditionBtn: Button
 
     // Gestion du Tracker Modal et Watchlist
     private var isTrackerModalOpen: Boolean = false
@@ -101,6 +102,22 @@ class CobblemonPokedexScreen(
     private var trackerWatchlistMaxScroll: Double = 0.0
     private var watchlistHeaderButtonRect: IntArray? = null
     private var trackHeaderButtonRect: IntArray? = null
+
+    // Gestion de la modale des Expéditions
+    private var isExpeditionModalOpen: Boolean = false
+    private var isExpeditionLoading: Boolean = false
+    private var expeditionScrollOffset: Double = 0.0
+    private var expeditionMaxScroll: Double = 0.0
+    private var expeditionSuggestions: List<fr.k0bus.cobblemon_jei.domain.expedition.ExpeditionSuggestion> = emptyList()
+    private var expeditionActivePlan: fr.k0bus.cobblemon_jei.domain.expedition.ExpeditionPlan? = null
+
+    // Gestion de la modale Détails des Cibles (Loupe)
+    private var isTargetsDetailModalOpen: Boolean = false
+    private var targetsDetailTitle: String = ""
+    private var targetsDetailSubtitle: String = ""
+    private var targetsDetailList: List<fr.k0bus.cobblemon_jei.domain.goals.PokemonTarget> = emptyList()
+    private var targetsDetailScrollOffset: Double = 0.0
+    private var targetsDetailMaxScroll: Double = 0.0
 
     // Gestion des filtres avancés et de la modale de filtres
     private val filterState = PokedexFilterState()
@@ -340,6 +357,12 @@ class CobblemonPokedexScreen(
         }.bounds(getTrackerButtonX(), topY, 130, tabHeight).build()
         addRenderableWidget(trackerBtn)
 
+        expeditionBtn = Button.builder(Component.literal("🏕 Expéditions")) {
+            openExpeditionModal()
+        }.bounds(getExpeditionButtonX(), topY, 100, tabHeight).build()
+        expeditionBtn.tooltip = Tooltip.create(Component.literal("Planificateur d'Expéditions & Détection de Hotspots"))
+        addRenderableWidget(expeditionBtn)
+
         // Champ de recherche et boutons de filtres
         val searchX = 12
         val searchY = 48
@@ -369,34 +392,40 @@ class CobblemonPokedexScreen(
         quickResetFilterBtn.tooltip = Tooltip.create(Component.literal("Réinitialiser tous les filtres"))
         addRenderableWidget(quickResetFilterBtn)
 
-        // Bouton Radical Cobblemon Trainers (si le mod RCT est disponible ou séries chargées)
-        if (fr.k0bus.cobblemon_jei.compat.rct.RctCompat.isAvailable()) {
-            val rctBtnX = if (fr.k0bus.cobblemon_jei.leaderboard.CobblemonScoreboardService.isAvailable()) {
-                width - 72
-            } else {
-                width - 48
-            }
-            val rctBtn = Button.builder(Component.literal("⚔")) {
-                minecraft?.setScreen(fr.k0bus.cobblemon_jei.compat.rct.CobblemonRctProgressionScreen(this))
-            }.bounds(rctBtnX, topY, 20, tabHeight).build()
-            rctBtn.tooltip = Tooltip.create(Component.literal("Arbre de Progression Radical Trainers"))
-            addRenderableWidget(rctBtn)
-        }
+        var rightOffset = 24
+        // Bouton Fermer
+        val closeBtn = Button.builder(Component.literal("✕")) {
+            onClose()
+        }.bounds(width - rightOffset, topY, 18, tabHeight).build()
+        addRenderableWidget(closeBtn)
+        rightOffset += 24
 
         // Bouton Classement (uniquement si disponible sur le serveur)
         if (fr.k0bus.cobblemon_jei.leaderboard.CobblemonScoreboardService.isAvailable()) {
             val leaderboardBtn = Button.builder(Component.literal("🏆")) {
                 minecraft?.setScreen(fr.k0bus.cobblemon_jei.leaderboard.CobblemonLeaderboardScreen(this))
-            }.bounds(width - 48, topY, 20, tabHeight).build()
+            }.bounds(width - rightOffset, topY, 20, tabHeight).build()
             leaderboardBtn.tooltip = Tooltip.create(Component.literal("Classement des Joueurs"))
             addRenderableWidget(leaderboardBtn)
+            rightOffset += 24
         }
 
-        // Bouton Fermer
-        val closeBtn = Button.builder(Component.literal("✕")) {
-            onClose()
-        }.bounds(width - 24, topY, 18, tabHeight).build()
-        addRenderableWidget(closeBtn)
+        // Bouton Radical Cobblemon Trainers (si le mod RCT est disponible ou séries chargées)
+        if (fr.k0bus.cobblemon_jei.compat.rct.RctCompat.isAvailable()) {
+            val rctBtn = Button.builder(Component.literal("⚔")) {
+                minecraft?.setScreen(fr.k0bus.cobblemon_jei.compat.rct.CobblemonRctProgressionScreen(this))
+            }.bounds(width - rightOffset, topY, 20, tabHeight).build()
+            rctBtn.tooltip = Tooltip.create(Component.literal("Arbre de Progression Radical Trainers"))
+            addRenderableWidget(rctBtn)
+            rightOffset += 24
+        }
+
+        // Bouton Paramètres & Diagnostic du Mod
+        val settingsBtn = Button.builder(Component.literal("⚙")) {
+            minecraft?.setScreen(CobblemonSettingsScreen(this))
+        }.bounds(width - rightOffset, topY, 20, tabHeight).build()
+        settingsBtn.tooltip = Tooltip.create(Component.literal("Paramètres & Diagnostic du Mod"))
+        addRenderableWidget(settingsBtn)
 
         // Boîte de recherche pour le filtre de biomes
         biomeSearchBox = EditBox(font, 0, 0, 100, 16, Component.literal(""))
@@ -420,6 +449,10 @@ class CobblemonPokedexScreen(
         }
     }
 
+    private fun getExpeditionButtonX(): Int {
+        return getTrackerButtonX() + 134
+    }
+
     private fun getTrackerButtonText(): Component {
         return Component.literal("🎯 ${PokemonTrackingManager.getModeSummary()}")
     }
@@ -429,6 +462,9 @@ class CobblemonPokedexScreen(
             trackerBtn.x = getTrackerButtonX()
             trackerBtn.message = getTrackerButtonText()
             trackerBtn.tooltip = Tooltip.create(Component.literal("Mode Radar & Tracker : ${PokemonTrackingManager.getModeSummary()} (Cliquer pour gérer)"))
+        }
+        if (::expeditionBtn.isInitialized) {
+            expeditionBtn.x = getExpeditionButtonX()
         }
     }
 
@@ -661,17 +697,12 @@ class CobblemonPokedexScreen(
         guiGraphics.fill(0, 0, width, 70, 0xFF14171E.toInt())
         guiGraphics.fill(0, 69, width, 70, 0xFF282D3C.toInt())
 
-        // Titre et statistiques globales
+        // Statistiques globales pour la barre de progression inférieure
         val stats = PokemonTrackerService.getStats()
-        val title = "§e§lPOKÉDEX TRACKER§r §8|§r Complétion : §a${String.format("%.1f", stats.completionPercent)}%§r"
-        guiGraphics.drawString(font, title, 14, 10, 0xFFFFFFFF.toInt(), false)
-
-        val statsSummary = "Capturés: §a${stats.caughtCount}§r §8/§r Vus: §6${stats.encounteredCount}§r §8/§r Manquants: §c${stats.missingCount}§r §8|§r Prêts PC: §b${stats.readyEvolutionsCount}§r"
-        guiGraphics.drawString(font, statsSummary, width - font.width(statsSummary) - 14, 10, 0xFFBBBBBB.toInt(), false)
 
         super.render(guiGraphics, mouseX, mouseY, partialTick)
 
-        val isAnyModalOpen = isZoomModalOpen || isFilterModalOpen || isTrackerModalOpen
+        val isAnyModalOpen = isZoomModalOpen || isFilterModalOpen || isTrackerModalOpen || isExpeditionModalOpen || isTargetsDetailModalOpen
         val contentMouseX = if (isAnyModalOpen) -1000 else mouseX
         val contentMouseY = if (isAnyModalOpen) -1000 else mouseY
 
@@ -688,6 +719,12 @@ class CobblemonPokedexScreen(
 
         // Rendu de la modale du Tracker
         renderTrackerModal(guiGraphics, mouseX, mouseY)
+
+        // Rendu de la modale des Expéditions
+        renderExpeditionModal(guiGraphics, mouseX, mouseY)
+
+        // Rendu de la modale de Détail des Cibles (Loupe)
+        renderTargetsDetailModal(guiGraphics, mouseX, mouseY)
     }
 
     private fun renderBottomProgressBar(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, stats: PokedexTrackerStats) {
@@ -1956,7 +1993,11 @@ class CobblemonPokedexScreen(
         guiGraphics.drawString(font, "§e§lObjets lâchés à la défaite§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 14
 
-        val recipes = PokemonDropDataLoader.loadDropRecipes().filter { PokemonTrackingManager.isSameSpecies(it.species, sp) }
+        val recipes = try {
+            PokemonDropDataLoader.loadDropRecipes().filter { PokemonTrackingManager.isSameSpecies(it.species, sp) }
+        } catch (_: Throwable) {
+            emptyList()
+        }
         val drops = recipes.flatMap { it.drops }.distinctBy { it.itemStack.item.descriptionId + ":" + it.percentage }
 
         if (drops.isEmpty()) {
@@ -3666,6 +3707,16 @@ class CobblemonPokedexScreen(
         val title = "§6§lRADAR & TRACKER DE POKÉMON§r"
         guiGraphics.drawString(font, title, modalX + 8, modalY + 7, 0xFFFFFFFF.toInt(), false)
 
+        // Bouton [🏕 Expéditions] dans la barre de titre
+        val expModalBtnX = modalX + modalW - 116
+        val expModalBtnY = modalY + 4
+        val isExpHovered = mouseX >= expModalBtnX && mouseX <= expModalBtnX + 92 && mouseY >= expModalBtnY && mouseY <= expModalBtnY + 14
+        val expBg = if (isExpHovered) 0xFF27AE60.toInt() else 0xFF1E3A2B.toInt()
+        guiGraphics.fill(expModalBtnX, expModalBtnY, expModalBtnX + 92, expModalBtnY + 14, expBg)
+        guiGraphics.fill(expModalBtnX, expModalBtnY, expModalBtnX + 92, expModalBtnY + 1, 0xFF2ECC71.toInt())
+        guiGraphics.fill(expModalBtnX, expModalBtnY + 13, expModalBtnX + 92, expModalBtnY + 14, 0xFF2ECC71.toInt())
+        guiGraphics.drawCenteredString(font, "🏕 Expéditions", expModalBtnX + 46, expModalBtnY + 3, 0xFFFFFFFF.toInt())
+
         // Bouton Fermer [✕] en haut à droite
         val closeBtnX = modalX + modalW - 18
         val closeBtnY = modalY + 4
@@ -3685,8 +3736,20 @@ class CobblemonPokedexScreen(
             TrackingMode.SINGLE -> "§bCible : §f${PokemonTrackingManager.targetSpecies?.translatedName?.string ?: "Inconnu"}"
             TrackingMode.EVOLUTION_LINE -> "§dFamille de §f${PokemonTrackingManager.evolutionBaseSpecies?.translatedName?.string ?: "Inconnu"} §7(${PokemonTrackingManager.evolutionFamily.size})"
             TrackingMode.CUSTOM_LIST -> "§eListe personnalisée §7(${PokemonTrackingManager.customWatchlist.size} Pokémon)"
+            TrackingMode.GOALS -> "§6Objectifs d'expéd. §7(${fr.k0bus.cobblemon_jei.application.goals.GoalService.getActiveGoals().size} actifs)"
         }
         guiGraphics.drawString(font, "Mode actif : $modeLabel", modalX + 12, statusY + 4, 0xFFFFFFFF.toInt(), false)
+
+        if (PokemonTrackingManager.currentMode == TrackingMode.GOALS) {
+            val goalsBtnW = 68
+            val goalsBtnH = 14
+            val goalsBtnX = modalX + modalW - 8 - goalsBtnW - 4
+            val goalsBtnY = statusY + 4
+            val isGoalsHovered = mouseX >= goalsBtnX && mouseX <= goalsBtnX + goalsBtnW && mouseY >= goalsBtnY && mouseY <= goalsBtnY + goalsBtnH
+            val goalsBg = if (isGoalsHovered) 0xFFD35400.toInt() else 0xFFE67E22.toInt()
+            guiGraphics.fill(goalsBtnX, goalsBtnY, goalsBtnX + goalsBtnW, goalsBtnY + goalsBtnH, goalsBg)
+            guiGraphics.drawCenteredString(font, "🔍 Cibles", goalsBtnX + goalsBtnW / 2, goalsBtnY + 3, 0xFFFFFFFF.toInt())
+        }
 
         val detCount = PokemonRadarService.detectedCount
         val shinyCount = PokemonRadarService.shinyNearbyCount
@@ -3755,20 +3818,21 @@ class CobblemonPokedexScreen(
         val b3Text = if (isLineActive) "✔ Lignée ($b2Short)" else "🧬 Lignée ($b2Short)"
         guiGraphics.drawCenteredString(font, b3Text, b3X + halfW / 2, btnRow2Y + 4, 0xFFFFFFFF.toInt())
 
-        // Choix 4 & 5 : Activer la liste OU Arrêter le tracking
+        // Choix 4 & 5 : Activer les objectifs du compagnon OU Arrêter le tracking
         val btnRow3Y = modalY + 92
-        val isListActive = PokemonTrackingManager.currentMode == TrackingMode.CUSTOM_LIST
+        val activeGoalsCount = fr.k0bus.cobblemon_jei.application.goals.GoalService.getActiveGoals().size
+        val isGoalsActive = PokemonTrackingManager.currentMode == TrackingMode.GOALS || PokemonTrackingManager.currentMode == TrackingMode.CUSTOM_LIST
         val isB4Hovered = mouseX >= modalX + 8 && mouseX <= modalX + 8 + halfW && mouseY >= btnRow3Y && mouseY <= btnRow3Y + 16
         val b4Bg = when {
-            isListActive -> if (isB4Hovered) 0xFFD35400.toInt() else 0xFFE67E22.toInt()
+            isGoalsActive -> if (isB4Hovered) 0xFFD35400.toInt() else 0xFFE67E22.toInt()
             isB4Hovered -> 0xFF2D3345.toInt()
             else -> 0xFF1D212E.toInt()
         }
-        val b4Border = if (isListActive) 0xFFFFAA00.toInt() else 0xFF353C4D.toInt()
+        val b4Border = if (isGoalsActive) 0xFFFFAA00.toInt() else 0xFF353C4D.toInt()
         guiGraphics.fill(modalX + 8, btnRow3Y, modalX + 8 + halfW, btnRow3Y + 16, b4Bg)
         guiGraphics.fill(modalX + 8, btnRow3Y, modalX + 8 + halfW, btnRow3Y + 1, b4Border)
         guiGraphics.fill(modalX + 8, btnRow3Y + 15, modalX + 8 + halfW, btnRow3Y + 16, b4Border)
-        val b4Text = if (isListActive) "✔ Ma Liste (${PokemonTrackingManager.customWatchlist.size})" else "⭐ Suivre Ma Liste (${PokemonTrackingManager.customWatchlist.size})"
+        val b4Text = if (isGoalsActive) "✔ Mes Objectifs ($activeGoalsCount)" else "🎯 Suivre Objectifs ($activeGoalsCount)"
         guiGraphics.drawCenteredString(font, b4Text, modalX + 8 + halfW / 2, btnRow3Y + 4, 0xFFFFFFFF.toInt())
 
         // Bouton Arrêter le tracking
@@ -3973,6 +4037,31 @@ class CobblemonPokedexScreen(
             return
         }
 
+        // Bouton [🏕 Expéditions]
+        val expModalBtnX = modalX + modalW - 116
+        val expModalBtnY = modalY + 4
+        if (mouseX >= expModalBtnX && mouseX <= expModalBtnX + 92 && mouseY >= expModalBtnY && mouseY <= expModalBtnY + 14) {
+            closeTrackerModal()
+            openExpeditionModal()
+            Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+            return
+        }
+
+        // Bouton [🔍 Cibles] si en mode GOALS
+        if (PokemonTrackingManager.currentMode == TrackingMode.GOALS) {
+            val statusY = modalY + 26
+            val goalsBtnW = 68
+            val goalsBtnH = 14
+            val goalsBtnX = modalX + modalW - 8 - goalsBtnW - 4
+            val goalsBtnY = statusY + 4
+            if (mouseX >= goalsBtnX && mouseX <= goalsBtnX + goalsBtnW && mouseY >= goalsBtnY && mouseY <= goalsBtnY + goalsBtnH) {
+                val activeGoals = fr.k0bus.cobblemon_jei.application.goals.GoalService.getActiveGoals()
+                openTargetsDetailModal("Objectifs d'Expédition", "${activeGoals.size} Pokémon cibles suivis", activeGoals.map { it.target })
+                Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+                return
+            }
+        }
+
         // Clic en dehors de la fenêtre modale ferme la modale
         if (mouseX < modalX || mouseX > modalX + modalW || mouseY < modalY || mouseY > modalY + modalH) {
             closeTrackerModal()
@@ -4026,13 +4115,18 @@ class CobblemonPokedexScreen(
             return
         }
 
-        // 5. Bouton 4 : Suivre ma liste
+        // 5. Bouton 4 : Suivre mes objectifs (ou liste personnalisée)
         val btnRow3Y = modalY + 92
         if (mouseX >= modalX + 8 && mouseX <= modalX + 8 + halfW && mouseY >= btnRow3Y && mouseY <= btnRow3Y + 16) {
-            if (PokemonTrackingManager.currentMode == TrackingMode.CUSTOM_LIST) {
+            if (PokemonTrackingManager.currentMode == TrackingMode.GOALS || PokemonTrackingManager.currentMode == TrackingMode.CUSTOM_LIST) {
                 PokemonTrackingManager.stopTracking()
             } else {
-                PokemonTrackingManager.trackCustomList()
+                val hasGoals = fr.k0bus.cobblemon_jei.application.goals.GoalService.getActiveGoals().isNotEmpty()
+                if (hasGoals) {
+                    PokemonTrackingManager.trackGoals()
+                } else {
+                    PokemonTrackingManager.trackCustomList()
+                }
             }
             updateTrackerButton()
             Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
@@ -4170,8 +4264,422 @@ class CobblemonPokedexScreen(
         }
     }
 
+    fun openExpeditionModal() {
+        isExpeditionModalOpen = true
+        isTrackerModalOpen = false
+        searchBox.active = false
+        isExpeditionLoading = true
+        expeditionScrollOffset = 0.0
+
+        java.util.concurrent.CompletableFuture.supplyAsync({
+            val suggestions = fr.k0bus.cobblemon_jei.application.expedition.ExpeditionSuggestionEngine.generateSuggestions()
+            val plan = fr.k0bus.cobblemon_jei.application.expedition.ExpeditionPlannerService.planForActiveGoals()
+            Pair(suggestions, plan)
+        }).thenAcceptAsync({ result ->
+            expeditionSuggestions = result.first
+            expeditionActivePlan = result.second
+            isExpeditionLoading = false
+        }, net.minecraft.client.Minecraft.getInstance())
+    }
+
+    fun closeExpeditionModal() {
+        isExpeditionModalOpen = false
+        searchBox.active = true
+    }
+
+    private fun getExpeditionModalBounds(): IntArray {
+        val modalW = min(580, width - 20)
+        val modalH = min(320, height - 20)
+        val modalX = (width - modalW) / 2
+        val modalY = (height - modalH) / 2
+        return intArrayOf(modalX, modalY, modalW, modalH)
+    }
+
+    private fun renderExpeditionModal(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        if (!isExpeditionModalOpen) return
+
+        guiGraphics.flush()
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate(0f, 0f, 400f)
+
+        // 1. Fond sombre obscurcissant tout l'écran
+        guiGraphics.fill(0, 0, width, height, 0xD0080A10.toInt())
+
+        // 2. Fenêtre modale centrée
+        val (modalX, modalY, modalW, modalH) = getExpeditionModalBounds()
+
+        // Fond et bordures de la modale
+        guiGraphics.fill(modalX, modalY, modalX + modalW, modalY + modalH, 0xFF141724.toInt())
+        guiGraphics.fill(modalX - 1, modalY - 1, modalX + modalW + 1, modalY, 0xFF353D52.toInt())
+        guiGraphics.fill(modalX - 1, modalY + modalH, modalX + modalW + 1, modalY + modalH + 1, 0xFF353D52.toInt())
+        guiGraphics.fill(modalX - 1, modalY, modalX, modalY + modalH, 0xFF353D52.toInt())
+        guiGraphics.fill(modalX + modalW, modalY, modalX + modalW + 1, modalY + modalH, 0xFF353D52.toInt())
+
+        // Barre de titre de la modale
+        guiGraphics.fill(modalX, modalY, modalX + modalW, modalY + 22, 0xFF1B2030.toInt())
+        guiGraphics.fill(modalX, modalY + 21, modalX + modalW, modalY + 22, 0xFF2B334C.toInt())
+
+        val title = "§6§lCOMPAGNON D'EXPLORATION : 5 EXPÉDITIONS SUGGÉRÉES§r §7(Opportunités Pokédex)"
+        guiGraphics.drawString(font, title, modalX + 8, modalY + 7, 0xFFFFFFFF.toInt(), false)
+
+        // Bouton Fermer [✕] en haut à droite
+        val closeBtnX = modalX + modalW - 18
+        val closeBtnY = modalY + 4
+        val isCloseHovered = mouseX >= closeBtnX && mouseX <= closeBtnX + 14 && mouseY >= closeBtnY && mouseY <= closeBtnY + 14
+        val closeColor = if (isCloseHovered) 0xFFFF5555.toInt() else 0xFFAAAAAA.toInt()
+        guiGraphics.drawString(font, "§l✕§r", closeBtnX + 3, closeBtnY + 3, closeColor, false)
+
+        val viewportY = modalY + 28
+        val viewportH = modalH - 34
+
+        if (isExpeditionLoading) {
+            guiGraphics.fill(modalX + 8, viewportY, modalX + modalW - 8, viewportY + viewportH, 0xFF191C28.toInt())
+            val loadingMsg = "§e⏳ Analyse des biomes et calcul des 5 expéditions..."
+            guiGraphics.drawCenteredString(font, loadingMsg, modalX + modalW / 2, viewportY + viewportH / 2 - 8, 0xFFFFFFFF.toInt())
+            val subMsg = "§7Calcul asynchrone sans gel des FPS en cours"
+            guiGraphics.drawCenteredString(font, subMsg, modalX + modalW / 2, viewportY + viewportH / 2 + 6, 0xFFAAAAAA.toInt())
+        } else if (expeditionSuggestions.isEmpty()) {
+            guiGraphics.fill(modalX + 8, viewportY, modalX + modalW - 8, viewportY + viewportH, 0xFF191C28.toInt())
+            guiGraphics.drawString(font, "§7Aucune opportunité pour le moment. Explorez plus de territoires sur JourneyMap !", modalX + 16, viewportY + viewportH / 2 - 4, 0xFF888888.toInt(), false)
+        } else {
+            val cardH = 60
+            val cardGap = 6
+            val totalContentH = expeditionSuggestions.size * (cardH + cardGap)
+            expeditionMaxScroll = max(0.0, (totalContentH - viewportH).toDouble())
+
+            guiGraphics.enableScissor(modalX + 6, viewportY, modalX + modalW - 6, viewportY + viewportH)
+
+            for ((index, sug) in expeditionSuggestions.take(5).withIndex()) {
+                val cardY = (viewportY + index * (cardH + cardGap) - expeditionScrollOffset).toInt()
+                if (cardY + cardH >= viewportY && cardY <= viewportY + viewportH) {
+                    drawExpeditionSuggestionCard(guiGraphics, modalX + 8, cardY, modalW - 16, cardH, sug, mouseX, mouseY)
+                }
+            }
+
+            guiGraphics.disableScissor()
+
+            // Barre de défilement verticale
+            if (expeditionMaxScroll > 0) {
+                val scrollbarW = 4
+                val scrollbarX = modalX + modalW - scrollbarW - 3
+                val thumbH = max(20, (viewportH * (viewportH.toDouble() / totalContentH)).toInt())
+                val thumbY = viewportY + ((viewportH - thumbH) * (expeditionScrollOffset / expeditionMaxScroll)).toInt()
+                guiGraphics.fill(scrollbarX, viewportY, scrollbarX + scrollbarW, viewportY + viewportH, 0xFF1B2030.toInt())
+                guiGraphics.fill(scrollbarX, thumbY, scrollbarX + scrollbarW, thumbY + thumbH, 0xFFF39C12.toInt())
+            }
+        }
+
+        pose.popPose()
+    }
+
+    private fun drawExpeditionSuggestionCard(
+        guiGraphics: GuiGraphics,
+        x: Int,
+        y: Int,
+        w: Int,
+        h: Int,
+        suggestion: fr.k0bus.cobblemon_jei.domain.expedition.ExpeditionSuggestion,
+        mouseX: Int,
+        mouseY: Int
+    ) {
+        val isHovered = mouseX >= x && mouseX <= x + w && mouseY >= y && mouseY <= y + h
+        val bg = if (isHovered) 0xFF222838.toInt() else 0xFF181C28.toInt()
+        val border = if (isHovered) 0xFFF39C12.toInt() else 0xFF2A3144.toInt()
+
+        guiGraphics.fill(x, y, x + w, y + h, bg)
+        guiGraphics.fill(x, y, x + w, y + 1, border)
+        guiGraphics.fill(x, y + h - 1, x + w, y + h, border)
+        guiGraphics.fill(x, y, x + 1, y + h, border)
+        guiGraphics.fill(x + w - 1, y, x + w, y + h, border)
+
+        val zone = suggestion.primaryZone
+
+        // 1. Titre & Badge d'activité
+        val badge = if (suggestion.isConditionActiveNow) " §e⚡ ACTIF MAINTENANT" else ""
+        guiGraphics.drawString(font, "§6§l${suggestion.title}§r$badge", x + 8, y + 5, 0xFFFFFFFF.toInt(), false)
+
+        // Badge Score
+        val scoreText = "Score : ${zone.score.toInt()} pts"
+        val scoreW = font.width(scoreText) + 8
+        val scoreX = x + w - scoreW - 156
+        guiGraphics.fill(scoreX, y + 4, scoreX + scoreW, y + 16, 0xFF2E220D.toInt())
+        guiGraphics.fill(scoreX, y + 4, scoreX + scoreW, y + 5, 0xFFD35400.toInt())
+        guiGraphics.drawString(font, "§e§l$scoreText§r", scoreX + 4, y + 6, 0xFFFFAA00.toInt(), false)
+
+        // 2. Région de recherche & Coordonnées
+        val distText = if (zone.distanceToPlayer > 0) " (${zone.distanceToPlayer.toInt()}m)" else ""
+        val coordStr = if (zone.isSubterranean) "[${zone.centerPos.x}, Y=${zone.centerPos.y}, ${zone.centerPos.z}] §6⛏" else "[${zone.centerPos.x}, ${zone.centerPos.z}]"
+        guiGraphics.drawString(font, "§b📍 Région : §f${zone.name} §7• Coord: $coordStr§e$distText", x + 8, y + 18, 0xFFE0E0E0.toInt(), false)
+
+        // 3. Liste des Pokémon cibles
+        val targetNames = suggestion.targets.take(5).joinToString(", ") {
+            PokemonTrackerService.getSpeciesTranslatedName(it.speciesId)
+        }
+        val moreCount = if (suggestion.targets.size > 5) " +${suggestion.targets.size - 5}" else ""
+        guiGraphics.drawString(font, "§d🎯 Cibles (${suggestion.targets.size}) : §f$targetNames$moreCount", x + 8, y + 31, 0xFFFFFFFF.toInt(), false)
+
+        // 4. Description concise
+        guiGraphics.drawString(font, "§8ℹ ${suggestion.description}", x + 8, y + 45, 0xFFAAAAAA.toInt(), false)
+
+        // 5. Boutons d'action : [▶ Partir], [📍 Repère] et [🔍 Cibles]
+        val partBtnW = 84
+        val partBtnH = 18
+        val partBtnX = x + w - partBtnW - 6
+        val partBtnY = y + 7
+
+        val isPartHovered = mouseX >= partBtnX && mouseX <= partBtnX + partBtnW && mouseY >= partBtnY && mouseY <= partBtnY + partBtnH
+        val partBg = if (isPartHovered) 0xFF27AE60.toInt() else 0xFF2ECC71.toInt()
+        guiGraphics.fill(partBtnX, partBtnY, partBtnX + partBtnW, partBtnY + partBtnH, partBg)
+        guiGraphics.drawCenteredString(font, "▶ Partir", partBtnX + partBtnW / 2, partBtnY + 5, 0xFFFFFFFF.toInt())
+
+        val markBtnW = 60
+        val markBtnH = 16
+        val markBtnX = x + w - markBtnW - 6
+        val markBtnY = y + 33
+
+        val isMarkHovered = mouseX >= markBtnX && mouseX <= markBtnX + markBtnW && mouseY >= markBtnY && mouseY <= markBtnY + markBtnH
+        val markBg = if (isMarkHovered) 0xFFD35400.toInt() else 0xFFE67E22.toInt()
+        guiGraphics.fill(markBtnX, markBtnY, markBtnX + markBtnW, markBtnY + markBtnH, markBg)
+        guiGraphics.drawCenteredString(font, "📍 Repère", markBtnX + markBtnW / 2, markBtnY + 4, 0xFFFFFFFF.toInt())
+
+        val targetBtnW = 60
+        val targetBtnH = 16
+        val targetBtnX = markBtnX - targetBtnW - 4
+        val targetBtnY = y + 33
+
+        val isTargetHovered = mouseX >= targetBtnX && mouseX <= targetBtnX + targetBtnW && mouseY >= targetBtnY && mouseY <= targetBtnY + targetBtnH
+        val targetBg = if (isTargetHovered) 0xFF2980B9.toInt() else 0xFF3498DB.toInt()
+        guiGraphics.fill(targetBtnX, targetBtnY, targetBtnX + targetBtnW, targetBtnY + targetBtnH, targetBg)
+        guiGraphics.drawCenteredString(font, "🔍 Cibles", targetBtnX + targetBtnW / 2, targetBtnY + 4, 0xFFFFFFFF.toInt())
+    }
+
+    private fun handleExpeditionModalClick(mouseX: Double, mouseY: Double) {
+        val (modalX, modalY, modalW, modalH) = getExpeditionModalBounds()
+
+        // 1. Bouton Fermer [✕]
+        val closeBtnX = modalX + modalW - 18
+        val closeBtnY = modalY + 4
+        if (mouseX >= closeBtnX && mouseX <= closeBtnX + 14 && mouseY >= closeBtnY && mouseY <= closeBtnY + 14) {
+            closeExpeditionModal()
+            return
+        }
+
+        // Clic en dehors ferme la modale
+        if (mouseX < modalX || mouseX > modalX + modalW || mouseY < modalY || mouseY > modalY + modalH) {
+            closeExpeditionModal()
+            return
+        }
+
+        if (isExpeditionLoading || expeditionSuggestions.isEmpty()) return
+
+        val viewportY = modalY + 28
+        val viewportH = modalH - 34
+        val cardH = 60
+        val cardGap = 6
+
+        // Clic sur les 5 cartes de suggestions
+        for ((index, sug) in expeditionSuggestions.take(5).withIndex()) {
+            val cardY = (viewportY + index * (cardH + cardGap) - expeditionScrollOffset).toInt()
+            if (cardY + cardH < viewportY || cardY > viewportY + viewportH) continue
+
+            val partBtnW = 84
+            val partBtnH = 18
+            val partBtnX = modalX + 8 + (modalW - 16) - partBtnW - 6
+            val partBtnY = cardY + 7
+
+            if (mouseX >= partBtnX && mouseX <= partBtnX + partBtnW && mouseY >= partBtnY && mouseY <= partBtnY + partBtnH) {
+                fr.k0bus.cobblemon_jei.application.expedition.ExpeditionSuggestionEngine.acceptSuggestion(sug)
+                fr.k0bus.cobblemon_jei.journeymap.ExpeditionMapOverlay.showZoneOverlay(sug.primaryZone)
+                closeExpeditionModal()
+                Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+                return
+            }
+
+            val markBtnW = 60
+            val markBtnH = 16
+            val markBtnX = modalX + 8 + (modalW - 16) - markBtnW - 6
+            val markBtnY = cardY + 33
+
+            if (mouseX >= markBtnX && mouseX <= markBtnX + markBtnW && mouseY >= markBtnY && mouseY <= markBtnY + markBtnH) {
+                fr.k0bus.cobblemon_jei.journeymap.ExpeditionMapOverlay.createZoneWaypoint(sug.primaryZone)
+                Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.2f))
+                return
+            }
+
+            val targetBtnW = 60
+            val targetBtnH = 16
+            val targetBtnX = markBtnX - targetBtnW - 4
+            val targetBtnY = cardY + 33
+
+            if (mouseX >= targetBtnX && mouseX <= targetBtnX + targetBtnW && mouseY >= targetBtnY && mouseY <= targetBtnY + targetBtnH) {
+                openTargetsDetailModal(sug.title, "${sug.primaryZone.name} • ${sug.targets.size} Pokémon cibles", sug.targets)
+                Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+                return
+            }
+        }
+    }
+
+    fun openTargetsDetailModal(title: String, subtitle: String, targets: List<fr.k0bus.cobblemon_jei.domain.goals.PokemonTarget>) {
+        targetsDetailTitle = title
+        targetsDetailSubtitle = subtitle
+        targetsDetailList = targets
+        targetsDetailScrollOffset = 0.0
+        isTargetsDetailModalOpen = true
+        searchBox.active = false
+    }
+
+    fun closeTargetsDetailModal() {
+        isTargetsDetailModalOpen = false
+        if (!isFilterModalOpen && !isTrackerModalOpen && !isExpeditionModalOpen) {
+            searchBox.active = true
+        }
+    }
+
+    private fun getTargetsDetailModalBounds(): IntArray {
+        val modalW = min(420, width - 24)
+        val modalH = min(280, height - 24)
+        val modalX = (width - modalW) / 2
+        val modalY = (height - modalH) / 2
+        return intArrayOf(modalX, modalY, modalW, modalH)
+    }
+
+    private fun renderTargetsDetailModal(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        if (!isTargetsDetailModalOpen) return
+
+        guiGraphics.flush()
+        val pose = guiGraphics.pose()
+        pose.pushPose()
+        pose.translate(0f, 0f, 600f)
+
+        // 1. Fond sombre obscurcissant
+        guiGraphics.fill(0, 0, width, height, 0xD0050810.toInt())
+
+        val (modalX, modalY, modalW, modalH) = getTargetsDetailModalBounds()
+
+        // 2. Fenêtre principale
+        guiGraphics.fill(modalX, modalY, modalX + modalW, modalY + modalH, 0xFA121622.toInt())
+        guiGraphics.fill(modalX, modalY, modalX + modalW, modalY + 1, 0xFF354464.toInt())
+        guiGraphics.fill(modalX, modalY + modalH - 1, modalX + modalW, modalY + modalH, 0xFF354464.toInt())
+        guiGraphics.fill(modalX, modalY, modalX + 1, modalY + modalH, 0xFF354464.toInt())
+        guiGraphics.fill(modalX + modalW - 1, modalY, modalX + modalW, modalY + modalH, 0xFF354464.toInt())
+
+        // 3. Header
+        guiGraphics.fill(modalX + 1, modalY + 1, modalX + modalW - 1, modalY + 26, 0xFF192030.toInt())
+        guiGraphics.fill(modalX + 1, modalY + 25, modalX + modalW - 1, modalY + 26, 0xFF2F3C55.toInt())
+        guiGraphics.drawString(font, "🔍 §6§l$targetsDetailTitle§r", modalX + 8, modalY + 5, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, "§7$targetsDetailSubtitle", modalX + 8, modalY + 15, 0xFFAAAAAA.toInt(), false)
+
+        val closeBtnX = modalX + modalW - 18
+        val closeBtnY = modalY + 4
+        val isCloseHovered = mouseX >= closeBtnX && mouseX <= closeBtnX + 14 && mouseY >= closeBtnY && mouseY <= closeBtnY + 14
+        val closeColor = if (isCloseHovered) 0xFFFF5555.toInt() else 0xFFAAAAAA.toInt()
+        guiGraphics.drawString(font, "§l✕§r", closeBtnX + 3, closeBtnY + 3, closeColor, false)
+
+        // 4. Liste des cibles en grille 2 colonnes
+        val viewportX = modalX + 8
+        val viewportY = modalY + 28
+        val viewportW = modalW - 16
+        val viewportH = modalH - 34
+
+        val colGap = 6
+        val colW = (viewportW - colGap) / 2
+        val rowH = 22
+        val rowGap = 4
+        val totalRows = (targetsDetailList.size + 1) / 2
+        val totalContentH = totalRows * (rowH + rowGap)
+        targetsDetailMaxScroll = max(0.0, (totalContentH - viewportH).toDouble())
+
+        guiGraphics.enableScissor(viewportX, viewportY, viewportX + viewportW, viewportY + viewportH)
+
+        for ((index, target) in targetsDetailList.withIndex()) {
+            val col = index % 2
+            val row = index / 2
+            val cardX = viewportX + col * (colW + colGap)
+            val cardY = (viewportY + row * (rowH + rowGap) - targetsDetailScrollOffset).toInt()
+
+            if (cardY + rowH < viewportY || cardY > viewportY + viewportH) continue
+
+            val isCardHovered = mouseX >= cardX && mouseX <= cardX + colW && mouseY >= cardY && mouseY <= cardY + rowH
+            val cardBg = if (isCardHovered) 0xFF222B3D.toInt() else 0xFF161B27.toInt()
+            val cardBorder = if (isCardHovered) 0xFF4A658E.toInt() else 0xFF252D3F.toInt()
+
+            guiGraphics.fill(cardX, cardY, cardX + colW, cardY + rowH, cardBg)
+            guiGraphics.fill(cardX, cardY, cardX + colW, cardY + 1, cardBorder)
+            guiGraphics.fill(cardX, cardY + rowH - 1, cardX + colW, cardY + rowH, cardBorder)
+            guiGraphics.fill(cardX, cardY, cardX + 1, cardY + rowH, cardBorder)
+            guiGraphics.fill(cardX + colW - 1, cardY, cardX + colW, cardY + rowH, cardBorder)
+
+            val sp = com.cobblemon.mod.common.api.pokemon.PokemonSpecies.getByIdentifier(target.speciesId)
+            val translatedName = PokemonTrackerService.getSpeciesTranslatedName(target.speciesId)
+
+            if (sp != null) {
+                val stack = getItemStack(sp, shiny = target.shiny)
+                if (!stack.isEmpty) {
+                    guiGraphics.renderItem(stack, cardX + 2, cardY + 3)
+                }
+            }
+
+            val isCaught = allTracked.find { it.species.resourceIdentifier == target.speciesId }?.isCaught == true
+            val isSeen = allTracked.find { it.species.resourceIdentifier == target.speciesId }?.isEncountered == true
+            val statusIcon = when {
+                isCaught -> "§a✔"
+                isSeen -> "§e👁"
+                else -> "§7✕"
+            }
+            val shinyTag = if (target.shiny) "§e★ " else ""
+            val displayName = "$statusIcon $shinyTag§f$translatedName"
+
+            val numStr = if (sp != null) String.format("#%04d • ", sp.nationalPokedexNumber) else ""
+            guiGraphics.drawString(font, displayName, cardX + 22, cardY + 3, 0xFFFFFFFF.toInt(), false)
+            guiGraphics.drawString(font, "§8$numStr${target.speciesId.path}", cardX + 22, cardY + 12, 0xFF888888.toInt(), false)
+        }
+
+        guiGraphics.disableScissor()
+
+        // 5. Scrollbar
+        if (targetsDetailMaxScroll > 0) {
+            val scrollbarW = 4
+            val scrollbarX = modalX + modalW - scrollbarW - 3
+            val thumbH = max(20, (viewportH * (viewportH.toDouble() / totalContentH)).toInt())
+            val thumbY = viewportY + ((viewportH - thumbH) * (targetsDetailScrollOffset / targetsDetailMaxScroll)).toInt()
+            guiGraphics.fill(scrollbarX, viewportY, scrollbarX + scrollbarW, viewportY + viewportH, 0xFF1B2030.toInt())
+            guiGraphics.fill(scrollbarX, thumbY, scrollbarX + scrollbarW, thumbY + thumbH, 0xFF3498DB.toInt())
+        }
+
+        pose.popPose()
+    }
+
+    private fun handleTargetsDetailModalClick(mouseX: Double, mouseY: Double) {
+        val (modalX, modalY, modalW, modalH) = getTargetsDetailModalBounds()
+        val closeBtnX = modalX + modalW - 18
+        val closeBtnY = modalY + 4
+        if (mouseX >= closeBtnX && mouseX <= closeBtnX + 14 && mouseY >= closeBtnY && mouseY <= closeBtnY + 14) {
+            closeTargetsDetailModal()
+            Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+            return
+        }
+
+        if (mouseX < modalX || mouseX > modalX + modalW || mouseY < modalY || mouseY > modalY + modalH) {
+            closeTargetsDetailModal()
+            return
+        }
+    }
+
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button)
+
+        // Si la modale des Détails de Cibles est ouverte, elle capture tous les clics
+        if (isTargetsDetailModalOpen) {
+            handleTargetsDetailModalClick(mouseX, mouseY)
+            return true
+        }
+
+        // Si la modale des expéditions est ouverte, elle capture tous les clics
+        if (isExpeditionModalOpen) {
+            handleExpeditionModalClick(mouseX, mouseY)
+            return true
+        }
 
         // Si la modale du Tracker est ouverte, elle capture tous les clics
         if (isTrackerModalOpen) {
@@ -4449,6 +4957,14 @@ class CobblemonPokedexScreen(
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        if (isTargetsDetailModalOpen) {
+            targetsDetailScrollOffset = (targetsDetailScrollOffset - scrollY * 20.0).coerceIn(0.0, targetsDetailMaxScroll)
+            return true
+        }
+        if (isExpeditionModalOpen) {
+            expeditionScrollOffset = (expeditionScrollOffset - scrollY * 20.0).coerceIn(0.0, expeditionMaxScroll)
+            return true
+        }
         if (isTrackerModalOpen) {
             trackerWatchlistScrollOffset = (trackerWatchlistScrollOffset - scrollY * 18.0).coerceAtLeast(0.0)
             return true
@@ -4494,6 +5010,22 @@ class CobblemonPokedexScreen(
     }
 
     override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        if (isTargetsDetailModalOpen) {
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                closeTargetsDetailModal()
+                Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+                return true
+            }
+            return true
+        }
+        if (isExpeditionModalOpen) {
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                closeExpeditionModal()
+                Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+                return true
+            }
+            return true
+        }
         if (isTrackerModalOpen) {
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
                 closeTrackerModal()
