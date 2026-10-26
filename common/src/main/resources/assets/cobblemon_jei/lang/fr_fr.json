@@ -251,5 +251,11 @@
   "gui.cobblemon_jei.spawn_badge.unavailable": "Ne peut pas apparaître ici",
   "gui.cobblemon_jei.pokedex.show_on_map": "Afficher sur la carte",
   "gui.cobblemon_jei.compass.distance": "%dm %s",
-  "gui.cobblemon_jei.compass.tracking": "Guidage radar : %s (%dm %s)"
+  "gui.cobblemon_jei.compass.tracking": "Guidage radar : %s (%dm %s)",
+  "gui.cobblemon_jei.tracker.size.any": "Toutes tailles",
+  "gui.cobblemon_jei.tracker.size.rare": "Tailles rares (Micro/Colossal)",
+  "gui.cobblemon_jei.tracker.size.micro": "Microscopique uniquement",
+  "gui.cobblemon_jei.tracker.size.gigantic": "Colossal uniquement",
+  "gui.cobblemon_jei.tracker.ha.title": "Talent Caché",
+  "gui.cobblemon_jei.tracker.ivs.title": "IVs 31 Parfaits"
 }

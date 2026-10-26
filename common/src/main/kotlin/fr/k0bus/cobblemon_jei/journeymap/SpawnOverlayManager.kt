@@ -332,12 +332,20 @@ object SpawnOverlayManager {
                 SpawnRarity.fromBucketOrWeight(recipe.bucket, recipe.weight) == rarity
             }.ifEmpty { validRecipes }
 
-            val shapeProps = RarityColorPalette.createShapeProperties(rarity)
+            val clientLevel = Minecraft.getInstance().level
+            val isInactive = clientLevel != null && matchingRecipesForRarity.none { recipe ->
+                val currentTime = fr.k0bus.cobblemon_jei.data.SpawnConditionEvaluator.getTimeRange(clientLevel.dayTime)
+                fr.k0bus.cobblemon_jei.data.SpawnConditionEvaluator.matchesTime(recipe.timeRange, currentTime) &&
+                        fr.k0bus.cobblemon_jei.data.SpawnConditionEvaluator.matchesWeather(recipe.weather, clientLevel.isRaining, clientLevel.isThundering)
+            }
+
+            val shapeProps = RarityColorPalette.createShapeProperties(rarity, isInactive)
             val tooltip = RarityColorPalette.buildTooltip(
                 species = species,
                 rarity = rarity,
                 matchingRecipes = matchingRecipesForRarity,
-                chunkCount = chunkSet.size
+                chunkCount = chunkSet.size,
+                level = clientLevel
             )
 
             for (poly in mergedPolygons) {

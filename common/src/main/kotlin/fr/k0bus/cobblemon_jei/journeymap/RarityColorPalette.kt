@@ -77,35 +77,39 @@ object RarityColorPalette {
     /**
      * Construit les propriétés graphiques du polygone pour un palier de rareté donné.
      */
-    fun createShapeProperties(rarity: SpawnRarity): ShapeProperties {
+    /**
+     * Construit les propriétés graphiques du polygone pour un palier de rareté donné.
+     * Si [isInactive] est vrai, applique une opacité atténuée pour indiquer que les conditions horaires/météo sont en attente.
+     */
+    fun createShapeProperties(rarity: SpawnRarity, isInactive: Boolean = false): ShapeProperties {
         val shape = ShapeProperties()
         when (rarity) {
             SpawnRarity.COMMON -> {
                 shape.setFillColor(COMMON_FILL_COLOR)
-                    .setFillOpacity(COMMON_FILL_OPACITY)
+                    .setFillOpacity(if (isInactive) 0.10f else COMMON_FILL_OPACITY)
                     .setStrokeColor(COMMON_STROKE_COLOR)
-                    .setStrokeOpacity(COMMON_STROKE_OPACITY)
+                    .setStrokeOpacity(if (isInactive) 0.35f else COMMON_STROKE_OPACITY)
                     .setStrokeWidth(COMMON_STROKE_WIDTH)
             }
             SpawnRarity.UNCOMMON -> {
                 shape.setFillColor(UNCOMMON_FILL_COLOR)
-                    .setFillOpacity(UNCOMMON_FILL_OPACITY)
+                    .setFillOpacity(if (isInactive) 0.10f else UNCOMMON_FILL_OPACITY)
                     .setStrokeColor(UNCOMMON_STROKE_COLOR)
-                    .setStrokeOpacity(UNCOMMON_STROKE_OPACITY)
+                    .setStrokeOpacity(if (isInactive) 0.35f else UNCOMMON_STROKE_OPACITY)
                     .setStrokeWidth(UNCOMMON_STROKE_WIDTH)
             }
             SpawnRarity.RARE -> {
                 shape.setFillColor(RARE_FILL_COLOR)
-                    .setFillOpacity(RARE_FILL_OPACITY)
+                    .setFillOpacity(if (isInactive) 0.12f else RARE_FILL_OPACITY)
                     .setStrokeColor(RARE_STROKE_COLOR)
-                    .setStrokeOpacity(RARE_STROKE_OPACITY)
+                    .setStrokeOpacity(if (isInactive) 0.40f else RARE_STROKE_OPACITY)
                     .setStrokeWidth(RARE_STROKE_WIDTH)
             }
             SpawnRarity.ULTRA_RARE -> {
                 shape.setFillColor(ULTRA_RARE_FILL_COLOR)
-                    .setFillOpacity(ULTRA_RARE_FILL_OPACITY)
+                    .setFillOpacity(if (isInactive) 0.15f else ULTRA_RARE_FILL_OPACITY)
                     .setStrokeColor(ULTRA_RARE_STROKE_COLOR)
-                    .setStrokeOpacity(ULTRA_RARE_STROKE_OPACITY)
+                    .setStrokeOpacity(if (isInactive) 0.45f else ULTRA_RARE_STROKE_OPACITY)
                     .setStrokeWidth(ULTRA_RARE_STROKE_WIDTH)
             }
         }
@@ -114,13 +118,14 @@ object RarityColorPalette {
     }
 
     /**
-     * Génère une infobulle (tooltip) richement formatée pour le survol JourneyMap.
+     * Génère une infobulle (tooltip) richement formatée pour le survol JourneyMap avec statut temporel en direct.
      */
     fun buildTooltip(
         species: Species,
         rarity: SpawnRarity,
         matchingRecipes: List<PokemonSpawnRecipe>,
-        chunkCount: Int = 0
+        chunkCount: Int = 0,
+        level: net.minecraft.world.level.Level? = null
     ): String {
         val lines = mutableListOf<String>()
         val dexStr = String.format("#%04d", species.nationalPokedexNumber)
@@ -137,6 +142,26 @@ object RarityColorPalette {
             val weatherStr = formatWeather(bestRecipe.weather)
             val ctxStr = formatContext(bestRecipe.context)
             lines.add("§f• Conditions : §e$timeStr §7| §b$weatherStr §7| §d$ctxStr")
+
+            // Évaluation du statut temporel en direct
+            if (level != null) {
+                val currentTime = fr.k0bus.cobblemon_jei.data.SpawnConditionEvaluator.getTimeRange(level.dayTime)
+                val isRaining = level.isRaining
+                val isThundering = level.isThundering
+
+                val isTimeOk = fr.k0bus.cobblemon_jei.data.SpawnConditionEvaluator.matchesTime(bestRecipe.timeRange, currentTime)
+                val isWeatherOk = fr.k0bus.cobblemon_jei.data.SpawnConditionEvaluator.matchesWeather(bestRecipe.weather, isRaining, isThundering)
+
+                if (isTimeOk && isWeatherOk) {
+                    lines.add("§f• Statut : §a✔ Actif maintenant ! (Conditions réunies)")
+                } else if (!isTimeOk) {
+                    val remaining = fr.k0bus.cobblemon_jei.data.SpawnConditionEvaluator.getRemainingTimeDescription(level.dayTime, bestRecipe.timeRange)
+                    val remainingStr = if (remaining != null) " dans ~$remaining" else ""
+                    lines.add("§f• Statut : §6⏳ En attente ($timeStr requis$remainingStr)")
+                } else {
+                    lines.add("§f• Statut : §6⏳ En attente (Météo : $weatherStr requise)")
+                }
+            }
         }
 
         if (chunkCount > 0) {

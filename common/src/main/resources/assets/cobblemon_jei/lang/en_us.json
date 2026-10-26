@@ -251,5 +251,11 @@
   "gui.cobblemon_jei.spawn_badge.unavailable": "Cannot spawn here",
   "gui.cobblemon_jei.pokedex.show_on_map": "Show on Map",
   "gui.cobblemon_jei.compass.distance": "%dm %s",
-  "gui.cobblemon_jei.compass.tracking": "Radar Guidance: %s (%dm %s)"
+  "gui.cobblemon_jei.compass.tracking": "Radar Guidance: %s (%dm %s)",
+  "gui.cobblemon_jei.tracker.size.any": "All Sizes",
+  "gui.cobblemon_jei.tracker.size.rare": "Rare Sizes (Micro/Giant)",
+  "gui.cobblemon_jei.tracker.size.micro": "Microscopic Only",
+  "gui.cobblemon_jei.tracker.size.gigantic": "Colossal Only",
+  "gui.cobblemon_jei.tracker.ha.title": "Hidden Ability",
+  "gui.cobblemon_jei.tracker.ivs.title": "Flawless IVs"
 }

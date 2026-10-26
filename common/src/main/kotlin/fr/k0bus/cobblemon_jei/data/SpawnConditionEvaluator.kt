@@ -67,6 +67,27 @@ object SpawnConditionEvaluator {
     }
 
     /**
+     * Calcule le temps restant estimé (en minutes et secondes) avant la prochaine occurrence d'une tranche horaire.
+     */
+    fun getRemainingTimeDescription(currentDayTime: Long, requiredTime: String): String? {
+        if (requiredTime.isBlank() || requiredTime.equals("any", ignoreCase = true)) return null
+        val req = requiredTime.lowercase()
+        val timeOfDay = currentDayTime % 24000
+        val targetTick = when (req) {
+            "day" -> 1000L
+            "dusk" -> 12000L
+            "night" -> 13000L
+            "dawn" -> 23000L
+            else -> return null
+        }
+        val diffTicks = if (targetTick >= timeOfDay) targetTick - timeOfDay else (24000L - timeOfDay + targetTick)
+        val seconds = diffTicks / 20
+        val minutes = seconds / 60
+        val secRemainder = seconds % 60
+        return if (minutes > 0) "${minutes}m ${secRemainder}s" else "${seconds}s"
+    }
+
+    /**
      * Vérifie si la météo actuelle correspond au critère de la recette.
      */
     fun matchesWeather(recipeWeather: String, isRaining: Boolean, isThundering: Boolean): Boolean {

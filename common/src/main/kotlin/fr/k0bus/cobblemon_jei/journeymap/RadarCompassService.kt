@@ -29,7 +29,8 @@ object RadarCompassService {
         val isPhysicallyPresent: Boolean,
         val isInZone: Boolean = false,
         val canSpawnNow: Boolean = false,
-        val waitingReason: String? = null
+        val waitingReason: String? = null,
+        val extraBadges: List<String> = emptyList()
     )
 
     /**
@@ -103,6 +104,14 @@ object RadarCompassService {
                 val dist = sqrt(closestDistSq).toInt()
                 val arrow = getRelativeDirectionArrow(playerYaw, closestEntity.blockPos, playerBlockPos)
                 val relY = closestEntity.blockPos.y - playerBlockPos.y
+                val badges = mutableListOf<String>()
+                if (closestEntity.isShiny) badges.add("§6★ Shiny")
+                if (closestEntity.hasHiddenAbility) badges.add("§d[HA]")
+                if (closestEntity.perfectIvsCount == 6) badges.add("§6[6x31]")
+                else if (closestEntity.perfectIvsCount >= 3) badges.add("§e[${closestEntity.perfectIvsCount}x31]")
+                if (closestEntity.scaleModifier <= 0.75f) badges.add("§b[Micro]")
+                else if (closestEntity.scaleModifier >= 1.25f) badges.add("§6[Colossal]")
+
                 return CompassGuidance(
                     targetName = closestEntity.species.translatedName.string,
                     targetPos = closestEntity.blockPos,
@@ -111,7 +120,8 @@ object RadarCompassService {
                     arrowSymbol = arrow,
                     isPhysicallyPresent = true,
                     isInZone = true,
-                    canSpawnNow = true
+                    canSpawnNow = true,
+                    extraBadges = badges
                 )
             }
         }

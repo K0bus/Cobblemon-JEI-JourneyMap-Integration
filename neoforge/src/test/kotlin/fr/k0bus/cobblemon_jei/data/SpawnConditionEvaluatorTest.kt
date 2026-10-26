@@ -32,4 +32,18 @@ class SpawnConditionEvaluatorTest {
         assertFalse(SpawnConditionEvaluator.matchesWeather("rain", isRaining = false, isThundering = false))
         assertFalse(SpawnConditionEvaluator.matchesWeather("clear", isRaining = true, isThundering = false))
     }
+
+    @Test
+    fun testRemainingTimeCalculation() {
+        // En plein jour (t=6000), attente de la nuit (t=13000) -> 7000 ticks = 350s = 5m 50s
+        val descNight = SpawnConditionEvaluator.getRemainingTimeDescription(6000, "night")
+        assertEquals("5m 50s", descNight)
+
+        // De nuit (t=18000), attente du jour (t=1000) -> 7000 ticks = 350s = 5m 50s
+        val descDay = SpawnConditionEvaluator.getRemainingTimeDescription(18000, "day")
+        assertEquals("5m 50s", descDay)
+
+        // Attente 'any' -> null
+        assertNull(SpawnConditionEvaluator.getRemainingTimeDescription(6000, "any"))
+    }
 }

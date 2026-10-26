@@ -172,7 +172,11 @@ object PokemonRadarService {
         val level: Int,
         val isWild: Boolean,
         var blockPos: BlockPos,
-        var marker: MarkerOverlay? = null
+        var marker: MarkerOverlay? = null,
+        val hasHiddenAbility: Boolean = false,
+        val perfectIvsCount: Int = 0,
+        val scaleModifier: Float = 1.0f,
+        val natureName: String = ""
     )
 
     // Table de toutes les entités actuellement affichées sur JourneyMap (UUID -> DetectedPokemon)
@@ -328,6 +332,7 @@ object PokemonRadarService {
         )
 
         val foundPokemons = mutableMapOf<UUID, DetectedPokemon>()
+        val visualEntities = mutableListOf<PokemonEntity>()
         var foundNewShinySpecies: Species? = null
         var foundNewTargetSpecies: Species? = null
         var currentShinyCount = 0
@@ -347,13 +352,15 @@ object PokemonRadarService {
 
                 // Vérifier si cette entité doit être suivie par le radar :
                 // Cas A : C'est un Shiny sauvage capturable -> Sentinelle permanente activée !
-                // Cas B : C'est une cible valide selon le mode de tracking actif (non capturé, cible unique, lignée, liste)
-                val matchesTarget = fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.isTarget(species, form)
+                // Cas B : C'est une cible valide selon le mode de tracking actif et les filtres avancés (HA, IVs, etc.)
+                val matchesTarget = fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager.isTarget(entity)
                 val isGlobalShiny = isShiny
 
                 if (!isGlobalShiny && !matchesTarget) {
                     continue
                 }
+
+                visualEntities.add(entity)
 
                 if (isGlobalShiny) {
                     currentShinyCount++
@@ -364,6 +371,10 @@ object PokemonRadarService {
 
                 val uuid = entity.uuid
                 val currentBlockPos = entity.blockPosition()
+                val hasHA = fr.k0bus.cobblemon_jei.pokedex.RadarAdvancedFilter.hasHiddenAbility(pokemon)
+                val perfectIvs = fr.k0bus.cobblemon_jei.pokedex.RadarAdvancedFilter.countPerfectIvs(pokemon)
+                val natureStr = try { pokemon.effectiveNature.name.path } catch (_: Throwable) { "" }
+
                 val detected = DetectedPokemon(
                     entityId = entity.id,
                     uuid = uuid,
@@ -372,7 +383,11 @@ object PokemonRadarService {
                     isShiny = isShiny,
                     level = pokemon.level,
                     isWild = pokemon.isWild(),
-                    blockPos = currentBlockPos
+                    blockPos = currentBlockPos,
+                    hasHiddenAbility = hasHA,
+                    perfectIvsCount = perfectIvs,
+                    scaleModifier = pokemon.scaleModifier,
+                    natureName = natureStr
                 )
                 foundPokemons[uuid] = detected
 
@@ -385,6 +400,9 @@ object PokemonRadarService {
                     alertedEntities.add(uuid)
                 }
             }
+
+            // Exécution des effets visuels client (particules & glowing)
+            InWorldVisualEngine.processVisuals(level, player, visualEntities)
         } catch (e: Throwable) {
             logger.debug("PokemonRadarService: Erreur lors de l'extraction des entités: {}", e.message)
             return
@@ -476,7 +494,7 @@ object PokemonRadarService {
     }
 
     /**
-     * Génère l'infobulle (tooltip) du marqueur incluant le Pokémon, son niveau, et son altitude relative.
+     * Génère l'infobulle (tooltip) du marqueur incluant le Pokémon, son niveau, ses attributs avancés et son altitude relative.
      */
     fun buildMarkerTitle(detected: DetectedPokemon, deltaY: Int, clusterCount: Int = 1): String {
         val shinyTag = if (detected.isShiny) " §6★ §eSHINY §6★" else ""
@@ -487,8 +505,22 @@ object PokemonRadarService {
             deltaY < -HEIGHT_TOLERANCE -> " §6(▼ ${deltaY}m en bas)"
             else -> " §a(= même hauteur)"
         }
+
+        val extraBadges = mutableListOf<String>()
+        if (detected.hasHiddenAbility) extraBadges.add("§d[Talent Caché]")
+        if (detected.perfectIvsCount == 6) extraBadges.add("§6[6x31 IV (Parfait)]")
+        else if (detected.perfectIvsCount >= 3) extraBadges.add("§e[${detected.perfectIvsCount}x31 IV]")
+        else if (detected.perfectIvsCount > 0) extraBadges.add("§a[${detected.perfectIvsCount}x31 IV]")
+
+        if (detected.scaleModifier <= 0.75f) extraBadges.add("§b[Micro]")
+        else if (detected.scaleModifier >= 1.25f) extraBadges.add("§6[Colossal]")
+
+        if (detected.natureName.isNotBlank()) extraBadges.add("§7(${detected.natureName.replaceFirstChar(Char::titlecase)})")
+
+        val badgesLine = if (extraBadges.isNotEmpty()) "\n§fAttributs: " + extraBadges.joinToString(" ") else ""
+
         return "§f${detected.species.translatedName.string}$shinyTag$targetTag\n" +
-                "§7Niveau: §e${detected.level} $wildTag\n" +
+                "§7Niveau: §e${detected.level} $wildTag$badgesLine\n" +
                 "§8Position: ${detected.blockPos.x}, §e${detected.blockPos.y}§8, ${detected.blockPos.z}$altTag"
     }
 
@@ -509,7 +541,16 @@ object PokemonRadarService {
             else -> ""
         }
         val countSuffix = if (clusterCount > 1) " (x$clusterCount)" else ""
-        return "$labelPrefix${detected.species.translatedName.string}$countSuffix Lv.${detected.level}$dirSuffix"
+
+        val quickBadge = when {
+            detected.hasHiddenAbility -> " [HA]"
+            detected.perfectIvsCount >= 3 -> " [${detected.perfectIvsCount}x31]"
+            detected.scaleModifier <= 0.75f -> " [Micro]"
+            detected.scaleModifier >= 1.25f -> " [Colossal]"
+            else -> ""
+        }
+
+        return "$labelPrefix${detected.species.translatedName.string}$countSuffix Lv.${detected.level}$quickBadge$dirSuffix"
     }
 
     /**
@@ -642,6 +683,7 @@ object PokemonRadarService {
         alertedEntities.clear()
         detectedCount = 0
         shinyNearbyCount = 0
+        InWorldVisualEngine.clearVisuals()
     }
 
     /**

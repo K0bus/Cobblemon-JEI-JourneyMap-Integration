@@ -3613,8 +3613,8 @@ class CobblemonPokedexScreen(
     }
 
     private fun getTrackerModalBounds(): IntArray {
-        val modalW = 340
-        val modalH = 260
+        val modalW = 350
+        val modalH = 295
         val modalX = (width - modalW) / 2
         val modalY = (height - modalH) / 2
         return intArrayOf(modalX, modalY, modalW, modalH)
@@ -3773,40 +3773,127 @@ class CobblemonPokedexScreen(
         guiGraphics.fill(b3X, btnRow3Y + 15, b3X + halfW, btnRow3Y + 16, 0xFFE74C3C.toInt())
         guiGraphics.drawCenteredString(font, "✕ Arrêter le suivi", b3X + halfW / 2, btnRow3Y + 4, 0xFFFFFFFF.toInt())
 
-        // 5. Section Liste personnalisée (Watchlist)
-        val listSectionY = modalY + 114
+        // 5. Section Filtres Avancés & Rendu In-World 3D
+        val filterSectionY = modalY + 114
+        guiGraphics.fill(modalX + 8, filterSectionY, modalX + modalW - 8, filterSectionY + 1, 0xFF282D3C.toInt())
+
+        val filterTitle = "§6§lFILTRES AVANCÉS & EFFETS 3D§r"
+        guiGraphics.drawString(font, filterTitle, modalX + 10, filterSectionY + 4, 0xFFFFFFFF.toInt(), false)
+
+        val advFilter = PokemonTrackingManager.advancedFilter
+        val row1Y = filterSectionY + 16
+        val row2Y = filterSectionY + 33
+        val colW = 108
+        val col3W = 110
+
+        // Bouton 1 : Talent Caché (HA)
+        val isHaActive = advFilter.onlyHiddenAbility
+        val isHaHovered = mouseX >= modalX + 8 && mouseX <= modalX + 8 + colW && mouseY >= row1Y && mouseY <= row1Y + 14
+        val haBg = if (isHaActive) (if (isHaHovered) 0xFF8E44AD.toInt() else 0xFF6C3483.toInt()) else (if (isHaHovered) 0xFF2D3345.toInt() else 0xFF1D212E.toInt())
+        val haBorder = if (isHaActive) 0xFFBE2EDD.toInt() else 0xFF353C4D.toInt()
+        guiGraphics.fill(modalX + 8, row1Y, modalX + 8 + colW, row1Y + 14, haBg)
+        guiGraphics.fill(modalX + 8, row1Y, modalX + 8 + colW, row1Y + 1, haBorder)
+        guiGraphics.fill(modalX + 8, row1Y + 13, modalX + 8 + colW, row1Y + 14, haBorder)
+        val haText = if (isHaActive) "Talent Caché : OUI" else "Talent Caché : Tout"
+        guiGraphics.drawCenteredString(font, haText, modalX + 8 + colW / 2, row1Y + 3, 0xFFFFFFFF.toInt())
+
+        // Bouton 2 : IVs 31 Parfaits
+        val ivText = when (advFilter.minPerfectIvs) {
+            1 -> "31 IVs : ≥ 1"
+            3 -> "31 IVs : ≥ 3"
+            6 -> "31 IVs : 6 (Max)"
+            else -> "31 IVs : Tout"
+        }
+        val isIvActive = advFilter.minPerfectIvs > 0
+        val isIvHovered = mouseX >= modalX + 120 && mouseX <= modalX + 120 + colW && mouseY >= row1Y && mouseY <= row1Y + 14
+        val ivBg = if (isIvActive) (if (isIvHovered) 0xFFD35400.toInt() else 0xFFBA4A00.toInt()) else (if (isIvHovered) 0xFF2D3345.toInt() else 0xFF1D212E.toInt())
+        val ivBorder = if (isIvActive) 0xFFE67E22.toInt() else 0xFF353C4D.toInt()
+        guiGraphics.fill(modalX + 120, row1Y, modalX + 120 + colW, row1Y + 14, ivBg)
+        guiGraphics.fill(modalX + 120, row1Y, modalX + 120 + colW, row1Y + 1, ivBorder)
+        guiGraphics.fill(modalX + 120, row1Y + 13, modalX + 120 + colW, row1Y + 14, ivBorder)
+        guiGraphics.drawCenteredString(font, ivText, modalX + 120 + colW / 2, row1Y + 3, 0xFFFFFFFF.toInt())
+
+        // Bouton 3 : Filtre de Taille
+        val sizeText = when (advFilter.sizeFilter) {
+            SizeFilter.RARE_ONLY -> "Taille : Rares"
+            SizeFilter.ONLY_MICROSCOPIC -> "Taille : Micro"
+            SizeFilter.ONLY_GIGANTIC -> "Taille : Colossal"
+            SizeFilter.ANY -> "Taille : Toute"
+        }
+        val isSizeActive = advFilter.sizeFilter != SizeFilter.ANY
+        val isSizeHovered = mouseX >= modalX + 232 && mouseX <= modalX + 232 + col3W && mouseY >= row1Y && mouseY <= row1Y + 14
+        val sizeBg = if (isSizeActive) (if (isSizeHovered) 0xFF2980B9.toInt() else 0xFF1F618D.toInt()) else (if (isSizeHovered) 0xFF2D3345.toInt() else 0xFF1D212E.toInt())
+        val sizeBorder = if (isSizeActive) 0xFF3498DB.toInt() else 0xFF353C4D.toInt()
+        guiGraphics.fill(modalX + 232, row1Y, modalX + 232 + col3W, row1Y + 14, sizeBg)
+        guiGraphics.fill(modalX + 232, row1Y, modalX + 232 + col3W, row1Y + 1, sizeBorder)
+        guiGraphics.fill(modalX + 232, row1Y + 13, modalX + 232 + col3W, row1Y + 14, sizeBorder)
+        guiGraphics.drawCenteredString(font, sizeText, modalX + 232 + col3W / 2, row1Y + 3, 0xFFFFFFFF.toInt())
+
+        // Bouton 4 : Lueur 3D In-World
+        val isGlowHovered = mouseX >= modalX + 8 && mouseX <= modalX + 8 + colW && mouseY >= row2Y && mouseY <= row2Y + 14
+        val glowBg = if (advFilter.inWorldGlowing) (if (isGlowHovered) 0xFF27AE60.toInt() else 0xFF1E8449.toInt()) else (if (isGlowHovered) 0xFF2D3345.toInt() else 0xFF1D212E.toInt())
+        val glowBorder = if (advFilter.inWorldGlowing) 0xFF2ECC71.toInt() else 0xFF353C4D.toInt()
+        guiGraphics.fill(modalX + 8, row2Y, modalX + 8 + colW, row2Y + 14, glowBg)
+        guiGraphics.fill(modalX + 8, row2Y, modalX + 8 + colW, row2Y + 1, glowBorder)
+        guiGraphics.fill(modalX + 8, row2Y + 13, modalX + 8 + colW, row2Y + 14, glowBorder)
+        val glowText = if (advFilter.inWorldGlowing) "Lueur 3D : OUI" else "Lueur 3D : NON"
+        guiGraphics.drawCenteredString(font, glowText, modalX + 8 + colW / 2, row2Y + 3, 0xFFFFFFFF.toInt())
+
+        // Bouton 5 : Particules In-World
+        val isPartHovered = mouseX >= modalX + 120 && mouseX <= modalX + 120 + colW && mouseY >= row2Y && mouseY <= row2Y + 14
+        val partBg = if (advFilter.inWorldParticles) (if (isPartHovered) 0xFF27AE60.toInt() else 0xFF1E8449.toInt()) else (if (isPartHovered) 0xFF2D3345.toInt() else 0xFF1D212E.toInt())
+        val partBorder = if (advFilter.inWorldParticles) 0xFF2ECC71.toInt() else 0xFF353C4D.toInt()
+        guiGraphics.fill(modalX + 120, row2Y, modalX + 120 + colW, row2Y + 14, partBg)
+        guiGraphics.fill(modalX + 120, row2Y, modalX + 120 + colW, row2Y + 1, partBorder)
+        guiGraphics.fill(modalX + 120, row2Y + 13, modalX + 120 + colW, row2Y + 14, partBorder)
+        val partText = if (advFilter.inWorldParticles) "Particules : OUI" else "Particules : NON"
+        guiGraphics.drawCenteredString(font, partText, modalX + 120 + colW / 2, row2Y + 3, 0xFFFFFFFF.toInt())
+
+        // Bouton 6 : Réinitialiser filtres
+        val hasFilters = advFilter.hasAnyFilter()
+        val isResetHovered = mouseX >= modalX + 232 && mouseX <= modalX + 232 + col3W && mouseY >= row2Y && mouseY <= row2Y + 14
+        val resetBg = if (hasFilters) (if (isResetHovered) 0xFF992222.toInt() else 0xFF551111.toInt()) else 0xFF181C26.toInt()
+        val resetBorder = if (hasFilters) 0xFFE74C3C.toInt() else 0xFF282D3C.toInt()
+        guiGraphics.fill(modalX + 232, row2Y, modalX + 232 + col3W, row2Y + 14, resetBg)
+        guiGraphics.fill(modalX + 232, row2Y, modalX + 232 + col3W, row2Y + 1, resetBorder)
+        guiGraphics.fill(modalX + 232, row2Y + 13, modalX + 232 + col3W, row2Y + 14, resetBorder)
+        val resetColor = if (hasFilters) 0xFFFFAAAA.toInt() else 0xFF666666.toInt()
+        guiGraphics.drawCenteredString(font, "Réinitialiser", modalX + 232 + col3W / 2, row2Y + 3, resetColor)
+
+        // 6. Section Liste personnalisée (Watchlist)
+        val listSectionY = modalY + 166
         guiGraphics.fill(modalX + 8, listSectionY, modalX + modalW - 8, listSectionY + 1, 0xFF282D3C.toInt())
 
         val listTitle = "§e§lMA LISTE DE TRACKING§r §7(${PokemonTrackingManager.customWatchlist.size})§r"
-        guiGraphics.drawString(font, listTitle, modalX + 10, listSectionY + 6, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, listTitle, modalX + 10, listSectionY + 5, 0xFFFFFFFF.toInt(), false)
 
         // Bouton [+ Ajouter / - Retirer]
         val isInList = curSp != null && PokemonTrackingManager.isInWatchlist(curSp)
         val toggleBtnW = 100
         val toggleBtnX = modalX + modalW - 10 - toggleBtnW
-        val toggleBtnY = listSectionY + 4
-        val isToggleHovered = mouseX >= toggleBtnX && mouseX <= toggleBtnX + toggleBtnW && mouseY >= toggleBtnY && mouseY <= toggleBtnY + 14
+        val toggleBtnY = listSectionY + 3
+        val isToggleHovered = mouseX >= toggleBtnX && mouseX <= toggleBtnX + toggleBtnW && mouseY >= toggleBtnY && mouseY <= toggleBtnY + 13
         val toggleBg = if (isInList) {
             if (isToggleHovered) 0xFFC0392B.toInt() else 0xFF7F1D1D.toInt()
         } else {
             if (isToggleHovered) 0xFF27AE60.toInt() else 0xFF1E3A2B.toInt()
         }
-        guiGraphics.fill(toggleBtnX, toggleBtnY, toggleBtnX + toggleBtnW, toggleBtnY + 14, toggleBg)
+        guiGraphics.fill(toggleBtnX, toggleBtnY, toggleBtnX + toggleBtnW, toggleBtnY + 13, toggleBg)
         val toggleText = if (isInList) "− Retirer $b2Short" else "+ Ajouter $b2Short"
         guiGraphics.drawCenteredString(font, toggleText, toggleBtnX + toggleBtnW / 2, toggleBtnY + 3, 0xFFFFFFFF.toInt())
 
         // Bouton Vider la liste
         if (PokemonTrackingManager.customWatchlist.isNotEmpty()) {
             val clearBtnX = toggleBtnX - 44
-            val isClearHovered = mouseX >= clearBtnX && mouseX <= clearBtnX + 40 && mouseY >= toggleBtnY && mouseY <= toggleBtnY + 14
+            val isClearHovered = mouseX >= clearBtnX && mouseX <= clearBtnX + 40 && mouseY >= toggleBtnY && mouseY <= toggleBtnY + 13
             val clearBg = if (isClearHovered) 0xFF882222.toInt() else 0xFF441818.toInt()
-            guiGraphics.fill(clearBtnX, toggleBtnY, clearBtnX + 40, toggleBtnY + 14, clearBg)
+            guiGraphics.fill(clearBtnX, toggleBtnY, clearBtnX + 40, toggleBtnY + 13, clearBg)
             guiGraphics.drawCenteredString(font, "Vider", clearBtnX + 20, toggleBtnY + 3, 0xFFFFAAAA.toInt())
         }
 
         // Cadre de liste scrollable
         val boxX = modalX + 8
-        val boxY = listSectionY + 22
+        val boxY = listSectionY + 19
         val boxW = modalW - 16
         val boxH = modalH - (boxY - modalY) - 8
 
@@ -3954,12 +4041,75 @@ class CobblemonPokedexScreen(
             return
         }
 
-        // 7. Bouton [+ Ajouter / - Retirer] dans la liste
-        val listSectionY = modalY + 114
+        // 5. Section Filtres Avancés & Rendu In-World
+        val filterSectionY = modalY + 114
+        val advFilter = PokemonTrackingManager.advancedFilter
+        val row1Y = filterSectionY + 16
+        val row2Y = filterSectionY + 33
+        val colW = 108
+        val col3W = 110
+
+        // Clic Bouton 1 : Talent Caché (HA)
+        if (mouseX >= modalX + 8 && mouseX <= modalX + 8 + colW && mouseY >= row1Y && mouseY <= row1Y + 14) {
+            advFilter.onlyHiddenAbility = !advFilter.onlyHiddenAbility
+            PokemonTrackingManager.saveConfig()
+            Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.1f))
+            return
+        }
+
+        // Clic Bouton 2 : IVs 31 Parfaits (Cycle: 0 -> 1 -> 3 -> 6 -> 0)
+        if (mouseX >= modalX + 120 && mouseX <= modalX + 120 + colW && mouseY >= row1Y && mouseY <= row1Y + 14) {
+            advFilter.minPerfectIvs = when (advFilter.minPerfectIvs) {
+                0 -> 1
+                1 -> 3
+                3 -> 6
+                else -> 0
+            }
+            PokemonTrackingManager.saveConfig()
+            Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.1f))
+            return
+        }
+
+        // Clic Bouton 3 : Filtre de Taille (Cycle: ANY -> RARE_ONLY -> ONLY_MICROSCOPIC -> ONLY_GIGANTIC -> ANY)
+        if (mouseX >= modalX + 232 && mouseX <= modalX + 232 + col3W && mouseY >= row1Y && mouseY <= row1Y + 14) {
+            advFilter.sizeFilter = advFilter.sizeFilter.next()
+            PokemonTrackingManager.saveConfig()
+            Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.1f))
+            return
+        }
+
+        // Clic Bouton 4 : Lueur 3D In-World
+        if (mouseX >= modalX + 8 && mouseX <= modalX + 8 + colW && mouseY >= row2Y && mouseY <= row2Y + 14) {
+            advFilter.inWorldGlowing = !advFilter.inWorldGlowing
+            PokemonTrackingManager.saveConfig()
+            Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+            return
+        }
+
+        // Clic Bouton 5 : Particules In-World
+        if (mouseX >= modalX + 120 && mouseX <= modalX + 120 + colW && mouseY >= row2Y && mouseY <= row2Y + 14) {
+            advFilter.inWorldParticles = !advFilter.inWorldParticles
+            PokemonTrackingManager.saveConfig()
+            Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+            return
+        }
+
+        // Clic Bouton 6 : Réinitialiser Filtres
+        if (mouseX >= modalX + 232 && mouseX <= modalX + 232 + col3W && mouseY >= row2Y && mouseY <= row2Y + 14) {
+            if (advFilter.hasAnyFilter()) {
+                advFilter.resetFilters()
+                PokemonTrackingManager.saveConfig()
+                Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 0.9f))
+            }
+            return
+        }
+
+        // 6. Bouton [+ Ajouter / - Retirer] dans la liste
+        val listSectionY = modalY + 166
         val toggleBtnW = 100
         val toggleBtnX = modalX + modalW - 10 - toggleBtnW
-        val toggleBtnY = listSectionY + 4
-        if (mouseX >= toggleBtnX && mouseX <= toggleBtnX + toggleBtnW && mouseY >= toggleBtnY && mouseY <= toggleBtnY + 14) {
+        val toggleBtnY = listSectionY + 3
+        if (mouseX >= toggleBtnX && mouseX <= toggleBtnX + toggleBtnW && mouseY >= toggleBtnY && mouseY <= toggleBtnY + 13) {
             if (curSp != null) {
                 PokemonTrackingManager.toggleWatchlist(curSp)
                 updateTrackerButton()
@@ -3968,10 +4118,10 @@ class CobblemonPokedexScreen(
             return
         }
 
-        // 8. Bouton [Vider] la liste
+        // 7. Bouton [Vider] la liste
         if (PokemonTrackingManager.customWatchlist.isNotEmpty()) {
             val clearBtnX = toggleBtnX - 44
-            if (mouseX >= clearBtnX && mouseX <= clearBtnX + 40 && mouseY >= toggleBtnY && mouseY <= toggleBtnY + 14) {
+            if (mouseX >= clearBtnX && mouseX <= clearBtnX + 40 && mouseY >= toggleBtnY && mouseY <= toggleBtnY + 13) {
                 PokemonTrackingManager.clearWatchlist()
                 updateTrackerButton()
                 Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 0.8f))
@@ -3979,9 +4129,9 @@ class CobblemonPokedexScreen(
             }
         }
 
-        // 9. Clics dans les éléments de la liste scrollable
+        // 8. Clics dans les éléments de la liste scrollable
         val boxX = modalX + 8
-        val boxY = listSectionY + 22
+        val boxY = listSectionY + 19
         val boxW = modalW - 16
         val boxH = modalH - (boxY - modalY) - 8
 

@@ -62,7 +62,8 @@ object RadarCompassHud {
             // 1. Entité physique déjà apparue dans le monde
             guidance.isPhysicallyPresent -> {
                 val altSuffix = if (guidance.relativeY != 0) " §8(${if (guidance.relativeY > 0) "+" else ""}${guidance.relativeY}m Y)" else ""
-                displayText = "§b⚡ §e${guidance.arrowSymbol} §f${guidance.targetName} §7• §e${guidance.distanceBlocks}m$altSuffix"
+                val badgesSuffix = if (guidance.extraBadges.isNotEmpty()) " " + guidance.extraBadges.joinToString(" ") else ""
+                displayText = "§b⚡ §e${guidance.arrowSymbol} §f${guidance.targetName} §7• §e${guidance.distanceBlocks}m$altSuffix$badgesSuffix"
                 accentColor = 0xFF00D2D3.toInt()
             }
             // 2. Le joueur est déjà dans la zone de spawn

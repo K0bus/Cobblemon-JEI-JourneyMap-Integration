@@ -60,6 +60,9 @@ object PokemonTrackingManager {
     // Liste personnalisée (Watchlist)
     val customWatchlist: LinkedHashSet<Species> = LinkedHashSet()
 
+    // Filtres avancés (Talent caché, IVs, Taille, Nature, Rendu in-world)
+    val advancedFilter: RadarAdvancedFilter = RadarAdvancedFilter()
+
     private var isConfigLoaded = false
 
     val isTrackingActive: Boolean
@@ -282,12 +285,14 @@ object PokemonTrackingManager {
     }
 
     /**
-     * Vérifie si une entité [PokemonEntity] vivante correspond à la cible actuelle du tracker.
+     * Vérifie si une entité [PokemonEntity] vivante correspond à la cible actuelle du tracker
+     * et respecte tous les filtres avancés (HA, IVs, Taille, Nature).
      */
-    fun isTarget(entity: PokemonEntity): Boolean {
-        val pokemon = entity.pokemon
-        return isTarget(pokemon.species, pokemon.form)
-    }
+     fun isTarget(entity: PokemonEntity): Boolean {
+         val pokemon = entity.pokemon
+         if (!isTarget(pokemon.species, pokemon.form)) return false
+         return advancedFilter.matches(pokemon)
+     }
 
     fun isTarget(species: Species): Boolean = isTarget(species, null)
 
@@ -438,6 +443,7 @@ object PokemonTrackingManager {
                 }
             }
             root.add("customWatchlist", listArray)
+            root.add("advancedFilter", advancedFilter.toJson())
 
             file.writeText(gson.toJson(root), Charsets.UTF_8)
         } catch (e: Throwable) {
@@ -484,6 +490,10 @@ object PokemonTrackingManager {
                         customWatchlist.add(sp)
                     }
                 }
+            }
+
+            if (root.has("advancedFilter") && root.get("advancedFilter").isJsonObject) {
+                advancedFilter.fromJson(root.getAsJsonObject("advancedFilter"))
             }
         } catch (e: Throwable) {
             logger.debug("Erreur chargement config tracker: {}", e.message)
