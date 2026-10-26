@@ -132,38 +132,59 @@ object PokemonSpawnDataLoader {
     }
 
     private fun createFallbackSpecies(name: String): Species? {
+        val cleanName = name.trim().lowercase()
+        val resLoc = ResourceLocation.fromNamespaceAndPath("cobblemon", cleanName)
+
+        // 1. Recherche via l'index d'espèces préchargées
+        try {
+            PokemonEvolutionDataLoader.findSpeciesByName(cleanName)?.let { return it }
+        } catch (_: Throwable) {}
+
+        // 2. Tenter de parser un objet Species officiel
+        try {
+            val minimalJson = """
+                {
+                    "name": "$cleanName",
+                    "nationalPokedexNumber": 0,
+                    "primaryType": "normal",
+                    "baseScale": 1,
+                    "hitbox": { "width": 1, "height": 1, "fixed": false },
+                    "baseStats": { "hp": 1, "attack": 1, "defence": 1, "special_attack": 1, "special_defence": 1, "speed": 1 },
+                    "catchRate": 3,
+                    "maleRatio": 0.5,
+                    "baseExperienceYield": 0,
+                    "experienceGroup": "medium_fast",
+                    "eggCycles": 20,
+                    "eggGroups": [ "undiscovered" ],
+                    "behaviour": { "resting": { "canSleep": false } },
+                    "drops": { "amount": 0, "entries": [] },
+                    "moves": [],
+                    "features": []
+                }
+            """.trimIndent()
+            return PokemonSpecies.parse(java.io.BufferedReader(java.io.StringReader(minimalJson)), resLoc)
+        } catch (_: Throwable) {}
+
+        // 3. Fallback d'instanciation si l'environnement headless/test n'a pas initialisé PokemonSpecies
         return try {
-            val unsafeField = sun.misc.Unsafe::class.java.getDeclaredField("theUnsafe").apply { isAccessible = true }
-            val unsafe = unsafeField.get(null) as sun.misc.Unsafe
-            val sp = unsafe.allocateInstance(Species::class.java) as Species
+            val constructor = Species::class.java.getDeclaredConstructor().apply { isAccessible = true }
+            val sp = constructor.newInstance()
             sp.name = name
-            sp.resourceIdentifier = ResourceLocation.fromNamespaceAndPath("cobblemon", name.lowercase())
-            val form = unsafe.allocateInstance(FormData::class.java) as FormData
-            form.species = sp
-            try {
-                val nameField = FormData::class.java.getDeclaredField("name").apply { isAccessible = true }
-                nameField.set(form, "normal")
-            } catch (_: Throwable) {}
-            try {
-                val aspectsField = FormData::class.java.getDeclaredField("aspects").apply { isAccessible = true }
-                aspectsField.set(form, emptyList<String>())
-            } catch (_: Throwable) {}
-            try {
-                val ptField = FormData::class.java.getDeclaredField("_primaryType").apply { isAccessible = true }
-                ptField.set(form, com.cobblemon.mod.common.api.types.ElementalTypes.NORMAL)
-            } catch (_: Throwable) {}
-            val formsList = mutableListOf(form)
-            try {
-                val formsField = Species::class.java.getDeclaredField("forms").apply { isAccessible = true }
-                formsField.set(sp, formsList)
-            } catch (_: Throwable) {}
-            try {
-                val delegateField = Species::class.java.getDeclaredField("standardForm\$delegate").apply { isAccessible = true }
-                delegateField.set(sp, lazyOf(form))
-            } catch (_: Throwable) {}
+            sp.resourceIdentifier = resLoc
             sp
         } catch (_: Throwable) {
-            null
+            try {
+                val unsafeClass = Class.forName("sun.misc.Unsafe")
+                val field = unsafeClass.getDeclaredField("theUnsafe").apply { isAccessible = true }
+                val unsafe = field.get(null)
+                val allocMethod = unsafeClass.getMethod("allocateInstance", Class::class.java)
+                val sp = allocMethod.invoke(unsafe, Species::class.java) as Species
+                sp.name = name
+                sp.resourceIdentifier = resLoc
+                sp
+            } catch (_: Throwable) {
+                null
+            }
         }
     }
 

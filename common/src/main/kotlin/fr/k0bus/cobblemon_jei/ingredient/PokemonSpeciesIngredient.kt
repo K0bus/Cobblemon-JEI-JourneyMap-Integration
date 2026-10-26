@@ -77,10 +77,20 @@ data class PokemonSpeciesIngredient(
         }
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is PokemonSpeciesIngredient) return false
+        return id == other.id && form.name.equals(other.form.name, ignoreCase = true)
+    }
+
+    override fun hashCode(): Int {
+        return 31 * id.hashCode() + form.name.lowercase().hashCode()
+    }
+
     companion object {
         /**
-         * Définition du type d'ingrédient pour l'API JEI.
-         */
+          * Définition du type d'ingrédient pour l'API JEI.
+          */
         val TYPE: IIngredientType<PokemonSpeciesIngredient> = IIngredientType { PokemonSpeciesIngredient::class.java }
     }
 }

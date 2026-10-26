@@ -385,11 +385,20 @@ object PokemonTrackingManager {
     }
 
     fun isSameSpecies(sp1: Species, sp2: Species): Boolean {
-        return try {
-            sp1.resourceIdentifier == sp2.resourceIdentifier
-        } catch (_: Throwable) {
-            sp1.name.equals(sp2.name, ignoreCase = true)
+        if (sp1 === sp2) return true
+        val id1 = try { sp1.resourceIdentifier } catch (_: Throwable) { null }
+        val id2 = try { sp2.resourceIdentifier } catch (_: Throwable) { null }
+        if (id1 != null && id2 != null) {
+            if (id1 == id2) return true
+            if (id1.path.equals(id2.path, ignoreCase = true)) return true
         }
+        val name1 = try { sp1.name } catch (_: Throwable) { "" }
+        val name2 = try { sp2.name } catch (_: Throwable) { "" }
+        if (name1.isNotBlank() && name1.equals(name2, ignoreCase = true)) return true
+        val sd1 = try { sp1.showdownId() } catch (_: Throwable) { "" }
+        val sd2 = try { sp2.showdownId() } catch (_: Throwable) { "" }
+        if (sd1.isNotBlank() && sd1.equals(sd2, ignoreCase = true)) return true
+        return false
     }
 
     private fun displayMessage(component: Component) {

@@ -851,7 +851,7 @@ class CobblemonPokedexScreen(
                 continue
             }
 
-            val isSelected = (selectedTracked?.species == item.species)
+            val isSelected = (selectedTracked?.species?.let { PokemonTrackingManager.isSameSpecies(it, item.species) } == true)
             val isHovered = (mouseX >= cardX && mouseX < cardX + cardWidth && mouseY >= cardY && mouseY < cardY + cardHeight)
             if (isHovered && mouseY in startY until startY + usableH) {
                 hoveredPokemon = item
@@ -1460,7 +1460,7 @@ class CobblemonPokedexScreen(
         val trackText = if (isTarget) "✔ Traqué" else "🎯 Tracker"
         guiGraphics.drawCenteredString(font, trackText, trackBtnX + halfW / 2, btnY + 4, 0xFFFFFFFF.toInt())
 
-        val isJmActive = SpawnOverlayManager.isOverlayActive && SpawnOverlayManager.activeSpecies == sp
+        val isJmActive = SpawnOverlayManager.isOverlayActive && SpawnOverlayManager.activeSpecies?.let { PokemonTrackingManager.isSameSpecies(it, sp) } == true
         val isJmHovered = mouseX >= jmBtnX && mouseX <= jmBtnX + halfW && mouseY >= btnY && mouseY <= btnY + 16
         val jmBg = when {
             isJmActive -> if (isJmHovered) 0xFF2980B9.toInt() else 0xFF3498DB.toInt()
@@ -1816,7 +1816,13 @@ class CobblemonPokedexScreen(
             }
 
             // Ligne 4 : Évolutions
-            val formEvos = allRecipes.filter { it.sourceSpecies == sp && (it.sourceForm == form || (it.sourceForm.name.isNotBlank() && it.sourceForm.name.equals(form.name, true))) }
+            val isCurrentStandard = (form == sp.standardForm || form.name.isBlank() || form.name.equals("normal", true))
+            val formEvos = allRecipes.filter {
+                PokemonTrackingManager.isSameSpecies(it.sourceSpecies, sp) && (
+                    (isCurrentStandard && (it.sourceForm == it.sourceSpecies.standardForm || it.sourceForm.name.isBlank() || it.sourceForm.name.equals("normal", true))) ||
+                    (!isCurrentStandard && it.sourceForm.name.isNotBlank() && it.sourceForm.name.equals(form.name, true))
+                )
+            }
             val evoText = if (formEvos.isNotEmpty()) {
                 val targets = formEvos.map { it.targetSpecies.translatedName.string }.distinct()
                 "§7Évolue en : §e${targets.joinToString(", ")}§r"
@@ -1950,7 +1956,7 @@ class CobblemonPokedexScreen(
         guiGraphics.drawString(font, "§e§lObjets lâchés à la défaite§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 14
 
-        val recipes = PokemonDropDataLoader.loadDropRecipes().filter { it.species == sp }
+        val recipes = PokemonDropDataLoader.loadDropRecipes().filter { PokemonTrackingManager.isSameSpecies(it.species, sp) }
         val drops = recipes.flatMap { it.drops }.distinctBy { it.itemStack.item.descriptionId + ":" + it.percentage }
 
         if (drops.isEmpty()) {
@@ -1992,7 +1998,7 @@ class CobblemonPokedexScreen(
             return y + 6
         }
 
-        val jobs = CobbleworkersJobDataLoader.loadPastureRecipes().filter { it.eligiblePokemon.any { ing -> ing.species == sp } }
+        val jobs = CobbleworkersJobDataLoader.loadPastureRecipes().filter { it.eligiblePokemon.any { ing -> PokemonTrackingManager.isSameSpecies(ing.species, sp) } }
         if (jobs.isEmpty()) {
             guiGraphics.drawString(font, "§7• Aucun métier de travail assignable.§r", contentX + 4, y, 0xFF888888.toInt(), false)
             return y + 14
@@ -2533,7 +2539,7 @@ class CobblemonPokedexScreen(
         y += 12
 
         val allRecipes = PokemonEvolutionDataLoader.loadEvolutionRecipes()
-        val preEvos = allRecipes.filter { it.targetSpecies == sp }
+        val preEvos = allRecipes.filter { PokemonTrackingManager.isSameSpecies(it.targetSpecies, sp) }
 
         if (preEvos.isEmpty()) {
             guiGraphics.drawString(font, "§7• Aucune pré-évolution (base)§r", contentX + 4, y, 0xFF888888.toInt(), false)
@@ -2558,7 +2564,7 @@ class CobblemonPokedexScreen(
                     y += 9
                 }
 
-                val ownedCount = allTracked.find { it.species == preSp }?.ownedInstances?.count {
+                val ownedCount = allTracked.find { PokemonTrackingManager.isSameSpecies(it.species, preSp) }?.ownedInstances?.count {
                     PokemonTrackerService.isFormMatch(it.pokemon, pre.sourceForm, preSp)
                 } ?: 0
                 val resTxt = if (ownedCount > 0) "  §a✔ En stock dans le PC/Équipe ($ownedCount)§r" else "  §c✕ Aucun spécimen valide en réserve§r"
@@ -2572,7 +2578,7 @@ class CobblemonPokedexScreen(
         guiGraphics.drawString(font, "§e§l2. Évolution(s) suivante(s)§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 12
 
-        val nextEvos = allRecipes.filter { it.sourceSpecies == sp }
+        val nextEvos = allRecipes.filter { PokemonTrackingManager.isSameSpecies(it.sourceSpecies, sp) }
 
         if (nextEvos.isEmpty()) {
             guiGraphics.drawString(font, "§7• Aucune évolution suivante (final)§r", contentX + 4, y, 0xFF888888.toInt(), false)
@@ -2600,7 +2606,7 @@ class CobblemonPokedexScreen(
                     y += 9
                 }
 
-                val currentTracked = allTracked.find { it.species == sp }
+                val currentTracked = allTracked.find { PokemonTrackingManager.isSameSpecies(it.species, sp) }
                 val hasReqForm = currentTracked?.ownedInstances?.any {
                     PokemonTrackerService.isFormMatch(it.pokemon, next.sourceForm, sp)
                 } ?: false
@@ -2610,7 +2616,7 @@ class CobblemonPokedexScreen(
                     y += 10
                 }
 
-                val isCaught = allTracked.find { it.species == tgtSp }?.isCaught == true
+                val isCaught = allTracked.find { PokemonTrackingManager.isSameSpecies(it.species, tgtSp) }?.isCaught == true
                 val caughtTxt = if (isCaught) "  §a✔ Déjà enregistré au Pokédex§r" else "  §6✕ Non découvert au Pokédex§r"
                 guiGraphics.drawString(font, caughtTxt, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
                 y += 13
@@ -4151,7 +4157,7 @@ class CobblemonPokedexScreen(
                         Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 0.9f))
                     } else {
                         // Clic sur la ligne -> sélectionne le Pokémon dans l'écran Pokédex
-                        val tracked = allTracked.find { it.species == spInList }
+                        val tracked = allTracked.find { PokemonTrackingManager.isSameSpecies(it.species, spInList) }
                         if (tracked != null) {
                             selectedTracked = tracked
                             selectedForm = spInList.standardForm
@@ -4317,7 +4323,7 @@ class CobblemonPokedexScreen(
             for ((rect, clickedSp, _) in rightPanelClickablePokemon) {
                 val (rx, ry, rw, rh) = rect
                 if (mouseX >= rx && mouseX <= rx + rw && mouseY >= ry && mouseY <= ry + rh) {
-                    val found = allTracked.find { it.species == clickedSp }
+                    val found = allTracked.find { PokemonTrackingManager.isSameSpecies(it.species, clickedSp) }
                     if (found != null) {
                         selectedTracked = found
                         selectedForm = null
@@ -4369,7 +4375,7 @@ class CobblemonPokedexScreen(
                 if (index in filteredGoals.indices) {
                     val goal = filteredGoals[index]
                     selectedGoal = goal
-                    selectedTracked = allTracked.find { it.species == goal.targetSpecies }
+                    selectedTracked = allTracked.find { PokemonTrackingManager.isSameSpecies(it.species, goal.targetSpecies) }
                     selectedForm = null
                     individualShinyForms.clear()
                     zoomModalForm = null

@@ -19,6 +19,10 @@ import net.minecraft.core.registries.Registries
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.tags.TagKey
 import net.minecraft.world.item.ItemStack
+import fr.k0bus.cobblemon_jei.domain.session.SessionLifecycleListener
+import fr.k0bus.cobblemon_jei.domain.session.WorldSessionManager
+import net.minecraft.resources.ResourceKey
+import net.minecraft.world.level.Level
 import org.slf4j.LoggerFactory
 import java.io.BufferedReader
 import java.io.File
@@ -34,6 +38,17 @@ object PokemonEvolutionDataLoader {
 
     private val logger = LoggerFactory.getLogger("CobblemonJEI/EvolutionLoader")
     private var cachedEvolutions: List<PokemonEvolutionRecipe>? = null
+
+    init {
+        WorldSessionManager.addListener(object : SessionLifecycleListener {
+            override fun onSessionStarted(sessionId: String, initialDimension: ResourceKey<Level>?) {
+                clearCache()
+            }
+            override fun onSessionEnded(sessionId: String) {
+                clearCache()
+            }
+        })
+    }
 
     // Cache local d'espèces pour garantir la résolution même si le serveur n'est pas encore initialisé
     private val localSpeciesById = mutableMapOf<String, Species>()
@@ -69,6 +84,7 @@ object PokemonEvolutionDataLoader {
                 } catch (_: Throwable) {}
 
                 if (parsedSpecies != null) {
+                    try { parsedSpecies.resourceIdentifier = resLoc } catch (_: Throwable) {}
                     parsedMap[resLoc] = parsedSpecies
                     indexSpeciesLocally(parsedSpecies, cleanFileId)
                 }
@@ -118,10 +134,14 @@ object PokemonEvolutionDataLoader {
     fun findSpeciesByName(name: String): Species? {
         ensureSpeciesLoaded()
         val q = name.trim().lowercase()
-        localSpeciesById[q]?.let { return it }
-        localSpeciesByName[q]?.let { return it }
+        val pathOnly = if (q.contains(":")) q.substringAfter(":") else q
 
-        val clean = q.replace(" ", "").replace("'", "").replace(".", "").replace("-", "")
+        localSpeciesById[q]?.let { return it }
+        localSpeciesById[pathOnly]?.let { return it }
+        localSpeciesByName[q]?.let { return it }
+        localSpeciesByName[pathOnly]?.let { return it }
+
+        val clean = pathOnly.replace(" ", "").replace("'", "").replace(".", "").replace("-", "")
         localSpeciesByName[clean]?.let { return it }
         localSpeciesById[clean]?.let { return it }
 
@@ -129,9 +149,35 @@ object PokemonEvolutionDataLoader {
             PokemonSpecies.getByName(clean)?.let { return it }
         } catch (_: Throwable) {}
         try {
+            PokemonSpecies.getByName(pathOnly)?.let { return it }
+        } catch (_: Throwable) {}
+        try {
+            if (ResourceLocation.tryParse(q) != null) {
+                PokemonSpecies.getByIdentifier(ResourceLocation.parse(q))?.let { return it }
+            }
+        } catch (_: Throwable) {}
+        try {
             PokemonSpecies.getByIdentifier(ResourceLocation.fromNamespaceAndPath("cobblemon", clean))?.let { return it }
         } catch (_: Throwable) {}
         return null
+    }
+
+    /**
+     * Retourne l'ensemble de toutes les espèces connues (officielles Cobblemon et scannées localement).
+     */
+    fun getAllSpecies(): Collection<Species> {
+        ensureSpeciesLoaded()
+        val all = LinkedHashSet<Species>()
+        try {
+            all.addAll(PokemonSpecies.species)
+        } catch (_: Throwable) {}
+        all.addAll(localSpeciesById.values)
+        return all
+    }
+
+    @Synchronized
+    fun clearCache() {
+        cachedEvolutions = null
     }
 
     /**
@@ -538,7 +584,7 @@ object PokemonEvolutionDataLoader {
         evolution: Evolution
     ): PokemonEvolutionRecipe? {
         val resultProps = evolution.result
-        val targetSpeciesName = resultProps.species ?: return null
+        val targetSpeciesName = resultProps.species ?: resultProps.originalString?.split(" ")?.firstOrNull() ?: return null
         val targetSpecies = findSpeciesByName(targetSpeciesName) ?: return null
 
         val targetFormName = resultProps.form

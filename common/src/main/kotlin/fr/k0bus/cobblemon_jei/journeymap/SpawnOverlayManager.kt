@@ -115,6 +115,11 @@ object SpawnOverlayManager {
         if (lastDimension != currentDim) {
             JourneyMapDiskScanner.clearCache()
             lastDimension = currentDim
+            if (!fr.k0bus.cobblemon_jei.domain.session.WorldSessionManager.isSessionActive) {
+                fr.k0bus.cobblemon_jei.domain.session.WorldSessionManager.startNewSession(currentDim)
+            } else if (fr.k0bus.cobblemon_jei.domain.session.WorldSessionManager.currentDimension != currentDim) {
+                fr.k0bus.cobblemon_jei.domain.session.WorldSessionManager.onDimensionChanged(currentDim)
+            }
         }
 
         // 1. Validation préalable des règles de spawn pour cette dimension
@@ -201,6 +206,9 @@ object SpawnOverlayManager {
                 fun isCancelled() = (currentGen != generationCounter.get() || !isOverlayActive)
                 if (isCancelled()) return@runAsync
 
+                val lastOverlayRenderTime = java.util.concurrent.atomic.AtomicLong(0L)
+                val hasRenderedInitial = java.util.concurrent.atomic.AtomicBoolean(false)
+
                 val scannedChunkBiomes = JourneyMapDiskScanner.scanExploredChunks(
                     currentDim = currentDim,
                     mc = mc,
@@ -209,46 +217,65 @@ object SpawnOverlayManager {
                     clientApi = api,
                     onProgress = { completedRegions, totalRegions, progressBiomes ->
                         if (isCancelled() || progressBiomes.isEmpty()) return@scanExploredChunks
-                        val progressChunksByRarity = CobblemonSpawnMatcher.groupChunksByRarity(progressBiomes, validRecipes)
                         val pct = if (totalRegions > 0) (completedRegions * 100 / totalRegions).coerceIn(0, 99) else 0
-                        val eligibleCount = progressChunksByRarity.values.sumOf { it.size }
+                        val now = System.currentTimeMillis()
+                        val shouldRenderOverlay = !hasRenderedInitial.get() ||
+                                (now - lastOverlayRenderTime.get() >= 2000L) ||
+                                (completedRegions >= totalRegions)
 
-                        scanProgress = ScanProgress(
-                            isScanning = true,
-                            completedRegions = completedRegions,
-                            totalRegions = totalRegions,
-                            progressPercent = pct,
-                            scannedChunks = progressBiomes.size,
-                            eligibleChunks = eligibleCount
-                        )
+                        if (shouldRenderOverlay) {
+                            lastOverlayRenderTime.set(now)
+                            hasRenderedInitial.set(true)
 
-                        if (progressChunksByRarity.isNotEmpty()) {
-                            activeRarityCounts = progressChunksByRarity.mapValues { it.value.size }
-                            activeEligibleChunks = progressChunksByRarity.values.flatten().toSet()
-                            val progressOverlays = buildOverlays(species, currentDim, playerY, progressChunksByRarity, validRecipes)
+                            val progressChunksByRarity = CobblemonSpawnMatcher.groupChunksByRarity(progressBiomes, validRecipes)
+                            val eligibleCount = progressChunksByRarity.values.sumOf { it.size }
+
+                            scanProgress = ScanProgress(
+                                isScanning = true,
+                                completedRegions = completedRegions,
+                                totalRegions = totalRegions,
+                                progressPercent = pct,
+                                scannedChunks = progressBiomes.size,
+                                eligibleChunks = eligibleCount
+                            )
+
+                            if (progressChunksByRarity.isNotEmpty()) {
+                                activeRarityCounts = progressChunksByRarity.mapValues { it.value.size }
+                                activeEligibleChunks = progressChunksByRarity.values.flatten().toSet()
+                                val progressOverlays = buildOverlays(species, currentDim, playerY, progressChunksByRarity, validRecipes)
+                                mc.execute {
+                                    if (isCancelled()) return@execute
+                                    try {
+                                        api.removeAll(MOD_ID, DisplayType.Polygon)
+                                        for (overlay in progressOverlays) {
+                                            api.show(overlay)
+                                        }
+                                    } catch (_: Exception) {}
+                                }
+                            }
+
+                            // Notification dynamique dans l'action bar
                             mc.execute {
                                 if (isCancelled()) return@execute
-                                try {
-                                    api.removeAll(MOD_ID, DisplayType.Polygon)
-                                    for (overlay in progressOverlays) {
-                                        api.show(overlay)
-                                    }
-                                } catch (_: Exception) {}
+                                val p = mc.player ?: return@execute
+                                p.displayClientMessage(
+                                    net.minecraft.network.chat.Component.translatable(
+                                        "chat.cobblemon_jm.scan_progress",
+                                        completedRegions,
+                                        totalRegions,
+                                        eligibleCount
+                                    ),
+                                    true
+                                )
                             }
-                        }
-
-                        // Notification dynamique dans l'action bar
-                        mc.execute {
-                            if (isCancelled()) return@execute
-                            val p = mc.player ?: return@execute
-                            p.displayClientMessage(
-                                net.minecraft.network.chat.Component.translatable(
-                                    "chat.cobblemon_jm.scan_progress",
-                                    completedRegions,
-                                    totalRegions,
-                                    eligibleCount
-                                ),
-                                true
+                        } else {
+                            scanProgress = ScanProgress(
+                                isScanning = true,
+                                completedRegions = completedRegions,
+                                totalRegions = totalRegions,
+                                progressPercent = pct,
+                                scannedChunks = progressBiomes.size,
+                                eligibleChunks = scanProgress.eligibleChunks
                             )
                         }
                     }

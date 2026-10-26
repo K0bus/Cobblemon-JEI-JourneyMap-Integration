@@ -84,10 +84,10 @@ object RadarCompassService {
 
             for (detected in entities.values) {
                 val isTarget = when {
-                    targetSpecies != null -> detected.species == targetSpecies
+                    targetSpecies != null -> PokemonTrackingManager.isSameSpecies(detected.species, targetSpecies)
                     PokemonTrackingManager.currentMode == TrackingMode.ALL_UNCAUGHT -> true
-                    PokemonTrackingManager.currentMode == TrackingMode.EVOLUTION_LINE -> PokemonTrackingManager.evolutionFamily.contains(detected.species)
-                    PokemonTrackingManager.currentMode == TrackingMode.CUSTOM_LIST -> PokemonTrackingManager.customWatchlist.contains(detected.species)
+                    PokemonTrackingManager.currentMode == TrackingMode.EVOLUTION_LINE -> PokemonTrackingManager.evolutionFamily.any { PokemonTrackingManager.isSameSpecies(it, detected.species) }
+                    PokemonTrackingManager.currentMode == TrackingMode.CUSTOM_LIST -> PokemonTrackingManager.customWatchlist.any { PokemonTrackingManager.isSameSpecies(it, detected.species) }
                     else -> false
                 }
 

@@ -5,9 +5,14 @@ import fr.k0bus.cobblemon_jei.recipe.PokemonDropRecipe
 import com.cobblemon.mod.common.api.drop.EvolutionItemDropEntry
 import com.cobblemon.mod.common.api.drop.ItemDropEntry
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
+import com.cobblemon.mod.common.pokemon.Species
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import fr.k0bus.cobblemon_jei.domain.session.SessionLifecycleListener
+import fr.k0bus.cobblemon_jei.domain.session.WorldSessionManager
+import net.minecraft.resources.ResourceKey
+import net.minecraft.world.level.Level
 import org.slf4j.LoggerFactory
 
 /**
@@ -18,6 +23,22 @@ object PokemonDropDataLoader {
     private val logger = LoggerFactory.getLogger("CobblemonJEI/DropLoader")
     private var cachedRecipes: List<PokemonDropRecipe>? = null
 
+    init {
+        WorldSessionManager.addListener(object : SessionLifecycleListener {
+            override fun onSessionStarted(sessionId: String, initialDimension: ResourceKey<Level>?) {
+                clearCache()
+            }
+            override fun onSessionEnded(sessionId: String) {
+                clearCache()
+            }
+        })
+    }
+
+    @Synchronized
+    fun clearCache() {
+        cachedRecipes = null
+    }
+
     @Synchronized
     fun loadDropRecipes(): List<PokemonDropRecipe> {
         cachedRecipes?.let { return it }
@@ -27,10 +48,18 @@ object PokemonDropDataLoader {
         val recipes = mutableListOf<PokemonDropRecipe>()
         val seenRecipes = mutableSetOf<String>()
 
-        for (species in PokemonSpecies.species) {
-            val forms = species.forms
-            for (form in forms) {
-                val dropTable = form.drops
+        val speciesToProcess = mutableSetOf<Species>()
+        try {
+            speciesToProcess.addAll(PokemonSpecies.species)
+        } catch (_: Throwable) {}
+        speciesToProcess.addAll(PokemonEvolutionDataLoader.getAllSpecies())
+
+        for (species in speciesToProcess) {
+            val formsToProcess = mutableListOf(species.standardForm)
+            formsToProcess.addAll(species.forms.filter { it != species.standardForm })
+
+            for (form in formsToProcess) {
+                val dropTable = if (form.drops.entries.isNotEmpty()) form.drops else species.drops
                 val entries = dropTable.entries
                 if (entries.isEmpty()) continue
 

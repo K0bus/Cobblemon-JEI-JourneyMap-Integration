@@ -2,7 +2,7 @@ package fr.k0bus.cobblemon_jei.journeymap
 
 import journeymap.api.v2.client.IClientAPI
 import journeymap.api.v2.client.IClientPlugin
-import journeymap.api.v2.client.JourneyMapPlugin
+import journeymap.api.v2.common.JourneyMapPlugin
 import journeymap.api.v2.common.event.ClientEventRegistry
 import net.minecraft.client.Minecraft
 import net.minecraft.resources.ResourceLocation
@@ -18,9 +18,7 @@ import net.minecraft.network.chat.Component
  * enregistrer le bouton dans la barre d'outils plein écran et gérer
  * les couches de surbrillance polygonales des zones d'apparition de Pokémon.
  */
-@Suppress("DEPRECATION")
 @JourneyMapPlugin(apiVersion = IClientAPI.API_VERSION)
-@journeymap.api.v2.common.JourneyMapPlugin(apiVersion = IClientAPI.API_VERSION)
 class CobblemonJourneyMapPlugin : IClientPlugin {
 
     companion object {

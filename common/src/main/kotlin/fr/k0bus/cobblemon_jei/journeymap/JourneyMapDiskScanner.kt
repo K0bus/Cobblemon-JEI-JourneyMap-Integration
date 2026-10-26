@@ -1,5 +1,7 @@
 package fr.k0bus.cobblemon_jei.journeymap
 
+import fr.k0bus.cobblemon_jei.domain.session.SessionLifecycleListener
+import fr.k0bus.cobblemon_jei.domain.session.WorldSessionManager
 import journeymap.api.v2.client.IClientAPI
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
@@ -9,6 +11,8 @@ import net.minecraft.resources.ResourceKey
 import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.biome.Biome
+import net.minecraft.world.level.chunk.LevelChunkSection
+import net.minecraft.world.level.levelgen.Heightmap
 import net.minecraft.world.level.storage.LevelResource
 import org.slf4j.LoggerFactory
 import java.io.File
@@ -24,6 +28,15 @@ object JourneyMapDiskScanner {
 
     private val logger = LoggerFactory.getLogger("CobblemonJM/DiskScanner")
 
+    init {
+        WorldSessionManager.addListener(object : SessionLifecycleListener {
+            override fun onSessionEnded(sessionId: String) {
+                clearCache()
+                logger.info("Cobblemon JM: Session $sessionId terminée, cache mémoire réinitialisé.")
+            }
+        })
+    }
+
     // Cache persistant en mémoire des biomes explorés (dimension + ChunkPos -> Holder<Biome>)
     val globalBiomeCache = java.util.concurrent.ConcurrentHashMap<Pair<ResourceKey<Level>, ChunkPos>, Holder<Biome>>()
 
@@ -33,6 +46,8 @@ object JourneyMapDiskScanner {
     private var jmSnapshotGetBiomePosMethod: Method? = null
     private var jmSnapshotGetBiomeMethod: Method? = null
     private var jmSnapshotGetHeightMethod: Method? = null
+    private var jmSnapshotGetHeightCoordsMethod: Method? = null
+    private var jmSnapshotGetSectionsMethod: Method? = null
     private var jmReflectionInitialized = false
 
     private fun initJourneyMapReflection() {
@@ -52,7 +67,13 @@ object JourneyMapDiskScanner {
                 jmSnapshotGetBiomeMethod = snapshotClass.getMethod("getBiomeHolder", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
             } catch (_: Throwable) {}
             try {
+                jmSnapshotGetHeightCoordsMethod = snapshotClass.getMethod("getHeight", Heightmap.Types::class.java, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+            } catch (_: Throwable) {}
+            try {
                 jmSnapshotGetHeightMethod = snapshotClass.getMethod("getHeight", BlockPos::class.java)
+            } catch (_: Throwable) {}
+            try {
+                jmSnapshotGetSectionsMethod = snapshotClass.getMethod("getSections")
             } catch (_: Throwable) {}
 
             jmChunkCacheInstance = instance
@@ -68,6 +89,7 @@ object JourneyMapDiskScanner {
      */
     fun clearCache() {
         globalBiomeCache.clear()
+        ChunkBiomeTagCache.clearAll()
     }
 
     /**
@@ -146,13 +168,16 @@ object JourneyMapDiskScanner {
         val completedCount = java.util.concurrent.atomic.AtomicInteger(0)
         val lastProgressNotify = java.util.concurrent.atomic.AtomicLong(0)
 
+        val sessionToken = WorldSessionManager.createCancellationToken(currentDim)
+        val isTaskCancelled: () -> Boolean = { isCancelled() || sessionToken.isCancelled }
+
         val result = java.util.concurrent.ConcurrentHashMap<ChunkPos, Holder<Biome>>()
         result.putAll(getCachedChunksForDimension(currentDim))
 
         fun notifyProgress(force: Boolean = false) {
-            if (onProgress == null || isCancelled()) return
+            if (onProgress == null || isTaskCancelled()) return
             val now = System.currentTimeMillis()
-            if (force || now - lastProgressNotify.get() > 60 || completedCount.get() >= totalRegions) {
+            if (force || now - lastProgressNotify.get() > 400 || completedCount.get() >= totalRegions) {
                 lastProgressNotify.set(now)
                 onProgress(completedCount.get(), totalRegions, HashMap(result))
             }
@@ -163,7 +188,7 @@ object JourneyMapDiskScanner {
         }
 
         fun scanRegion(region: Pair<Int, Int>) {
-            if (isCancelled()) return
+            if (isTaskCancelled()) return
             val (rx, rz) = region
             val startChunkX = rx * 32
             val startChunkZ = rz * 32
@@ -171,7 +196,7 @@ object JourneyMapDiskScanner {
 
             for (localX in 0 until 32) {
                 for (localZ in 0 until 32) {
-                    if (isCancelled()) return
+                    if (isTaskCancelled()) return
                     val cx = startChunkX + localX
                     val cz = startChunkZ + localZ
                     val chunkPos = ChunkPos(cx, cz)
@@ -216,20 +241,20 @@ object JourneyMapDiskScanner {
 
         // Étape 1 : Régions proches exécutées en priorité
         for (region in nearbyRegions) {
-            if (isCancelled()) return emptyMap()
+            if (isTaskCancelled()) return emptyMap()
             scanRegion(region)
         }
 
         notifyProgress(force = true)
 
         // Étape 2 : Régions lointaines parallélisées
-        if (distantRegions.isNotEmpty() && !isCancelled()) {
-            val parallelism = Runtime.getRuntime().availableProcessors().coerceIn(2, 6)
+        if (distantRegions.isNotEmpty() && !isTaskCancelled()) {
+            val parallelism = (Runtime.getRuntime().availableProcessors() - 1).coerceIn(2, 4)
             val customPool = java.util.concurrent.ForkJoinPool(parallelism)
             try {
                 customPool.submit(Runnable {
                     distantRegions.parallelStream().forEach { region ->
-                        if (!isCancelled()) {
+                        if (!isTaskCancelled()) {
                             scanRegion(region)
                         }
                     }
@@ -265,8 +290,8 @@ object JourneyMapDiskScanner {
         val sampleY = when (currentDim) {
             Level.NETHER -> playerY.coerceIn(32, 90)
             Level.END -> playerY.coerceIn(50, 80)
-            Level.OVERWORLD -> playerY.coerceIn(75, 120)
-            else -> playerY.coerceIn(60, 120) // Dimensions moddées (Aether, etc.)
+            Level.OVERWORLD -> playerY.coerceIn(64, 96)
+            else -> playerY.coerceIn(60, 96) // Dimensions moddées (Aether, etc.)
         }
 
         // Stratégie 1 : Générateur de bruit solo (moteur vision de loin ultra-rapide, 0 I/O)
@@ -280,20 +305,96 @@ object JourneyMapDiskScanner {
         // Stratégie 2 : Cache JourneyMap (JMChunkCache)
         val jmCache = jmChunkCacheInstance
         val getMethod = jmChunkCacheGetMethod
+        val getBiomeCoordsMethod = jmSnapshotGetBiomeMethod
         val getBiomePosMethod = jmSnapshotGetBiomePosMethod
-        val getBiomeMethod = jmSnapshotGetBiomeMethod
+        val getHeightCoordsMethod = jmSnapshotGetHeightCoordsMethod
+        val getHeightPosMethod = jmSnapshotGetHeightMethod
+        val getSectionsMethod = jmSnapshotGetSectionsMethod
+
         if (jmCache != null && getMethod != null && clientLevel != null) {
             try {
                 val snapshot = getMethod.invoke(jmCache, chunkPos, clientLevel)
                 if (snapshot != null) {
-                    if (getBiomePosMethod != null) {
-                        @Suppress("UNCHECKED_CAST")
-                        return getBiomePosMethod.invoke(snapshot, BlockPos(centerX, sampleY, centerZ)) as? Holder<Biome>
-                    } else if (getBiomeMethod != null) {
-                        val localX = centerX and 15
-                        val localZ = centerZ and 15
-                        @Suppress("UNCHECKED_CAST")
-                        return getBiomeMethod.invoke(snapshot, localX, sampleY, localZ) as? Holder<Biome>
+                    val localX = centerX and 15
+                    val localZ = centerZ and 15
+
+                    // 1. Détection de la véritable altitude de surface du relief (0 allocation)
+                    val surfaceY = try {
+                        if (getHeightCoordsMethod != null) {
+                            val h = getHeightCoordsMethod.invoke(snapshot, Heightmap.Types.WORLD_SURFACE, localX, localZ) as? Int
+                            if (h != null && h > -64 && h < 320) h else null
+                        } else if (getHeightPosMethod != null) {
+                            val h = getHeightPosMethod.invoke(snapshot, BlockPos(centerX, 0, centerZ)) as? Int
+                            if (h != null && h > -64 && h < 320) h else null
+                        } else null
+                    } catch (_: Throwable) { null }
+
+                    val targetY = surfaceY ?: sampleY
+
+                    // 2. Échantillonnage direct ultra-rapide au niveau du sol (0 allocation)
+                    val directHolder = try {
+                        if (getBiomeCoordsMethod != null) {
+                            @Suppress("UNCHECKED_CAST")
+                            getBiomeCoordsMethod.invoke(snapshot, localX, targetY, localZ) as? Holder<Biome>
+                        } else if (getBiomePosMethod != null) {
+                            @Suppress("UNCHECKED_CAST")
+                            getBiomePosMethod.invoke(snapshot, BlockPos(centerX, targetY, centerZ)) as? Holder<Biome>
+                        } else null
+                    } catch (_: Throwable) { null }
+
+                    if (directHolder != null) {
+                        return directHolder
+                    }
+
+                    // 3. Fallback rapide : test de la section immédiatement inférieure (bloc sous feuillage)
+                    val secondY = targetY - 1
+                    if (secondY > -64) {
+                        val subHolder = try {
+                            if (getBiomeCoordsMethod != null) {
+                                @Suppress("UNCHECKED_CAST")
+                                getBiomeCoordsMethod.invoke(snapshot, localX, secondY, localZ) as? Holder<Biome>
+                            } else if (getBiomePosMethod != null) {
+                                @Suppress("UNCHECKED_CAST")
+                                getBiomePosMethod.invoke(snapshot, BlockPos(centerX, secondY, centerZ)) as? Holder<Biome>
+                            } else null
+                        } catch (_: Throwable) { null }
+
+                        if (subHolder != null) {
+                            return subHolder
+                        }
+                    }
+
+                    // 4. Balayage descendant par pas de section (16 blocs)
+                    for (stepY in (targetY - 16) downTo -48 step 16) {
+                        val stepHolder = try {
+                            if (getBiomeCoordsMethod != null) {
+                                @Suppress("UNCHECKED_CAST")
+                                getBiomeCoordsMethod.invoke(snapshot, localX, stepY, localZ) as? Holder<Biome>
+                            } else if (getBiomePosMethod != null) {
+                                @Suppress("UNCHECKED_CAST")
+                                getBiomePosMethod.invoke(snapshot, BlockPos(centerX, stepY, centerZ)) as? Holder<Biome>
+                            } else null
+                        } catch (_: Throwable) { null }
+
+                        if (stepHolder != null) {
+                            return stepHolder
+                        }
+                    }
+
+                    // 5. Repli ultime : lecture directe depuis la première section non-nulle de snapshot.sections
+                    if (getSectionsMethod != null) {
+                        try {
+                            val sections = getSectionsMethod.invoke(snapshot) as? Array<*>
+                            if (sections != null) {
+                                for (i in sections.indices.reversed()) {
+                                    val sec = sections[i] as? LevelChunkSection ?: continue
+                                    val holder = sec.getNoiseBiome(localX shr 2, 2, localZ shr 2)
+                                    if (holder != null) {
+                                        return holder
+                                    }
+                                }
+                            }
+                        } catch (_: Throwable) {}
                     }
                 }
             } catch (_: Throwable) {}
@@ -301,9 +402,12 @@ object JourneyMapDiskScanner {
 
         // Stratégie 3 : ClientLevel si disponible
         if (clientLevel != null) {
-            val samplePos = BlockPos(centerX, sampleY, centerZ)
             try {
                 if (clientLevel.hasChunk(chunkPos.x, chunkPos.z)) {
+                    val actualSurfaceY = try {
+                        clientLevel.getHeight(Heightmap.Types.WORLD_SURFACE, centerX, centerZ)
+                    } catch (_: Throwable) { sampleY }
+                    val samplePos = BlockPos(centerX, actualSurfaceY, centerZ)
                     return clientLevel.getBiome(samplePos)
                 }
             } catch (_: Throwable) {}

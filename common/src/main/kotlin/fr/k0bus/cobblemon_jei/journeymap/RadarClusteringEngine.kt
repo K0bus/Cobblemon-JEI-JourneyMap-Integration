@@ -61,7 +61,7 @@ object RadarClusteringEngine {
 
         // 3. Cible unique traquée par l'utilisateur
         if (PokemonTrackingManager.currentMode == TrackingMode.SINGLE &&
-            detected.species == PokemonTrackingManager.targetSpecies
+            PokemonTrackingManager.targetSpecies?.let { PokemonTrackingManager.isSameSpecies(detected.species, it) } == true
         ) {
             return true
         }
@@ -109,7 +109,7 @@ object RadarClusteringEngine {
                 if (visited.contains(b.uuid)) continue
 
                 // Même espèce requise pour regrouper proprement (ou même famille proche)
-                if (a.species == b.species) {
+                if (PokemonTrackingManager.isSameSpecies(a.species, b.species)) {
                     val distSq = a.blockPos.distSqr(b.blockPos)
                     if (distSq <= CLUSTER_DIST_SQ) {
                         visited.add(b.uuid)
