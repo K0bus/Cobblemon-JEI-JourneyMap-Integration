@@ -37,11 +37,35 @@ object RctDataLoader {
     private val textureCache = mutableMapOf<String, ResourceLocation>()
 
     private var isLoaded = false
+    private var loadingFuture: java.util.concurrent.CompletableFuture<Unit>? = null
+
+    private fun isMainClientThread(): Boolean {
+        return try {
+            val mc = Minecraft.getInstance() ?: return false
+            mc.isSameThread
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    fun isDataLoaded(): Boolean = isLoaded
 
     @Synchronized
     fun ensureLoaded() {
         if (isLoaded) return
         reload()
+    }
+
+    @Synchronized
+    fun preloadAsync(): java.util.concurrent.CompletableFuture<Unit> {
+        if (isLoaded) return java.util.concurrent.CompletableFuture.completedFuture(Unit)
+        val existing = loadingFuture
+        if (existing != null && !existing.isDone) return existing
+        val future = java.util.concurrent.CompletableFuture.supplyAsync {
+            ensureLoaded()
+        }
+        loadingFuture = future
+        return future
     }
 
     @Synchronized
@@ -65,7 +89,16 @@ object RctDataLoader {
         // 3. Scan et chargement des équipes et fiches des dresseurs
         scanTrainers(singleMobConfigs, groupMobConfigs, defaultMobConfig)
 
-        // 4. Fallback si aucun fichier RCT n'a été découvert (ex: test en dev sans le jar complet)
+        // 4. Découverte automatique des séries déclarées dans les dresseurs (ex: ATM / All The Mods, datapacks personnalisés)
+        for (trainer in trainersCache.values) {
+            for (sId in trainer.series) {
+                if (sId.isNotBlank() && !seriesCache.containsKey(sId)) {
+                    registerCustomSeries(sId)
+                }
+            }
+        }
+
+        // 5. Fallback si aucun fichier RCT n'a été découvert (ex: test en dev sans le jar complet)
         if (seriesCache.isEmpty()) {
             loadDefaultFallbackSeries()
         }
@@ -75,45 +108,103 @@ object RctDataLoader {
     }
 
     fun hasAnySeries(): Boolean {
-        ensureLoaded()
+        if (!isLoaded) {
+            if (isMainClientThread()) {
+                preloadAsync()
+                return seriesCache.isNotEmpty()
+            }
+            ensureLoaded()
+        }
         return seriesCache.isNotEmpty()
     }
 
     fun getAllSeries(): List<RctSeries> {
-        ensureLoaded()
+        if (!isLoaded) {
+            if (isMainClientThread()) {
+                preloadAsync()
+                return seriesCache.values.toList()
+            }
+            ensureLoaded()
+        }
         return seriesCache.values.toList()
     }
 
     fun getSeries(seriesId: String): RctSeries? {
-        ensureLoaded()
+        if (!isLoaded) {
+            if (isMainClientThread()) {
+                preloadAsync()
+                return seriesCache[seriesId]
+            }
+            ensureLoaded()
+        }
         return seriesCache[seriesId]
     }
 
+    fun registerCustomSeries(sId: String): RctSeries {
+        return seriesCache.computeIfAbsent(sId) {
+            val title = when (sId.lowercase()) {
+                "atm" -> "All The Mods"
+                "allthemods" -> "All The Mods"
+                "radicalred" -> "Radical Red"
+                else -> sId.replaceFirstChar { it.uppercase() }
+            }
+            RctSeries(
+                id = sId,
+                title = title,
+                description = "Série $title ($sId)",
+                difficulty = 5,
+                initialLevelCap = 15,
+                relativeLevelCap = 0
+            )
+        }
+    }
+
     fun getAllTrainers(): List<RctTrainer> {
-        ensureLoaded()
+        if (!isLoaded) {
+            if (isMainClientThread()) {
+                preloadAsync()
+                return trainersCache.values.toList()
+            }
+            ensureLoaded()
+        }
         return trainersCache.values.toList()
     }
 
     fun getTrainer(trainerId: String): RctTrainer? {
-        ensureLoaded()
+        if (!isLoaded) {
+            if (isMainClientThread()) {
+                preloadAsync()
+                return trainersCache[trainerId]
+            }
+            ensureLoaded()
+        }
         return trainersCache[trainerId]
     }
 
     fun getTrainersForSeries(seriesId: String): List<RctTrainer> {
-        ensureLoaded()
+        if (!isLoaded) {
+            if (isMainClientThread()) {
+                preloadAsync()
+                return trainersCache.values.filter { trainer ->
+                    trainer.series.isEmpty() || trainer.series.contains(seriesId)
+                }
+            }
+            ensureLoaded()
+        }
         return trainersCache.values.filter { trainer ->
             trainer.series.isEmpty() || trainer.series.contains(seriesId)
         }
     }
 
     /**
-     * Scanne les fichiers de series dans data/rctmod/series.
+     * Scanne les fichiers de series dans data/[namespace]/series/.
+     * Prend en compte le namespace officiel rctmod ainsi que les namespaces personnalisés (ex: atm, allthemods, kubejs).
      */
     private fun scanSeries() {
         try {
             val rm = Minecraft.getInstance().resourceManager
             if (rm != null) {
-                val resMap = rm.listResources("series") { it.namespace == "rctmod" && it.path.endsWith(".json") }
+                val resMap = rm.listResources("series") { it.path.endsWith(".json") }
                 for ((loc, res) in resMap) {
                     try {
                         val id = loc.path.removePrefix("series/").removeSuffix(".json").substringAfterLast('/')

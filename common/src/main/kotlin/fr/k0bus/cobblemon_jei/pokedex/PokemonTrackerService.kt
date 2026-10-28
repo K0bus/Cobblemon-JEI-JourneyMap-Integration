@@ -124,6 +124,33 @@ data class EvolutionGoal(
 }
 
 /**
+ * Objectif de reproduction pour obtenir une forme de base / origine manquante au Pokédex.
+ */
+data class BreedingOriginGoal(
+    val baseSpecies: Species,
+    val targetStatus: PokedexStatus,
+    val isBaby: Boolean,
+    val candidateParents: List<Species>,
+    val ownedParents: List<OwnedPokemonInfo>,
+    val caughtParents: List<Species>,
+    val requiredIncense: String? = null,
+    val isMultipleOrigins: Boolean = candidateParents.size > 1,
+    val isReadyToBreed: Boolean = ownedParents.isNotEmpty()
+) {
+    val nationalDexNumber: Int get() = baseSpecies.nationalPokedexNumber
+    val parentSummary: String get() = if (ownedParents.isNotEmpty()) {
+        val first = ownedParents.first()
+        val name = first.pokemon.species.translatedName.string
+        val loc = first.location
+        if (ownedParents.size == 1) "$name ($loc)" else "$name ($loc) +${ownedParents.size - 1}"
+    } else if (caughtParents.isNotEmpty()) {
+        "Capturé : " + caughtParents.joinToString(", ") { it.translatedName.string }
+    } else {
+        candidateParents.joinToString(" / ") { it.translatedName.string }
+    }
+}
+
+/**
  * Statistiques globales du Pokédex du joueur.
  */
 data class PokedexTrackerStats(
@@ -148,6 +175,7 @@ object PokemonTrackerService {
     private var trackedSpeciesList: List<TrackedPokemon> = emptyList()
     private var trackedSpeciesMap: Map<String, TrackedPokemon> = emptyMap()
     private var evolutionGoalsList: List<EvolutionGoal> = emptyList()
+    private var breedingOriginGoalsList: List<BreedingOriginGoal> = emptyList()
     private var lastScanTime: Long = 0L
 
     /**
@@ -206,13 +234,18 @@ object PokemonTrackerService {
 
         // 2. Analyse des évolutions vers les Pokémon manquants
         evolutionGoalsList = computeEvolutionGoals(trackedMap, inventoryItems)
+
+        // 3. Analyse des formats d'origine manquants à reproduire
+        breedingOriginGoalsList = computeBreedingOriginGoals(trackedMap, ownedMap)
+
         lastScanTime = System.currentTimeMillis()
 
         logger.debug(
-            "Pokédex Tracker actualisé : {} espèces, {} capturées, {} évolutions cibles.",
+            "Pokédex Tracker actualisé : {} espèces, {} capturées, {} évolutions cibles, {} origines manquantes.",
             trackedList.size,
             trackedList.count { it.isCaught },
-            evolutionGoalsList.size
+            evolutionGoalsList.size,
+            breedingOriginGoalsList.size
         )
     }
 
@@ -251,6 +284,16 @@ object PokemonTrackerService {
             refresh()
         }
         return evolutionGoalsList
+    }
+
+    /**
+     * Retourne les formes d'origine manquantes que le joueur peut reproduire.
+     */
+    fun getMissingOriginGoals(): List<BreedingOriginGoal> {
+        if (trackedSpeciesList.isEmpty() || System.currentTimeMillis() - lastScanTime > 2000L) {
+            refresh()
+        }
+        return breedingOriginGoalsList
     }
 
     /**
@@ -451,6 +494,112 @@ object PokemonTrackerService {
             compareBy<EvolutionGoal> { it.feasibility.ordinal }
                 .thenBy { it.targetSpecies.nationalPokedexNumber }
                 .thenBy { it.sourceSpecies.nationalPokedexNumber }
+        )
+    }
+
+    private val BABY_INCENSE_REQUIREMENTS = mapOf(
+        "munchlax" to "Encens Plein",
+        "wynaut" to "Encens Doux",
+        "azurill" to "Encens Mer",
+        "bonsly" to "Encens Roc",
+        "budew" to "Encens Fleur",
+        "chingling" to "Encens Pur",
+        "happiny" to "Encens Veine",
+        "mime_jr" to "Encens Bizarre",
+        "mantyke" to "Encens Vague"
+    )
+
+    private val BABY_SPECIES_NAMES = setOf(
+        "pichu", "cleffa", "igglybuff", "togepi", "tyrogue", "smoochum",
+        "elekid", "magby", "azurill", "wynaut", "budew", "chingling",
+        "bonsly", "mime_jr", "happiny", "munchlax", "riolu", "mantyke", "toxel"
+    )
+
+    /**
+     * Analyse et calcule les formes de base / origines manquantes dans le Pokédex
+     * que le joueur peut obtenir par reproduction à partir de Pokémon évolués déjà possédés ou capturés.
+     */
+    private fun computeBreedingOriginGoals(
+        trackedMap: Map<String, TrackedPokemon>,
+        ownedMap: Map<String, List<OwnedPokemonInfo>>
+    ): List<BreedingOriginGoal> {
+        val allRecipes = PokemonEvolutionDataLoader.loadEvolutionRecipes()
+        val allSpecies = PokemonSpecies.species.toList()
+
+        // Carte des évolutions directes : sourceSpeciesName -> Set<targetSpecies>
+        val directChildrenMap = mutableMapOf<String, MutableSet<Species>>()
+        for (recipe in allRecipes) {
+            val srcKey = recipe.sourceSpecies.name.lowercase()
+            directChildrenMap.getOrPut(srcKey) { mutableSetOf() }.add(recipe.targetSpecies)
+        }
+
+        val goals = mutableListOf<BreedingOriginGoal>()
+
+        for (sp in allSpecies) {
+            val spKey = sp.name.lowercase()
+            val preEvo = try { sp.preEvolution } catch (_: Throwable) { null }
+            val hasEvolutions = directChildrenMap.containsKey(spKey) || sp.evolutions.isNotEmpty()
+
+            // Espèce de base : pas de pré-évolution mais possède des évolutions (ou cas spécial Phione)
+            if ((preEvo == null && hasEvolutions) || spKey == "phione") {
+                val tracked = trackedMap[getSpeciesKey(sp)]
+                val status = tracked?.status ?: PokedexStatus.MISSING
+
+                if (status != PokedexStatus.CAUGHT) {
+                    val descendants = mutableSetOf<Species>()
+                    val queue = mutableListOf(spKey)
+                    val visited = mutableSetOf(spKey)
+
+                    while (queue.isNotEmpty()) {
+                        val current = queue.removeAt(0)
+                        val children = directChildrenMap[current] ?: emptySet()
+                        for (child in children) {
+                            val childKey = child.name.lowercase()
+                            if (visited.add(childKey)) {
+                                descendants.add(child)
+                                queue.add(childKey)
+                            }
+                        }
+                    }
+
+                    if (spKey == "phione" && descendants.isEmpty()) {
+                        PokemonSpecies.getByName("manaphy")?.let { descendants.add(it) }
+                    }
+
+                    if (descendants.isNotEmpty()) {
+                        val candidateParentsList = descendants.sortedBy { it.nationalPokedexNumber }
+                        val ownedParentsList = candidateParentsList.flatMap { parentSp ->
+                            ownedMap[getSpeciesKey(parentSp)] ?: emptyList()
+                        }
+                        val caughtParentsList = candidateParentsList.filter { parentSp ->
+                            trackedMap[getSpeciesKey(parentSp)]?.isCaught == true
+                        }
+
+                        val isBaby = BABY_SPECIES_NAMES.contains(spKey)
+                        val incense = BABY_INCENSE_REQUIREMENTS[spKey]
+
+                        goals.add(
+                            BreedingOriginGoal(
+                                baseSpecies = sp,
+                                targetStatus = status,
+                                isBaby = isBaby,
+                                candidateParents = candidateParentsList,
+                                ownedParents = ownedParentsList,
+                                caughtParents = caughtParentsList,
+                                requiredIncense = incense
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
+        // Tri : D'abord ceux avec parents disponibles dans l'équipe/PC,
+        // puis ceux déjà capturés dans le Pokédex, puis numéro national
+        return goals.sortedWith(
+            compareByDescending<BreedingOriginGoal> { it.isReadyToBreed }
+                .thenByDescending { it.caughtParents.isNotEmpty() }
+                .thenBy { it.nationalDexNumber }
         )
     }
 

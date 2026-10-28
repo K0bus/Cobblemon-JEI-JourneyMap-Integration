@@ -18,14 +18,14 @@ object RctProgressionService {
 
     private var selectedSeriesId: String = "radicalred"
     private var onlyKeyTrainers: Boolean = true
+    private var isRefreshed: Boolean = false
 
-    init {
-        refresh()
-    }
+    fun isRefreshed(): Boolean = isRefreshed
 
     /**
      * Rafraîchit les données de progression en interrogeant directement le mod RCT et les succès.
      */
+    @Synchronized
     fun refresh() {
         RctDataLoader.ensureLoaded()
 
@@ -40,6 +40,7 @@ object RctProgressionService {
         if (allSeries.isNotEmpty() && allSeries.none { it.id == selectedSeriesId }) {
             selectedSeriesId = allSeries.first().id
         }
+        isRefreshed = true
     }
 
     fun getSelectedSeriesId(): String = selectedSeriesId
@@ -142,7 +143,10 @@ object RctProgressionService {
                                 }
                                 val seriesMethod = playerData.javaClass.getMethod("getCurrentSeries")
                                 val s = seriesMethod.invoke(playerData) as? String
-                                if (!s.isNullOrBlank() && RctDataLoader.getSeries(s) != null) {
+                                if (!s.isNullOrBlank()) {
+                                    if (RctDataLoader.getSeries(s) == null) {
+                                        RctDataLoader.registerCustomSeries(s)
+                                    }
                                     selectedSeriesId = s
                                 }
                             }
@@ -154,6 +158,9 @@ object RctProgressionService {
             logger.debug("Erreur interrogation directe mod RCT: {}", e.message)
         }
     }
+
+    private var cachedProgressField: java.lang.reflect.Field? = null
+    private var hasSearchedProgressField: Boolean = false
 
     /**
      * Analyse rapide des advancements reçus par le joueur connecté en O(1) par succès.
@@ -172,11 +179,14 @@ object RctProgressionService {
             val trainerIdentityMap = allTrainers.filter { it.identity.isNotBlank() }
                 .associateBy({ it.identity.lowercase() }, { it.id })
 
-            val progressField = advManager.javaClass.declaredFields.firstOrNull {
-                java.util.Map::class.java.isAssignableFrom(it.type)
-            }?.apply { isAccessible = true }
+            if (!hasSearchedProgressField) {
+                cachedProgressField = advManager.javaClass.declaredFields.firstOrNull {
+                    java.util.Map::class.java.isAssignableFrom(it.type)
+                }?.apply { isAccessible = true }
+                hasSearchedProgressField = true
+            }
 
-            val progressMap = progressField?.get(advManager) as? Map<*, *>
+            val progressMap = cachedProgressField?.get(advManager) as? Map<*, *>
             if (progressMap != null) {
                 for ((holder, advProgress) in progressMap) {
                     if (holder != null && advProgress != null) {

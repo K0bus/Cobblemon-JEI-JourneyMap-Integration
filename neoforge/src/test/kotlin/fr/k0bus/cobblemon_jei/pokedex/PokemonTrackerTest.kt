@@ -42,4 +42,36 @@ class PokemonTrackerTest {
     fun `test PokedexStatus states`() {
         assertTrue(PokedexStatus.CAUGHT.ordinal < PokedexStatus.MISSING.ordinal)
     }
+
+    private fun createDummySpecies(name: String, dex: Int): com.cobblemon.mod.common.pokemon.Species {
+        val unsafeField = sun.misc.Unsafe::class.java.getDeclaredField("theUnsafe").apply { isAccessible = true }
+        val unsafe = unsafeField.get(null) as sun.misc.Unsafe
+        val sp = unsafe.allocateInstance(com.cobblemon.mod.common.pokemon.Species::class.java) as com.cobblemon.mod.common.pokemon.Species
+        sp.name = name
+        sp.nationalPokedexNumber = dex
+        return sp
+    }
+
+    @Test
+    fun `test BreedingOriginGoal properties`() {
+        val mockBase = createDummySpecies("pichu", 172)
+        val mockParent1 = createDummySpecies("pikachu", 25)
+        val mockParent2 = createDummySpecies("raichu", 26)
+
+        val goal = BreedingOriginGoal(
+            baseSpecies = mockBase,
+            targetStatus = PokedexStatus.MISSING,
+            isBaby = true,
+            candidateParents = listOf(mockParent1, mockParent2),
+            ownedParents = emptyList(),
+            caughtParents = listOf(mockParent1),
+            requiredIncense = null
+        )
+
+        assertEquals(172, goal.nationalDexNumber)
+        assertTrue(goal.isBaby)
+        assertTrue(goal.isMultipleOrigins)
+        assertEquals(false, goal.isReadyToBreed)
+        assertTrue(goal.caughtParents.isNotEmpty())
+    }
 }

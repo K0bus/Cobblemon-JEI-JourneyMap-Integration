@@ -1,5 +1,6 @@
 package fr.k0bus.cobblemon_jei.leaderboard
 
+import fr.k0bus.cobblemon_jei.pokedex.CobblemonDarkButton
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Button
@@ -25,7 +26,7 @@ class CobblemonLeaderboardScreen(
     private lateinit var searchBox: EditBox
     private var scrollOffset: Double = 0.0
 
-    private val categoryButtons = mutableListOf<Button>()
+    private val categoryButtons = mutableListOf<CobblemonDarkButton>()
 
     override fun init() {
         val available = CobblemonScoreboardService.getAvailableCategories()
@@ -44,23 +45,26 @@ class CobblemonLeaderboardScreen(
 
         categoryButtons.clear()
         for (cat in available) {
-            val btn = Button.builder(Component.literal("${cat.iconEmoji} ${cat.shortName}")) {
+            val btn = CobblemonDarkButton(
+                currentX, topY, tabWidth, tabHeight,
+                Component.literal("${cat.iconEmoji} ${cat.shortName}"),
+                isTab = true,
+                isSelected = { selectedCategory == cat }
+            ) {
                 selectedCategory = cat
                 scrollOffset = 0.0
-                updateCategoryButtons()
                 refreshData()
-            }.bounds(currentX, topY, tabWidth, tabHeight).build()
+            }
 
             addRenderableWidget(btn)
             categoryButtons.add(btn)
             currentX += tabWidth + 4
         }
-        updateCategoryButtons()
 
         // Bouton Retour / Fermer
-        val closeBtn = Button.builder(Component.literal("✕")) {
+        val closeBtn = CobblemonDarkButton(width - 26, topY, 18, tabHeight, Component.literal("✕")) {
             onClose()
-        }.bounds(width - 26, topY, 18, tabHeight).build()
+        }
         addRenderableWidget(closeBtn)
 
         // Barre de recherche
@@ -70,15 +74,6 @@ class CobblemonLeaderboardScreen(
         searchBox.setHint(Component.literal("Rechercher un joueur..."))
         searchBox.setResponder { applySearchFilter() }
         addRenderableWidget(searchBox)
-    }
-
-    private fun updateCategoryButtons() {
-        val available = CobblemonScoreboardService.getAvailableCategories()
-        for ((index, btn) in categoryButtons.withIndex()) {
-            if (index < available.size) {
-                btn.active = (available[index] != selectedCategory)
-            }
-        }
     }
 
     private fun refreshData() {

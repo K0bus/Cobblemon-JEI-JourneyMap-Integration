@@ -46,10 +46,13 @@ object CobblemonDataScanner {
         // 5. Scan du dossier mods/ de l'instance Minecraft
         scanModsDirectory(subPath, seenSources, consumer)
 
-        // 6. Scan du ResourceManager du serveur local (si monde chargé)
+        // 6. Scan des dossiers de données locaux (KubeJS, OpenLoader, datapacks)
+        scanLocalDatapackDirectories(subPath, seenSources, consumer)
+
+        // 7. Scan du ResourceManager du serveur local (si monde chargé)
         scanServerResourceManager(subPath, seenSources, consumer)
 
-        // 7. Scan du ResourceManager client (si packs de ressources actifs)
+        // 8. Scan du ResourceManager client (si packs de ressources actifs)
         scanClientResourceManager(subPath, seenSources, consumer)
 
         logger.info("Cobblemon JEI: Scan pour '$subPath' terminé avec ${seenSources.size} fichiers traités.")
@@ -199,12 +202,47 @@ object CobblemonDataScanner {
             val gameDir = try { Minecraft.getInstance().gameDirectory } catch (_: Throwable) { File(".") }
             val modsDir = File(gameDir, "mods")
             if (modsDir.exists() && modsDir.isDirectory) {
-                modsDir.walkTopDown().filter { it.isFile && it.name.endsWith(".jar") }.forEach { jar ->
+                modsDir.walkTopDown().filter { file ->
+                    file.isFile && file.name.endsWith(".jar") &&
+                        (file.name.contains("cobblemon", ignoreCase = true) ||
+                         file.name.contains("rct", ignoreCase = true) ||
+                         file.name.contains("radical", ignoreCase = true) ||
+                         file.name.contains("trainer", ignoreCase = true) ||
+                         file.name.contains("atm", ignoreCase = true) ||
+                         file.name.contains("allthemods", ignoreCase = true) ||
+                         file.name.contains("kubejs", ignoreCase = true))
+                }.forEach { jar ->
                     scanZipFile(jar, subPath, seen, consumer)
                 }
             }
         } catch (e: Throwable) {
             logger.debug("Scan modsDir exception: {}", e.message)
+        }
+    }
+
+    /**
+     * Parcourt les dossiers de données locaux spécifiques aux modpacks (KubeJS, OpenLoader, datapacks).
+     */
+    private fun scanLocalDatapackDirectories(
+        subPath: String,
+        seen: MutableSet<String>,
+        consumer: (String, InputStream) -> Unit
+    ) {
+        try {
+            val gameDir = try { Minecraft.getInstance().gameDirectory } catch (_: Throwable) { File(".") }
+            val dirs = listOf(
+                File(gameDir, "kubejs/data"),
+                File(gameDir, "openloader/data"),
+                File(gameDir, "config/openloader/data"),
+                File(gameDir, "datapacks")
+            )
+            for (dir in dirs) {
+                if (dir.exists() && dir.isDirectory) {
+                    scanDirectory(dir, subPath, seen, consumer)
+                }
+            }
+        } catch (e: Throwable) {
+            logger.debug("Scan local datapacks exception: {}", e.message)
         }
     }
 

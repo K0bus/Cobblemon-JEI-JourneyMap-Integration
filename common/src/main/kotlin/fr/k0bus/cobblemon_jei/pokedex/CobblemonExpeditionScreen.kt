@@ -78,22 +78,22 @@ class CobblemonExpeditionScreen(
         val modalX = (width - modalW) / 2
         val modalY = 20
 
-        val settingsBtnW = 20
+        val settingsBtnW = 18
         val settingsBtnH = 16
         val settingsBtnX = modalX + modalW - settingsBtnW - 6
         val settingsBtnY = modalY + 4
-        val settingsBtn = Button.builder(Component.literal("⚙")) {
+        val settingsBtn = CobblemonDarkButton(settingsBtnX, settingsBtnY, settingsBtnW, settingsBtnH, Component.empty(), CobblemonPokedexScreen.SETTINGS_ICON) {
             minecraft?.setScreen(CobblemonSettingsScreen(this))
-        }.bounds(settingsBtnX, settingsBtnY, settingsBtnW, settingsBtnH).build()
+        }
         settingsBtn.tooltip = Tooltip.create(Component.literal("Paramètres & Diagnostic du Mod"))
         addRenderableWidget(settingsBtn)
 
         val btnW = 120
         val btnH = 20
         addRenderableWidget(
-            Button.builder(Component.literal("Fermer")) {
+            CobblemonDarkButton(width / 2 - btnW / 2, height - 26, btnW, btnH, Component.literal("Fermer")) {
                 onClose()
-            }.bounds(width / 2 - btnW / 2, height - 26, btnW, btnH).build()
+            }
         )
     }
 

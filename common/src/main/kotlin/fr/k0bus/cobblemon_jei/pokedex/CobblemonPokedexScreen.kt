@@ -32,21 +32,146 @@ import net.minecraft.client.gui.components.Tooltip
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.world.item.ItemStack
+import com.mojang.blaze3d.systems.RenderSystem
 import org.lwjgl.glfw.GLFW
 import java.text.Normalizer
 import kotlin.math.max
 import kotlin.math.min
 
 /**
+ * Bouton d'interface moderne respectant fidèlement la Direction Artistique (DA) sombre du mod.
+ * Remplace intégralement les boutons grisâtres Minecraft standard par des aplats sombres,
+ * des bordures subtiles et l'intégration nette des textures d'icônes PNG monochromes (Game-Icons).
+ */
+class CobblemonDarkButton(
+    x: Int,
+    y: Int,
+    width: Int,
+    height: Int,
+    message: Component,
+    private val iconRes: ResourceLocation? = null,
+    private val isTab: Boolean = false,
+    private val isSelected: () -> Boolean = { false },
+    onPress: (Button) -> Unit
+) : Button(x, y, width, height, message, OnPress { onPress(it) }, DEFAULT_NARRATION) {
+
+    override fun renderWidget(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
+        val selected = isSelected()
+        val hovered = isHoveredOrFocused && active
+
+        val bgColor = when {
+            !active -> 0x66141720.toInt()
+            selected -> 0xFF1D263B.toInt()
+            hovered -> 0xFF252C3D.toInt()
+            else -> 0xFF161922.toInt()
+        }
+
+        val borderColor = when {
+            !active -> 0xFF202430.toInt()
+            selected -> 0xFF3498DB.toInt()
+            hovered -> 0xFF4A90E2.toInt()
+            else -> 0xFF282D3C.toInt()
+        }
+
+        val textColor = when {
+            !active -> 0xFF555555.toInt()
+            selected -> 0xFFFFFFFF.toInt()
+            hovered -> 0xFFFFFFFF.toInt()
+            else -> 0xFFCCCCCC.toInt()
+        }
+
+        guiGraphics.fill(x, y, x + width, y + height, bgColor)
+        guiGraphics.fill(x, y, x + width, y + 1, borderColor)
+        guiGraphics.fill(x, y + height - 1, x + width, y + height, borderColor)
+        guiGraphics.fill(x, y, x + 1, y + height, borderColor)
+        guiGraphics.fill(x + width - 1, y, x + width, y + height, borderColor)
+
+        if (selected && isTab) {
+            guiGraphics.fill(x + 1, y + height - 2, x + width - 1, y + height, 0xFF3498DB.toInt())
+        }
+
+        var textStartX = x
+        if (iconRes != null) {
+            val iconSize = 12
+            val iconX = if (message.string.isBlank()) x + (width - iconSize) / 2 else x + 5
+            val iconY = y + (height - iconSize) / 2
+
+            RenderSystem.enableBlend()
+            RenderSystem.defaultBlendFunc()
+            val a = ((textColor shr 24) and 0xFF) / 255f
+            val r = ((textColor shr 16) and 0xFF) / 255f
+            val g = ((textColor shr 8) and 0xFF) / 255f
+            val b = (textColor and 0xFF) / 255f
+            RenderSystem.setShaderColor(r, g, b, if (a > 0f) a else 1f)
+            guiGraphics.blit(iconRes, iconX, iconY, iconSize, iconSize, 0f, 0f, 512, 512, 512, 512)
+            RenderSystem.setShaderColor(1f, 1f, 1f, 1f)
+
+            if (message.string.isNotBlank()) {
+                textStartX = iconX + iconSize + 4
+            }
+        }
+
+        if (message.string.isNotBlank()) {
+            val font = Minecraft.getInstance().font
+            val textY = y + (height - 8) / 2
+            if (iconRes != null) {
+                guiGraphics.drawString(font, message, textStartX, textY, textColor, false)
+            } else {
+                guiGraphics.drawCenteredString(font, message, x + width / 2, textY, textColor)
+            }
+        }
+    }
+}
+
+/**
  * Interface graphique complète du Pokédex & Tracker d'évolutions.
- * Propose une grille de suivi des Pokémon (Tous, Manquants) et un onglet dédié
- * aux évolutions à réaliser, avec mise en avant de celles faisables grâce au PC.
+ * Propose une navigation hiérarchique avec boutons custom (DA sombre) :
+ * 1. Pokédex (Global, Manquants)
+ * 2. Évolution & Complétion (Évolutions en attente, Origines & Reproduction, Fossiles, Légendaires)
+ * 3. Expéditions & Détection de Hotspots intégrées
  */
 class CobblemonPokedexScreen(
     private val parentScreen: Screen? = null
 ) : Screen(Component.translatable("gui.cobblemon_jei.pokedex.title")) {
+
+    companion object {
+        val FOSSIL_SPECIES_NAMES = setOf(
+            "omanyte", "omastar", "kabuto", "kabutops", "aerodactyl",
+            "lileep", "cradily", "anorith", "armaldo",
+            "cranidos", "rampardos", "shieldon", "bastiodon",
+            "tirtouga", "carracosta", "archen", "archeops",
+            "tyrunt", "tyrantrum", "amaura", "aurorus",
+            "dracozolt", "arctozolt", "dracovish", "arctovish"
+        )
+        val POKEDEX_ICON = ResourceLocation.fromNamespaceAndPath("cobblemon_jei", "textures/gui/icons/pokedex.png")
+        val EVOLUTION_ICON = ResourceLocation.fromNamespaceAndPath("cobblemon_jei", "textures/gui/icons/evolution.png")
+        val SETTINGS_ICON = ResourceLocation.fromNamespaceAndPath("cobblemon_jei", "textures/gui/icons/settings.png")
+        val RCT_ICON = ResourceLocation.fromNamespaceAndPath("cobblemon_jei", "textures/gui/icons/rct.png")
+        val EXPEDITION_ICON = ResourceLocation.fromNamespaceAndPath("cobblemon_jei", "textures/gui/icons/expedition.png")
+        val TRACKER_ICON = ResourceLocation.fromNamespaceAndPath("cobblemon_jei", "textures/gui/icons/tracker.png")
+        val LEADERBOARD_ICON = ResourceLocation.fromNamespaceAndPath("cobblemon_jei", "textures/gui/icons/leaderboard.png")
+    }
+
+    enum class MainTab(val label: String, val iconRes: ResourceLocation) {
+        POKEDEX("Pokédex", POKEDEX_ICON),
+        EVOLUTIONS("Évolution & Complétion", EVOLUTION_ICON),
+        EXPEDITIONS("Expéditions", EXPEDITION_ICON)
+    }
+
+    enum class PokedexSubTab(val label: String) {
+        ALL("Global"),
+        MISSING("Manquants")
+    }
+
+    enum class EvolutionSubTab(val label: String) {
+        PENDING_EVOLUTIONS("Évolutions en attente"),
+        MISSING_ORIGINS("Origines & Repro"),
+        FOSSILS("Fossiles"),
+        LEGENDARIES("Légendaires")
+    }
 
     enum class Tab(val labelKey: String) {
         ALL("gui.cobblemon_jei.pokedex.tab.all"),
@@ -65,8 +190,19 @@ class CobblemonPokedexScreen(
         SPAWNS("Zones", "Zones d'apparition sauvage")
     }
 
+    private var currentMainTab: MainTab = MainTab.POKEDEX
+    private var currentPokedexSubTab: PokedexSubTab = PokedexSubTab.ALL
+    private var currentEvolutionSubTab: EvolutionSubTab = EvolutionSubTab.PENDING_EVOLUTIONS
     private var currentTab: Tab = Tab.ALL
     private var onlyPcFeasibleEvolutions: Boolean = false
+
+    // Listes de données spécifiques aux sous-onglets
+    private var allBreedingOrigins: List<BreedingOriginGoal> = emptyList()
+    private var filteredBreedingOrigins: List<BreedingOriginGoal> = emptyList()
+    private var allFossilSpecies: List<TrackedPokemon> = emptyList()
+    private var filteredFossils: List<TrackedPokemon> = emptyList()
+    private var allLegendarySpecies: List<TrackedPokemon> = emptyList()
+    private var filteredLegendaries: List<TrackedPokemon> = emptyList()
 
     // Onglet et défilement du panneau droit
     enum class SpawnSubCategory(val label: String, val tooltip: String) {
@@ -87,14 +223,28 @@ class CobblemonPokedexScreen(
     private var dragStartRightScroll: Double = 0.0
     private val rightPanelClickablePokemon = mutableListOf<Triple<IntArray, Species, Boolean>>()
 
-    // Éléments d'interface
+    // Boutons d'interface Custom
     private lateinit var searchBox: EditBox
-    private lateinit var tabAllBtn: Button
-    private lateinit var tabMissingBtn: Button
-    private lateinit var tabEvolutionsBtn: Button
-    private lateinit var togglePcEvolutionsBtn: Button
-    private lateinit var trackerBtn: Button
-    private lateinit var expeditionBtn: Button
+    private lateinit var mainPokedexBtn: CobblemonDarkButton
+    private lateinit var mainEvolutionsBtn: CobblemonDarkButton
+    private lateinit var mainExpeditionsBtn: CobblemonDarkButton
+
+    private lateinit var subPokedexAllBtn: CobblemonDarkButton
+    private lateinit var subPokedexMissingBtn: CobblemonDarkButton
+    private lateinit var subEvoPendingBtn: CobblemonDarkButton
+    private lateinit var subEvoOriginsBtn: CobblemonDarkButton
+    private lateinit var subEvoFossilsBtn: CobblemonDarkButton
+    private lateinit var subEvoLegendariesBtn: CobblemonDarkButton
+    private lateinit var togglePcEvolutionsBtn: CobblemonDarkButton
+    private lateinit var refreshExpeditionsBtn: CobblemonDarkButton
+
+    private lateinit var trackerBtn: CobblemonDarkButton
+    private var rctBtn: CobblemonDarkButton? = null
+    private var leaderboardBtn: CobblemonDarkButton? = null
+    private lateinit var settingsBtn: CobblemonDarkButton
+    private lateinit var closeBtn: CobblemonDarkButton
+    private lateinit var filterBtn: CobblemonDarkButton
+    private lateinit var quickResetFilterBtn: CobblemonDarkButton
 
     // Gestion du Tracker Modal et Watchlist
     private var isTrackerModalOpen: Boolean = false
@@ -128,8 +278,6 @@ class CobblemonPokedexScreen(
     private var isDraggingBiomeScrollbar: Boolean = false
     private var dragStartBiomeMouseY: Double = 0.0
     private var dragStartBiomeScroll: Double = 0.0
-    private lateinit var filterBtn: Button
-    private lateinit var quickResetFilterBtn: Button
     private lateinit var biomeSearchBox: EditBox
 
     // Données filtrées
@@ -311,65 +459,134 @@ class CobblemonPokedexScreen(
         allTracked = PokemonTrackerService.getAllTracked()
         invalidateFilterCountsCache()
         allGoals = PokemonTrackerService.getEvolutionGoals()
+        allBreedingOrigins = PokemonTrackerService.getMissingOriginGoals()
+        allFossilSpecies = allTracked.filter { FOSSIL_SPECIES_NAMES.contains(it.species.name.lowercase()) }
+        allLegendarySpecies = allTracked.filter {
+            fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.isCoveredSpecies(it.species.name) ||
+                    it.species.labels.any { l -> l.equals("legendary", true) || l.equals("mythical", true) || l.equals("ultra_beast", true) }
+        }
 
         if (selectedTracked == null) {
             selectedTracked = allTracked.firstOrNull()
         }
 
-        val topY = 26
-        val tabWidth = 110
-        val tabHeight = 18
-
-        // Boutons d'onglets
-        tabAllBtn = Button.builder(Component.translatable(Tab.ALL.labelKey)) {
-            switchTab(Tab.ALL)
-        }.bounds(12, topY, tabWidth, tabHeight).build()
-
-        tabMissingBtn = Button.builder(Component.translatable(Tab.MISSING.labelKey)) {
-            switchTab(Tab.MISSING)
-        }.bounds(12 + tabWidth + 4, topY, tabWidth + 10, tabHeight).build()
-
-        val goalsCount = allGoals.count { it.feasibility == EvolutionFeasibility.READY_TO_EVOLVE }
-        val evoLabel = if (goalsCount > 0) {
-            Component.translatable(Tab.EVOLUTIONS.labelKey).append(" (§a$goalsCount§r)")
-        } else {
-            Component.translatable(Tab.EVOLUTIONS.labelKey)
+        // Préchauffage asynchrone des données RCT en arrière-plan sans bloquer l'interface
+        if (fr.k0bus.cobblemon_jei.compat.rct.RctCompat.isLoaded) {
+            fr.k0bus.cobblemon_jei.compat.rct.RctDataLoader.preloadAsync()
         }
-        tabEvolutionsBtn = Button.builder(evoLabel) {
-            switchTab(Tab.EVOLUTIONS)
-        }.bounds(12 + (tabWidth + 4) * 2 + 10, topY, tabWidth + 24, tabHeight).build()
 
-        addRenderableWidget(tabAllBtn)
-        addRenderableWidget(tabMissingBtn)
-        addRenderableWidget(tabEvolutionsBtn)
+        val topY = 6
+        val btnH = 18
 
-        // Filtre toggle pour les évolutions faisables via PC
-        togglePcEvolutionsBtn = Button.builder(getTogglePcButtonText()) {
+        // 1. Onglets principaux (Row 1)
+        mainPokedexBtn = CobblemonDarkButton(12, topY, 80, btnH, Component.literal("Pokédex"), POKEDEX_ICON, isTab = true, isSelected = { currentMainTab == MainTab.POKEDEX }) {
+            switchMainTab(MainTab.POKEDEX)
+        }
+        addRenderableWidget(mainPokedexBtn)
+
+        val evoGoalsReady = allGoals.count { it.feasibility == EvolutionFeasibility.READY_TO_EVOLVE }
+        val evoLabel = if (evoGoalsReady > 0) "Évolution (§a$evoGoalsReady§r)" else "Évolution"
+        mainEvolutionsBtn = CobblemonDarkButton(96, topY, 130, btnH, Component.literal(evoLabel), EVOLUTION_ICON, isTab = true, isSelected = { currentMainTab == MainTab.EVOLUTIONS }) {
+            switchMainTab(MainTab.EVOLUTIONS)
+        }
+        addRenderableWidget(mainEvolutionsBtn)
+
+        mainExpeditionsBtn = CobblemonDarkButton(230, topY, 105, btnH, Component.literal("Expéditions"), EXPEDITION_ICON, isTab = true, isSelected = { currentMainTab == MainTab.EXPEDITIONS }) {
+            switchMainTab(MainTab.EXPEDITIONS)
+        }
+        addRenderableWidget(mainExpeditionsBtn)
+
+        // Actions rapides à droite (Row 1)
+        var rightX = width - 22
+        closeBtn = CobblemonDarkButton(rightX, topY, 16, btnH, Component.literal("✕")) {
+            onClose()
+        }
+        addRenderableWidget(closeBtn)
+
+        rightX -= 22
+        settingsBtn = CobblemonDarkButton(rightX, topY, 18, btnH, Component.empty(), SETTINGS_ICON) {
+            minecraft?.setScreen(CobblemonSettingsScreen(this))
+        }
+        settingsBtn.tooltip = Tooltip.create(Component.literal("Paramètres & Diagnostic du Mod"))
+        addRenderableWidget(settingsBtn)
+
+        if (fr.k0bus.cobblemon_jei.leaderboard.CobblemonScoreboardService.isAvailable()) {
+            rightX -= 22
+            val lBtn = CobblemonDarkButton(rightX, topY, 18, btnH, Component.empty(), LEADERBOARD_ICON) {
+                minecraft?.setScreen(fr.k0bus.cobblemon_jei.leaderboard.CobblemonLeaderboardScreen(this))
+            }
+            lBtn.tooltip = Tooltip.create(Component.literal("Classement des Joueurs"))
+            addRenderableWidget(lBtn)
+            leaderboardBtn = lBtn
+        }
+
+        if (fr.k0bus.cobblemon_jei.compat.rct.RctCompat.isAvailable()) {
+            rightX -= 22
+            val rBtn = CobblemonDarkButton(rightX, topY, 18, btnH, Component.empty(), RCT_ICON) {
+                minecraft?.setScreen(fr.k0bus.cobblemon_jei.compat.rct.CobblemonRctProgressionScreen(this))
+            }
+            rBtn.tooltip = Tooltip.create(Component.literal("Arbre de Progression Radical Trainers"))
+            addRenderableWidget(rBtn)
+            rctBtn = rBtn
+        }
+
+        rightX -= 94
+        trackerBtn = CobblemonDarkButton(rightX, topY, 90, btnH, Component.literal(PokemonTrackingManager.getModeSummary()), TRACKER_ICON) {
+            openTrackerModal()
+        }
+        trackerBtn.tooltip = Tooltip.create(Component.literal("Mode Radar & Tracker : ${PokemonTrackingManager.getModeSummary()} (Cliquer pour gérer)"))
+        addRenderableWidget(trackerBtn)
+
+        // 2. Sous-onglets (Row 2, y = 27, height = 17)
+        val subY = 27
+        val subH = 17
+
+        subPokedexAllBtn = CobblemonDarkButton(12, subY, 65, subH, Component.literal("Global"), isTab = true, isSelected = { currentMainTab == MainTab.POKEDEX && currentPokedexSubTab == PokedexSubTab.ALL }) {
+            switchPokedexSubTab(PokedexSubTab.ALL)
+        }
+        subPokedexMissingBtn = CobblemonDarkButton(81, subY, 85, subH, Component.literal("Manquants"), isTab = true, isSelected = { currentMainTab == MainTab.POKEDEX && currentPokedexSubTab == PokedexSubTab.MISSING }) {
+            switchPokedexSubTab(PokedexSubTab.MISSING)
+        }
+        addRenderableWidget(subPokedexAllBtn)
+        addRenderableWidget(subPokedexMissingBtn)
+
+        subEvoPendingBtn = CobblemonDarkButton(12, subY, 115, subH, Component.literal("Évolutions (§a$evoGoalsReady§r)"), isTab = true, isSelected = { currentMainTab == MainTab.EVOLUTIONS && currentEvolutionSubTab == EvolutionSubTab.PENDING_EVOLUTIONS }) {
+            switchEvolutionSubTab(EvolutionSubTab.PENDING_EVOLUTIONS)
+        }
+        val originsCount = allBreedingOrigins.count { it.isReadyToBreed }
+        val originsLabel = if (originsCount > 0) "Origines & Repro (§e$originsCount§r)" else "Origines & Repro"
+        subEvoOriginsBtn = CobblemonDarkButton(131, subY, 120, subH, Component.literal(originsLabel), isTab = true, isSelected = { currentMainTab == MainTab.EVOLUTIONS && currentEvolutionSubTab == EvolutionSubTab.MISSING_ORIGINS }) {
+            switchEvolutionSubTab(EvolutionSubTab.MISSING_ORIGINS)
+        }
+        subEvoFossilsBtn = CobblemonDarkButton(255, subY, 65, subH, Component.literal("Fossiles"), isTab = true, isSelected = { currentMainTab == MainTab.EVOLUTIONS && currentEvolutionSubTab == EvolutionSubTab.FOSSILS }) {
+            switchEvolutionSubTab(EvolutionSubTab.FOSSILS)
+        }
+        subEvoLegendariesBtn = CobblemonDarkButton(324, subY, 85, subH, Component.literal("Légendaires"), isTab = true, isSelected = { currentMainTab == MainTab.EVOLUTIONS && currentEvolutionSubTab == EvolutionSubTab.LEGENDARIES }) {
+            switchEvolutionSubTab(EvolutionSubTab.LEGENDARIES)
+        }
+        togglePcEvolutionsBtn = CobblemonDarkButton(413, subY, 130, subH, getTogglePcButtonText()) {
             onlyPcFeasibleEvolutions = !onlyPcFeasibleEvolutions
             togglePcEvolutionsBtn.message = getTogglePcButtonText()
             applyFilters()
-        }.bounds(tabEvolutionsBtn.x + tabEvolutionsBtn.width + 8, topY, 130, tabHeight).build()
-        togglePcEvolutionsBtn.visible = (currentTab == Tab.EVOLUTIONS)
+        }
+        addRenderableWidget(subEvoPendingBtn)
+        addRenderableWidget(subEvoOriginsBtn)
+        addRenderableWidget(subEvoFossilsBtn)
+        addRenderableWidget(subEvoLegendariesBtn)
         addRenderableWidget(togglePcEvolutionsBtn)
 
-        trackerBtn = Button.builder(getTrackerButtonText()) {
-            openTrackerModal()
-        }.bounds(getTrackerButtonX(), topY, 130, tabHeight).build()
-        addRenderableWidget(trackerBtn)
+        refreshExpeditionsBtn = CobblemonDarkButton(12, subY, 140, subH, Component.literal("↻ Actualiser l'analyse")) {
+            triggerExpeditionCalculation()
+        }
+        addRenderableWidget(refreshExpeditionsBtn)
 
-        expeditionBtn = Button.builder(Component.literal("🏕 Expéditions")) {
-            openExpeditionModal()
-        }.bounds(getExpeditionButtonX(), topY, 100, tabHeight).build()
-        expeditionBtn.tooltip = Tooltip.create(Component.literal("Planificateur d'Expéditions & Détection de Hotspots"))
-        addRenderableWidget(expeditionBtn)
-
-        // Champ de recherche et boutons de filtres
+        // 3. Barre de recherche et filtres (Row 3, y = 48, height = 18)
         val searchX = 12
         val searchY = 48
         val totalSearchRowWidth = max(180, width - 215)
         val filterBtnW = 86
         val gap = 4
-        val quickResetW = 20
+        val quickResetW = 18
         val searchWidth = max(70, totalSearchRowWidth - filterBtnW - gap - quickResetW - gap)
         val searchHeight = 18
 
@@ -379,53 +596,18 @@ class CobblemonPokedexScreen(
         addRenderableWidget(searchBox)
 
         val filterBtnX = searchX + searchWidth + gap
-        filterBtn = Button.builder(getFilterButtonText()) {
+        filterBtn = CobblemonDarkButton(filterBtnX, searchY, filterBtnW, searchHeight, getFilterButtonText()) {
             openFilterModal()
-        }.bounds(filterBtnX, searchY, filterBtnW, searchHeight).build()
+        }
         addRenderableWidget(filterBtn)
 
         val resetBtnX = filterBtnX + filterBtnW + gap
-        quickResetFilterBtn = Button.builder(Component.literal("✕")) {
+        quickResetFilterBtn = CobblemonDarkButton(resetBtnX, searchY, quickResetW, searchHeight, Component.literal("✕")) {
             resetFilters()
-        }.bounds(resetBtnX, searchY, quickResetW, searchHeight).build()
+        }
         quickResetFilterBtn.visible = filterState.isActive()
-        quickResetFilterBtn.tooltip = Tooltip.create(Component.literal("Réinitialiser tous les filtres"))
+        quickResetFilterBtn.setTooltip(Tooltip.create(Component.literal("Réinitialiser tous les filtres")))
         addRenderableWidget(quickResetFilterBtn)
-
-        var rightOffset = 24
-        // Bouton Fermer
-        val closeBtn = Button.builder(Component.literal("✕")) {
-            onClose()
-        }.bounds(width - rightOffset, topY, 18, tabHeight).build()
-        addRenderableWidget(closeBtn)
-        rightOffset += 24
-
-        // Bouton Classement (uniquement si disponible sur le serveur)
-        if (fr.k0bus.cobblemon_jei.leaderboard.CobblemonScoreboardService.isAvailable()) {
-            val leaderboardBtn = Button.builder(Component.literal("🏆")) {
-                minecraft?.setScreen(fr.k0bus.cobblemon_jei.leaderboard.CobblemonLeaderboardScreen(this))
-            }.bounds(width - rightOffset, topY, 20, tabHeight).build()
-            leaderboardBtn.tooltip = Tooltip.create(Component.literal("Classement des Joueurs"))
-            addRenderableWidget(leaderboardBtn)
-            rightOffset += 24
-        }
-
-        // Bouton Radical Cobblemon Trainers (si le mod RCT est disponible ou séries chargées)
-        if (fr.k0bus.cobblemon_jei.compat.rct.RctCompat.isAvailable()) {
-            val rctBtn = Button.builder(Component.literal("⚔")) {
-                minecraft?.setScreen(fr.k0bus.cobblemon_jei.compat.rct.CobblemonRctProgressionScreen(this))
-            }.bounds(width - rightOffset, topY, 20, tabHeight).build()
-            rctBtn.tooltip = Tooltip.create(Component.literal("Arbre de Progression Radical Trainers"))
-            addRenderableWidget(rctBtn)
-            rightOffset += 24
-        }
-
-        // Bouton Paramètres & Diagnostic du Mod
-        val settingsBtn = Button.builder(Component.literal("⚙")) {
-            minecraft?.setScreen(CobblemonSettingsScreen(this))
-        }.bounds(width - rightOffset, topY, 20, tabHeight).build()
-        settingsBtn.tooltip = Tooltip.create(Component.literal("Paramètres & Diagnostic du Mod"))
-        addRenderableWidget(settingsBtn)
 
         // Boîte de recherche pour le filtre de biomes
         biomeSearchBox = EditBox(font, 0, 0, 100, 16, Component.literal(""))
@@ -435,52 +617,86 @@ class CobblemonPokedexScreen(
         }
         addWidget(biomeSearchBox)
 
-        updateTabButtonStyles()
+        updateSubTabVisibility()
         updateFilterModalWidgetVisibility()
         updateTrackerButton()
         applyFilters()
     }
 
-    private fun getTrackerButtonX(): Int {
-        return if (currentTab == Tab.EVOLUTIONS) {
-            togglePcEvolutionsBtn.x + togglePcEvolutionsBtn.width + 6
-        } else {
-            tabEvolutionsBtn.x + tabEvolutionsBtn.width + 8
-        }
+    private fun updateSubTabVisibility() {
+        val isPokedex = (currentMainTab == MainTab.POKEDEX)
+        val isEvolutions = (currentMainTab == MainTab.EVOLUTIONS)
+        val isExpeditions = (currentMainTab == MainTab.EXPEDITIONS)
+
+        subPokedexAllBtn.visible = isPokedex
+        subPokedexMissingBtn.visible = isPokedex
+
+        subEvoPendingBtn.visible = isEvolutions
+        subEvoOriginsBtn.visible = isEvolutions
+        subEvoFossilsBtn.visible = isEvolutions
+        subEvoLegendariesBtn.visible = isEvolutions
+        togglePcEvolutionsBtn.visible = (isEvolutions && currentEvolutionSubTab == EvolutionSubTab.PENDING_EVOLUTIONS)
+
+        refreshExpeditionsBtn.visible = isExpeditions
     }
 
-    private fun getExpeditionButtonX(): Int {
-        return getTrackerButtonX() + 134
+    private fun switchMainTab(mainTab: MainTab) {
+        currentMainTab = mainTab
+        currentTab = when (mainTab) {
+            MainTab.POKEDEX -> if (currentPokedexSubTab == PokedexSubTab.MISSING) Tab.MISSING else Tab.ALL
+            MainTab.EVOLUTIONS -> Tab.EVOLUTIONS
+            MainTab.EXPEDITIONS -> Tab.ALL
+        }
+        scrollOffset = 0.0
+        if (mainTab == MainTab.EXPEDITIONS && expeditionSuggestions.isEmpty() && !isExpeditionLoading) {
+            triggerExpeditionCalculation()
+        }
+        updateSubTabVisibility()
+        applyFilters()
     }
 
-    private fun getTrackerButtonText(): Component {
-        return Component.literal("🎯 ${PokemonTrackingManager.getModeSummary()}")
+    private fun switchPokedexSubTab(sub: PokedexSubTab) {
+        currentPokedexSubTab = sub
+        currentTab = if (sub == PokedexSubTab.MISSING) Tab.MISSING else Tab.ALL
+        scrollOffset = 0.0
+        applyFilters()
     }
 
-    fun updateTrackerButton() {
-        if (::trackerBtn.isInitialized) {
-            trackerBtn.x = getTrackerButtonX()
-            trackerBtn.message = getTrackerButtonText()
-            trackerBtn.tooltip = Tooltip.create(Component.literal("Mode Radar & Tracker : ${PokemonTrackingManager.getModeSummary()} (Cliquer pour gérer)"))
-        }
-        if (::expeditionBtn.isInitialized) {
-            expeditionBtn.x = getExpeditionButtonX()
-        }
+    private fun switchEvolutionSubTab(sub: EvolutionSubTab) {
+        currentEvolutionSubTab = sub
+        currentTab = Tab.EVOLUTIONS
+        scrollOffset = 0.0
+        updateSubTabVisibility()
+        applyFilters()
     }
 
     private fun switchTab(tab: Tab) {
         currentTab = tab
+        when (tab) {
+            Tab.ALL -> {
+                currentMainTab = MainTab.POKEDEX
+                currentPokedexSubTab = PokedexSubTab.ALL
+            }
+            Tab.MISSING -> {
+                currentMainTab = MainTab.POKEDEX
+                currentPokedexSubTab = PokedexSubTab.MISSING
+            }
+            Tab.EVOLUTIONS -> {
+                currentMainTab = MainTab.EVOLUTIONS
+                currentEvolutionSubTab = EvolutionSubTab.PENDING_EVOLUTIONS
+            }
+        }
         scrollOffset = 0.0
-        togglePcEvolutionsBtn.visible = (currentTab == Tab.EVOLUTIONS)
-        updateTabButtonStyles()
+        updateSubTabVisibility()
         updateTrackerButton()
         applyFilters()
     }
 
-    private fun updateTabButtonStyles() {
-        tabAllBtn.active = (currentTab != Tab.ALL)
-        tabMissingBtn.active = (currentTab != Tab.MISSING)
-        tabEvolutionsBtn.active = (currentTab != Tab.EVOLUTIONS)
+    fun updateTrackerButton() {
+        if (::trackerBtn.isInitialized) {
+            trackerBtn.message = Component.literal(PokemonTrackingManager.getModeSummary())
+            trackerBtn.setTooltip(Tooltip.create(Component.literal("Mode Radar & Tracker : ${PokemonTrackingManager.getModeSummary()} (Cliquer pour gérer)")))
+        }
     }
 
     private fun getTogglePcButtonText(): Component {
@@ -502,11 +718,11 @@ class CobblemonPokedexScreen(
     private fun updateFilterButton() {
         if (::filterBtn.isInitialized) {
             filterBtn.message = getFilterButtonText()
-            filterBtn.tooltip = if (filterState.isActive()) {
+            filterBtn.setTooltip(if (filterState.isActive()) {
                 Tooltip.create(Component.literal("Filtres actifs : ${filterState.activeCount()} (Cliquer pour modifier)"))
             } else {
                 Tooltip.create(Component.literal("Ouvrir le panneau de filtres avancés"))
-            }
+            })
         }
         if (::quickResetFilterBtn.isInitialized) {
             quickResetFilterBtn.visible = filterState.isActive()
@@ -564,38 +780,80 @@ class CobblemonPokedexScreen(
     private fun applyFilters() {
         val query = searchBox.value.trim().lowercase()
 
-        when (currentTab) {
-            Tab.ALL -> {
-                val stream = allTracked.filter { matchesQuery(it, query) && PokedexFilterManager.matches(it, filterState) }
-                filteredTracked = PokedexFilterManager.sort(stream, filterState.selectedSort)
-            }
-            Tab.MISSING -> {
-                val stream = allTracked.filter { (it.isMissing || it.isEncountered) && matchesQuery(it, query) && PokedexFilterManager.matches(it, filterState) }
-                filteredTracked = PokedexFilterManager.sort(stream, filterState.selectedSort)
-            }
-            Tab.EVOLUTIONS -> {
-                var stream = allGoals
-                if (onlyPcFeasibleEvolutions) {
-                    stream = stream.filter {
-                        it.feasibility == EvolutionFeasibility.READY_TO_EVOLVE ||
-                                it.feasibility == EvolutionFeasibility.CAN_EVOLVE_WITH_PC
+        when (currentMainTab) {
+            MainTab.POKEDEX -> {
+                when (currentPokedexSubTab) {
+                    PokedexSubTab.ALL -> {
+                        val stream = allTracked.filter { matchesQuery(it, query) && PokedexFilterManager.matches(it, filterState) }
+                        filteredTracked = PokedexFilterManager.sort(stream, filterState.selectedSort)
+                    }
+                    PokedexSubTab.MISSING -> {
+                        val stream = allTracked.filter { (it.isMissing || it.isEncountered) && matchesQuery(it, query) && PokedexFilterManager.matches(it, filterState) }
+                        filteredTracked = PokedexFilterManager.sort(stream, filterState.selectedSort)
                     }
                 }
-                if (filterState.isActive()) {
-                    stream = stream.filter { goal ->
-                        val dummyTarget = TrackedPokemon(goal.targetSpecies, goal.targetStatus, emptyList())
-                        PokedexFilterManager.matches(dummyTarget, filterState)
+            }
+            MainTab.EVOLUTIONS -> {
+                when (currentEvolutionSubTab) {
+                    EvolutionSubTab.PENDING_EVOLUTIONS -> {
+                        var stream = allGoals
+                        if (onlyPcFeasibleEvolutions) {
+                            stream = stream.filter {
+                                it.feasibility == EvolutionFeasibility.READY_TO_EVOLVE ||
+                                        it.feasibility == EvolutionFeasibility.CAN_EVOLVE_WITH_PC
+                            }
+                        }
+                        if (filterState.isActive()) {
+                            stream = stream.filter { goal ->
+                                val dummyTarget = TrackedPokemon(goal.targetSpecies, goal.targetStatus, emptyList())
+                                PokedexFilterManager.matches(dummyTarget, filterState)
+                            }
+                        }
+                        filteredGoals = stream.filter { goal ->
+                            matchesGoalQuery(goal, query)
+                        }
+                    }
+                    EvolutionSubTab.MISSING_ORIGINS -> {
+                        var stream = allBreedingOrigins
+                        if (filterState.isActive()) {
+                            stream = stream.filter { goal ->
+                                val baseTracked = allTracked.find { PokemonTrackingManager.isSameSpecies(it.species, goal.baseSpecies) }
+                                    ?: TrackedPokemon(goal.baseSpecies, PokedexStatus.MISSING, emptyList())
+                                PokedexFilterManager.matches(baseTracked, filterState)
+                            }
+                        }
+                        filteredBreedingOrigins = stream.filter { goal ->
+                            matchesBreedingOriginQuery(goal, query)
+                        }
+                    }
+                    EvolutionSubTab.FOSSILS -> {
+                        val stream = allFossilSpecies.filter { matchesQuery(it, query) && PokedexFilterManager.matches(it, filterState) }
+                        filteredFossils = PokedexFilterManager.sort(stream, filterState.selectedSort)
+                    }
+                    EvolutionSubTab.LEGENDARIES -> {
+                        val stream = allLegendarySpecies.filter { matchesQuery(it, query) && PokedexFilterManager.matches(it, filterState) }
+                        filteredLegendaries = PokedexFilterManager.sort(stream, filterState.selectedSort)
                     }
                 }
-                filteredGoals = stream.filter { goal ->
-                    matchesGoalQuery(goal, query)
-                }
+            }
+            MainTab.EXPEDITIONS -> {
+                // Pas de filtrage complexe pour les suggestions d'expéditions
             }
         }
 
         recomputeMaxScroll()
         scrollOffset = scrollOffset.coerceIn(0.0, maxScroll)
         updateFilterButton()
+    }
+
+    private fun matchesBreedingOriginQuery(goal: fr.k0bus.cobblemon_jei.pokedex.BreedingOriginGoal, query: String): Boolean {
+        if (query.isBlank()) return true
+        val baseName = goal.baseSpecies.translatedName.string.lowercase()
+        val dexStr = String.format("%03d", goal.baseSpecies.nationalPokedexNumber)
+        val dexFull = "#${dexStr}"
+        val parents = goal.candidateParents.joinToString(" ") { it.translatedName.string.lowercase() }
+        val incense = goal.requiredIncense?.lowercase() ?: ""
+        return baseName.contains(query) || dexStr.contains(query) || dexFull.contains(query) || parents.contains(query) || incense.contains(query)
     }
 
     private fun matchesQuery(item: TrackedPokemon, query: String): Boolean {
@@ -624,7 +882,7 @@ class CobblemonPokedexScreen(
     private fun getLeftAreaBounds(): IntArray {
         val x = 12
         val y = 73
-        val w = max(180, width - 215)
+        val w = if (currentMainTab == MainTab.EXPEDITIONS) max(180, width - 24) else max(180, width - 215)
         val h = max(80, height - y - 26)
         return intArrayOf(x, y, w, h)
     }
@@ -677,15 +935,48 @@ class CobblemonPokedexScreen(
 
     private fun recomputeMaxScroll() {
         val (_, _, w, h) = getLeftAreaBounds()
-        if (currentTab == Tab.EVOLUTIONS) {
-            val totalH = filteredGoals.size * (evoCardHeight + 4)
-            maxScroll = max(0.0, (totalH - h).toDouble())
-        } else {
-            val usableW = w - 10 // réserve la scrollbar
-            val cols = max(1, usableW / (cardWidth + cardGap))
-            val rows = (filteredTracked.size + cols - 1) / cols
-            val totalH = rows * (cardHeight + cardGap)
-            maxScroll = max(0.0, (totalH - h).toDouble())
+        when (currentMainTab) {
+            MainTab.POKEDEX -> {
+                val usableW = w - 10 // réserve la scrollbar
+                val cols = max(1, usableW / (cardWidth + cardGap))
+                val rows = (filteredTracked.size + cols - 1) / cols
+                val totalH = rows * (cardHeight + cardGap)
+                maxScroll = max(0.0, (totalH - h).toDouble())
+            }
+            MainTab.EVOLUTIONS -> {
+                when (currentEvolutionSubTab) {
+                    EvolutionSubTab.PENDING_EVOLUTIONS -> {
+                        val totalH = filteredGoals.size * (evoCardHeight + 4)
+                        maxScroll = max(0.0, (totalH - h).toDouble())
+                    }
+                    EvolutionSubTab.MISSING_ORIGINS -> {
+                        val cardH = 62
+                        val cardGap = 4
+                        val totalH = filteredBreedingOrigins.size * (cardH + cardGap)
+                        maxScroll = max(0.0, (totalH - h).toDouble())
+                    }
+                    EvolutionSubTab.FOSSILS -> {
+                        val usableW = w - 10
+                        val cols = max(1, usableW / (cardWidth + cardGap))
+                        val rows = (filteredFossils.size + cols - 1) / cols
+                        val totalH = rows * (cardHeight + cardGap)
+                        maxScroll = max(0.0, (totalH - h).toDouble())
+                    }
+                    EvolutionSubTab.LEGENDARIES -> {
+                        val usableW = w - 10
+                        val cols = max(1, usableW / (cardWidth + cardGap))
+                        val rows = (filteredLegendaries.size + cols - 1) / cols
+                        val totalH = rows * (cardHeight + cardGap)
+                        maxScroll = max(0.0, (totalH - h).toDouble())
+                    }
+                }
+            }
+            MainTab.EXPEDITIONS -> {
+                val cardH = 60
+                val cardGap = 6
+                val totalH = expeditionSuggestions.take(5).size * (cardH + cardGap)
+                maxScroll = max(0.0, (totalH - h).toDouble())
+            }
         }
     }
 
@@ -708,7 +999,9 @@ class CobblemonPokedexScreen(
 
         // Rendu des zones principales
         renderLeftContent(guiGraphics, contentMouseX, contentMouseY)
-        renderRightPanel(guiGraphics, contentMouseX, contentMouseY)
+        if (currentMainTab != MainTab.EXPEDITIONS) {
+            renderRightPanel(guiGraphics, contentMouseX, contentMouseY)
+        }
         renderBottomProgressBar(guiGraphics, contentMouseX, contentMouseY, stats)
 
         // Rendu de la visionneuse Grand Format (au-dessus de tout)
@@ -845,10 +1138,21 @@ class CobblemonPokedexScreen(
         // Découpage d'affichage (Scissor)
         guiGraphics.enableScissor(leftX, topY, leftX + areaW, topY + areaH)
 
-        if (currentTab == Tab.EVOLUTIONS) {
-            renderEvolutionsTab(guiGraphics, leftX + 4, topY + 4, areaW - 14, areaH, mouseX, mouseY)
-        } else {
-            renderGridTab(guiGraphics, leftX + 4, topY + 4, areaW - 14, areaH, mouseX, mouseY)
+        when (currentMainTab) {
+            MainTab.POKEDEX -> {
+                renderGridTab(guiGraphics, leftX + 4, topY + 4, areaW - 14, areaH, mouseX, mouseY, filteredTracked)
+            }
+            MainTab.EVOLUTIONS -> {
+                when (currentEvolutionSubTab) {
+                    EvolutionSubTab.PENDING_EVOLUTIONS -> renderEvolutionsTab(guiGraphics, leftX + 4, topY + 4, areaW - 14, areaH, mouseX, mouseY)
+                    EvolutionSubTab.MISSING_ORIGINS -> renderMissingOriginsTab(guiGraphics, leftX + 4, topY + 4, areaW - 14, areaH, mouseX, mouseY)
+                    EvolutionSubTab.FOSSILS -> renderGridTab(guiGraphics, leftX + 4, topY + 4, areaW - 14, areaH, mouseX, mouseY, filteredFossils)
+                    EvolutionSubTab.LEGENDARIES -> renderGridTab(guiGraphics, leftX + 4, topY + 4, areaW - 14, areaH, mouseX, mouseY, filteredLegendaries)
+                }
+            }
+            MainTab.EXPEDITIONS -> {
+                renderIntegratedExpeditionsTab(guiGraphics, leftX + 4, topY + 4, areaW - 14, areaH, mouseX, mouseY)
+            }
         }
 
         guiGraphics.disableScissor()
@@ -864,12 +1168,13 @@ class CobblemonPokedexScreen(
         usableW: Int,
         usableH: Int,
         mouseX: Int,
-        mouseY: Int
+        mouseY: Int,
+        list: List<TrackedPokemon> = filteredTracked
     ) {
         val cols = max(1, usableW / (cardWidth + cardGap))
         val scrolledY = startY - scrollOffset.toInt()
 
-        if (filteredTracked.isEmpty()) {
+        if (list.isEmpty()) {
             val emptyMsg = "Aucun Pokémon ne correspond à votre recherche."
             guiGraphics.drawCenteredString(font, emptyMsg, startX + usableW / 2, startY + 40, 0xFF888888.toInt())
             return
@@ -877,7 +1182,7 @@ class CobblemonPokedexScreen(
 
         var hoveredPokemon: TrackedPokemon? = null
 
-        for ((index, item) in filteredTracked.withIndex()) {
+        for ((index, item) in list.withIndex()) {
             val col = index % cols
             val row = index / cols
             val cardX = startX + col * (cardWidth + cardGap)
@@ -1292,6 +1597,174 @@ class CobblemonPokedexScreen(
         }
 
         guiGraphics.renderComponentTooltip(font, tooltip, mouseX, mouseY)
+    }
+
+    private fun renderMissingOriginsTab(
+        guiGraphics: GuiGraphics,
+        startX: Int,
+        startY: Int,
+        usableW: Int,
+        usableH: Int,
+        mouseX: Int,
+        mouseY: Int
+    ) {
+        val scrolledY = startY - scrollOffset.toInt()
+
+        if (filteredBreedingOrigins.isEmpty()) {
+            val emptyMsg = "Aucune origine ou reproduction manquante trouvée."
+            guiGraphics.drawCenteredString(font, emptyMsg, startX + usableW / 2, startY + 40, 0xFF888888.toInt())
+            return
+        }
+
+        var hoveredOrigin: fr.k0bus.cobblemon_jei.pokedex.BreedingOriginGoal? = null
+        val cardH = 62
+        val cardGap = 4
+        val cardW = usableW - 6
+
+        for ((index, goal) in filteredBreedingOrigins.withIndex()) {
+            val cardY = scrolledY + index * (cardH + cardGap)
+            if (cardY + cardH < startY || cardY > startY + usableH) {
+                continue
+            }
+
+            val isSelected = (selectedTracked?.species?.let { PokemonTrackingManager.isSameSpecies(it, goal.baseSpecies) } == true)
+            val isHovered = (mouseX >= startX && mouseX < startX + cardW && mouseY >= cardY && mouseY < cardY + cardH)
+            if (isHovered && mouseY in startY until startY + usableH) {
+                hoveredOrigin = goal
+            }
+
+            // Couleurs de la carte selon disponibilité
+            val (bgColor, borderColor, statusBadgeText, statusBadgeColor) = if (goal.isReadyToBreed) {
+                Quad(0x44143D1A, 0xFF2ECC71.toInt(), "✔ PRÊT EN PENSION", 0xFF2ECC71.toInt())
+            } else {
+                Quad(0x331C1E26, 0xFF2E3342.toInt(), "PARENT CAPTURÉ (À RÉCUPÉRER)", 0xFF7D8394.toInt())
+            }
+
+            guiGraphics.fill(startX, cardY, startX + cardW, cardY + cardH, bgColor)
+            guiGraphics.fill(startX, cardY, startX + cardW, cardY + 1, borderColor)
+            guiGraphics.fill(startX, cardY + cardH - 1, startX + cardW, cardY + cardH, borderColor)
+            guiGraphics.fill(startX, cardY, startX + 1, cardY + cardH, borderColor)
+            guiGraphics.fill(startX + cardW - 1, cardY, startX + cardW, cardY + cardH, borderColor)
+
+            if (isSelected) {
+                guiGraphics.fill(startX, cardY, startX + 3, cardY + cardH, 0xFF3498DB.toInt())
+            }
+
+            // 1. Pokémon de base (Cible à obtenir via pension)
+            val baseStack = getItemStack(goal.baseSpecies)
+            if (!baseStack.isEmpty) {
+                guiGraphics.renderItem(baseStack, startX + 6, cardY + 8)
+            }
+            val baseName = goal.baseSpecies.translatedName.string
+            val dexNum = String.format("#%03d", goal.baseSpecies.nationalPokedexNumber)
+            guiGraphics.drawString(font, "$dexNum §f$baseName", startX + 26, cardY + 8, 0xFFFFFFFF.toInt(), false)
+
+            val originBadge = if (goal.isMultipleOrigins) "§6[Multi-lignées] §r" else ""
+            val baseStatusText = when (goal.targetStatus) {
+                PokedexStatus.ENCOUNTERED -> "§e👁 Rencontré (Non possédé)"
+                else -> "§c✕ Non découvert"
+            }
+            guiGraphics.drawString(font, originBadge + baseStatusText, startX + 26, cardY + 22, 0xFFAAAAAA.toInt(), false)
+
+            // Flèche de reproduction
+            val arrowX = startX + 135
+            guiGraphics.drawString(font, "⮜", arrowX, cardY + 14, 0xFFE67E22.toInt(), false)
+
+            // 2. Parents / Ancêtres disponibles
+            val parentLabelX = arrowX + 16
+            guiGraphics.drawString(font, "Parents compatibles :", parentLabelX, cardY + 8, 0xFFB0B0B0.toInt(), false)
+
+            var parentSpriteX = parentLabelX
+            for (ancestor in goal.candidateParents.take(4)) {
+                val ancestorStack = getItemStack(ancestor)
+                if (!ancestorStack.isEmpty) {
+                    guiGraphics.renderItem(ancestorStack, parentSpriteX, cardY + 20)
+                }
+                val isOwnedInPc = goal.ownedParents.any { PokemonTrackingManager.isSameSpecies(it.pokemon.species, ancestor) }
+                val check = if (isOwnedInPc) "§a✔" else "§7✔"
+                guiGraphics.drawString(font, check, parentSpriteX + 13, cardY + 34, 0xFFFFFFFF.toInt(), false)
+                parentSpriteX += 24
+            }
+
+            // 3. Exigence d'Encens ou Pension
+            val rightInfoX = startX + cardW - 145
+            guiGraphics.drawString(font, statusBadgeText, rightInfoX, cardY + 8, statusBadgeColor, false)
+
+            if (goal.requiredIncense != null) {
+                guiGraphics.drawString(font, "§d♨ Encens requis :", rightInfoX, cardY + 22, 0xFFE082FF.toInt(), false)
+                val shortIncense = if (goal.requiredIncense.length > 20) goal.requiredIncense.substring(0, 18) + "…" else goal.requiredIncense
+                guiGraphics.drawString(font, "§f$shortIncense", rightInfoX, cardY + 34, 0xFFFFFFFF.toInt(), false)
+            } else {
+                guiGraphics.drawString(font, "§b🏠 Pension / Pâturage", rightInfoX, cardY + 22, 0xFF54A0FF.toInt(), false)
+                guiGraphics.drawString(font, "§7Métamorph ou Partenaire", rightInfoX, cardY + 34, 0xFF888888.toInt(), false)
+            }
+
+            // Petit conseil en bas
+            val adviceText = if (goal.isReadyToBreed) {
+                "§2💡 Vous possédez un parent ! Déposez-le en pension avec un Métamorph pour obtenir un œuf de $baseName."
+            } else {
+                "§8💡 Vous avez déjà capturé un parent par le passé. Récupérez-en un pour reproduire $baseName."
+            }
+            guiGraphics.drawString(font, adviceText, startX + 6, cardY + 48, 0xFF666666.toInt(), false)
+        }
+
+        // Tooltip au survol
+        hoveredOrigin?.let { goal ->
+            val tooltip = mutableListOf<Component>()
+            val titleComp = Component.literal("Origine & Reproduction : ").withStyle(ChatFormatting.GOLD)
+                .append(goal.baseSpecies.translatedName.copy().withStyle(ChatFormatting.BOLD, ChatFormatting.WHITE))
+            tooltip.add(titleComp)
+
+            if (goal.requiredIncense != null) {
+                tooltip.add(Component.literal("Objet requis : ").withStyle(ChatFormatting.LIGHT_PURPLE)
+                    .append(Component.literal(goal.requiredIncense).withStyle(ChatFormatting.YELLOW, ChatFormatting.ITALIC)))
+                tooltip.add(Component.literal("L'un des parents doit tenir cet encens pour obtenir cette forme bébé.").withStyle(ChatFormatting.GRAY))
+            } else {
+                tooltip.add(Component.literal("Reproduction classique (aucun encens requis).").withStyle(ChatFormatting.AQUA))
+            }
+
+            tooltip.add(Component.literal("Parents capables de donner naissance à ce Pokémon :").withStyle(ChatFormatting.GRAY))
+            for (p in goal.candidateParents) {
+                val isOwned = goal.ownedParents.any { PokemonTrackingManager.isSameSpecies(it.pokemon.species, p) }
+                val state = if (isOwned) "§a✔ Présent en équipe/PC" else "§7✔ Enregistré au Pokédex"
+                tooltip.add(Component.literal(" • ${p.translatedName.string} ($state)"))
+            }
+            guiGraphics.renderComponentTooltip(font, tooltip, mouseX, mouseY)
+        }
+    }
+
+    private fun renderIntegratedExpeditionsTab(
+        guiGraphics: GuiGraphics,
+        startX: Int,
+        startY: Int,
+        usableW: Int,
+        usableH: Int,
+        mouseX: Int,
+        mouseY: Int
+    ) {
+        if (isExpeditionLoading) {
+            guiGraphics.fill(startX, startY, startX + usableW, startY + usableH, 0xFF191C28.toInt())
+            val loadingMsg = "§e⏳ Analyse des biomes et calcul des 5 expéditions..."
+            guiGraphics.drawCenteredString(font, loadingMsg, startX + usableW / 2, startY + usableH / 2 - 4, 0xFFFFFFFF.toInt())
+            return
+        }
+
+        if (expeditionSuggestions.isEmpty()) {
+            guiGraphics.fill(startX, startY, startX + usableW, startY + usableH, 0xFF191C28.toInt())
+            guiGraphics.drawCenteredString(font, "§7Aucune expédition disponible. Explorez plus de territoires sur JourneyMap !", startX + usableW / 2, startY + usableH / 2 - 4, 0xFF888888.toInt())
+            return
+        }
+
+        val cardH = 60
+        val cardGap = 6
+        val scrolledY = startY - scrollOffset.toInt()
+
+        for ((index, sug) in expeditionSuggestions.take(5).withIndex()) {
+            val cardY = scrolledY + index * (cardH + cardGap)
+            if (cardY + cardH >= startY && cardY <= startY + usableH) {
+                drawExpeditionSuggestionCard(guiGraphics, startX, cardY, usableW - 6, cardH, sug, mouseX, mouseY)
+            }
+        }
     }
 
     private fun renderScrollbar(guiGraphics: GuiGraphics, x: Int, y: Int, w: Int, h: Int) {
@@ -4265,11 +4738,12 @@ class CobblemonPokedexScreen(
     }
 
     fun openExpeditionModal() {
-        isExpeditionModalOpen = true
-        isTrackerModalOpen = false
-        searchBox.active = false
+        switchMainTab(MainTab.EXPEDITIONS)
+    }
+
+    fun triggerExpeditionCalculation() {
         isExpeditionLoading = true
-        expeditionScrollOffset = 0.0
+        scrollOffset = 0.0
 
         java.util.concurrent.CompletableFuture.supplyAsync({
             val suggestions = fr.k0bus.cobblemon_jei.application.expedition.ExpeditionSuggestionEngine.generateSuggestions()
@@ -4279,6 +4753,7 @@ class CobblemonPokedexScreen(
             expeditionSuggestions = result.first
             expeditionActivePlan = result.second
             isExpeditionLoading = false
+            recomputeMaxScroll()
         }, net.minecraft.client.Minecraft.getInstance())
     }
 
@@ -4336,9 +4811,7 @@ class CobblemonPokedexScreen(
         if (isExpeditionLoading) {
             guiGraphics.fill(modalX + 8, viewportY, modalX + modalW - 8, viewportY + viewportH, 0xFF191C28.toInt())
             val loadingMsg = "§e⏳ Analyse des biomes et calcul des 5 expéditions..."
-            guiGraphics.drawCenteredString(font, loadingMsg, modalX + modalW / 2, viewportY + viewportH / 2 - 8, 0xFFFFFFFF.toInt())
-            val subMsg = "§7Calcul asynchrone sans gel des FPS en cours"
-            guiGraphics.drawCenteredString(font, subMsg, modalX + modalW / 2, viewportY + viewportH / 2 + 6, 0xFFAAAAAA.toInt())
+            guiGraphics.drawCenteredString(font, loadingMsg, modalX + modalW / 2, viewportY + viewportH / 2 - 4, 0xFFFFFFFF.toInt())
         } else if (expeditionSuggestions.isEmpty()) {
             guiGraphics.fill(modalX + 8, viewportY, modalX + modalW - 8, viewportY + viewportH, 0xFF191C28.toInt())
             guiGraphics.drawString(font, "§7Aucune opportunité pour le moment. Explorez plus de territoires sur JourneyMap !", modalX + 16, viewportY + viewportH / 2 - 4, 0xFF888888.toInt(), false)
@@ -4700,7 +5173,8 @@ class CobblemonPokedexScreen(
         }
 
         // Clic sur boutons de la fiche du Pokémon (Watchlist ⭐ et Tracker 🎯)
-        watchlistHeaderButtonRect?.let { (bx, by, bw, bh) ->
+        if (currentMainTab != MainTab.EXPEDITIONS) {
+            watchlistHeaderButtonRect?.let { (bx, by, bw, bh) ->
             if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
                 selectedTracked?.species?.let {
                     PokemonTrackingManager.toggleWatchlist(it)
@@ -4862,6 +5336,7 @@ class CobblemonPokedexScreen(
                 return true
             }
         }
+    }
 
         val (leftX, topY, areaW, areaH) = getLeftAreaBounds()
 
@@ -4878,32 +5353,150 @@ class CobblemonPokedexScreen(
         if (mouseX >= leftX && mouseX <= leftX + areaW - 8 && mouseY >= topY && mouseY <= topY + areaH) {
             val scrolledY = topY + 4 - scrollOffset.toInt()
 
-            if (currentTab == Tab.EVOLUTIONS) {
-                val index = ((mouseY - scrolledY) / (evoCardHeight + 4)).toInt()
-                if (index in filteredGoals.indices) {
-                    val goal = filteredGoals[index]
-                    selectedGoal = goal
-                    selectedTracked = allTracked.find { PokemonTrackingManager.isSameSpecies(it.species, goal.targetSpecies) }
-                    selectedForm = null
-                    individualShinyForms.clear()
-                    zoomModalForm = null
-                    rightPanelScrollOffset = 0.0
-                    return true
+            when (currentMainTab) {
+                MainTab.POKEDEX -> {
+                    val usableW = areaW - 14
+                    val cols = max(1, usableW / (cardWidth + cardGap))
+                    val col = ((mouseX - (leftX + 4)) / (cardWidth + cardGap)).toInt()
+                    val row = ((mouseY - scrolledY) / (cardHeight + cardGap)).toInt()
+                    if (col in 0 until cols && row >= 0) {
+                        val index = row * cols + col
+                        if (index in filteredTracked.indices) {
+                            selectedTracked = filteredTracked[index]
+                            selectedForm = null
+                            individualShinyForms.clear()
+                            zoomModalForm = null
+                            rightPanelScrollOffset = 0.0
+                            return true
+                        }
+                    }
                 }
-            } else {
-                val usableW = areaW - 14
-                val cols = max(1, usableW / (cardWidth + cardGap))
-                val col = ((mouseX - (leftX + 4)) / (cardWidth + cardGap)).toInt()
-                val row = ((mouseY - scrolledY) / (cardHeight + cardGap)).toInt()
-                if (col in 0 until cols && row >= 0) {
-                    val index = row * cols + col
-                    if (index in filteredTracked.indices) {
-                        selectedTracked = filteredTracked[index]
-                        selectedForm = null
-                        individualShinyForms.clear()
-                        zoomModalForm = null
-                        rightPanelScrollOffset = 0.0
-                        return true
+                MainTab.EVOLUTIONS -> {
+                    when (currentEvolutionSubTab) {
+                        EvolutionSubTab.PENDING_EVOLUTIONS -> {
+                            val index = ((mouseY - scrolledY) / (evoCardHeight + 4)).toInt()
+                            if (index in filteredGoals.indices) {
+                                val goal = filteredGoals[index]
+                                selectedGoal = goal
+                                selectedTracked = allTracked.find { PokemonTrackingManager.isSameSpecies(it.species, goal.targetSpecies) }
+                                selectedForm = null
+                                individualShinyForms.clear()
+                                zoomModalForm = null
+                                rightPanelScrollOffset = 0.0
+                                return true
+                            }
+                        }
+                        EvolutionSubTab.MISSING_ORIGINS -> {
+                            val cardH = 62
+                            val cardGap = 4
+                            val index = ((mouseY - scrolledY) / (cardH + cardGap)).toInt()
+                            if (index in filteredBreedingOrigins.indices) {
+                                val goal = filteredBreedingOrigins[index]
+                                selectedTracked = allTracked.find { PokemonTrackingManager.isSameSpecies(it.species, goal.baseSpecies) }
+                                selectedForm = null
+                                individualShinyForms.clear()
+                                zoomModalForm = null
+                                rightPanelScrollOffset = 0.0
+                                return true
+                            }
+                        }
+                        EvolutionSubTab.FOSSILS -> {
+                            val usableW = areaW - 14
+                            val cols = max(1, usableW / (cardWidth + cardGap))
+                            val col = ((mouseX - (leftX + 4)) / (cardWidth + cardGap)).toInt()
+                            val row = ((mouseY - scrolledY) / (cardHeight + cardGap)).toInt()
+                            if (col in 0 until cols && row >= 0) {
+                                val index = row * cols + col
+                                if (index in filteredFossils.indices) {
+                                    selectedTracked = filteredFossils[index]
+                                    selectedForm = null
+                                    individualShinyForms.clear()
+                                    zoomModalForm = null
+                                    rightPanelScrollOffset = 0.0
+                                    return true
+                                }
+                            }
+                        }
+                        EvolutionSubTab.LEGENDARIES -> {
+                            val usableW = areaW - 14
+                            val cols = max(1, usableW / (cardWidth + cardGap))
+                            val col = ((mouseX - (leftX + 4)) / (cardWidth + cardGap)).toInt()
+                            val row = ((mouseY - scrolledY) / (cardHeight + cardGap)).toInt()
+                            if (col in 0 until cols && row >= 0) {
+                                val index = row * cols + col
+                                if (index in filteredLegendaries.indices) {
+                                    selectedTracked = filteredLegendaries[index]
+                                    selectedForm = null
+                                    individualShinyForms.clear()
+                                    zoomModalForm = null
+                                    rightPanelScrollOffset = 0.0
+                                    return true
+                                }
+                            }
+                        }
+                    }
+                }
+                MainTab.EXPEDITIONS -> {
+                    if (!isExpeditionLoading && expeditionSuggestions.isNotEmpty()) {
+                        val cardH = 60
+                        val cardGap = 6
+                        val cardW = areaW - 14 - 6
+
+                        for ((index, sug) in expeditionSuggestions.take(5).withIndex()) {
+                            val cardY = scrolledY + index * (cardH + cardGap)
+                            if (cardY + cardH < topY || cardY > topY + areaH) continue
+
+                            val partBtnW = 84
+                            val partBtnH = 18
+                            val partBtnX = leftX + 4 + cardW - partBtnW - 6
+                            val partBtnY = cardY + 7
+
+                            if (mouseX >= partBtnX && mouseX <= partBtnX + partBtnW && mouseY >= partBtnY && mouseY <= partBtnY + partBtnH) {
+                                fr.k0bus.cobblemon_jei.application.expedition.ExpeditionSuggestionEngine.acceptSuggestion(sug)
+                                fr.k0bus.cobblemon_jei.journeymap.ExpeditionMapOverlay.showZoneOverlay(sug.primaryZone)
+                                Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+                                return true
+                            }
+
+                            val markBtnW = 60
+                            val markBtnH = 16
+                            val markBtnX = leftX + 4 + cardW - markBtnW - 6
+                            val markBtnY = cardY + 33
+
+                            if (mouseX >= markBtnX && mouseX <= markBtnX + markBtnW && mouseY >= markBtnY && mouseY <= markBtnY + markBtnH) {
+                                fr.k0bus.cobblemon_jei.journeymap.ExpeditionMapOverlay.createZoneWaypoint(sug.primaryZone)
+                                Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.2f))
+                                return true
+                            }
+
+                            val targetBtnW = 60
+                            val targetBtnH = 16
+                            val targetBtnX = markBtnX - targetBtnW - 4
+                            val targetBtnY = cardY + 33
+
+                            if (mouseX >= targetBtnX && mouseX <= targetBtnX + targetBtnW && mouseY >= targetBtnY && mouseY <= targetBtnY + targetBtnH) {
+                                openTargetsDetailModal(sug.title, "${sug.primaryZone.name} • ${sug.targets.size} Pokémon cibles", sug.targets)
+                                Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+                                return true
+                            }
+
+                            // Clic sur le corps de la carte : sélectionne le premier Pokémon cible au Pokédex
+                            if (mouseX >= leftX + 4 && mouseX <= leftX + 4 + cardW && mouseY >= cardY && mouseY <= cardY + cardH) {
+                                val firstTarget = sug.targets.firstOrNull()?.speciesId
+                                if (firstTarget != null) {
+                                    val tracked = allTracked.find { it.species.resourceIdentifier == firstTarget }
+                                    if (tracked != null) {
+                                        selectedTracked = tracked
+                                        selectedForm = null
+                                        individualShinyForms.clear()
+                                        zoomModalForm = null
+                                        rightPanelScrollOffset = 0.0
+                                        Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
+                                        return true
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -4934,7 +5527,7 @@ class CobblemonPokedexScreen(
             scrollOffset = (dragStartScroll + scrollDelta).coerceIn(0.0, maxScroll)
             return true
         }
-        if (isDraggingRightScrollbar && rightPanelMaxScroll > 0) {
+        if (currentMainTab != MainTab.EXPEDITIONS && isDraggingRightScrollbar && rightPanelMaxScroll > 0) {
             val (_, panelY, _, panelH) = getRightPanelBounds()
             val contentY = panelY + 107
             val contentH = (panelY + panelH - 26) - contentY
@@ -4981,12 +5574,14 @@ class CobblemonPokedexScreen(
             return true
         }
 
-        val (panelX, panelY, panelW, panelH) = getRightPanelBounds()
-        val contentY = panelY + 107
-        val contentH = (panelY + panelH - 26) - contentY
-        if (mouseX >= panelX && mouseX <= panelX + panelW && mouseY >= contentY && mouseY <= contentY + contentH) {
-            rightPanelScrollOffset = (rightPanelScrollOffset - scrollY * 20.0).coerceIn(0.0, rightPanelMaxScroll)
-            return true
+        if (currentMainTab != MainTab.EXPEDITIONS) {
+            val (panelX, panelY, panelW, panelH) = getRightPanelBounds()
+            val contentY = panelY + 107
+            val contentH = (panelY + panelH - 26) - contentY
+            if (mouseX >= panelX && mouseX <= panelX + panelW && mouseY >= contentY && mouseY <= contentY + contentH) {
+                rightPanelScrollOffset = (rightPanelScrollOffset - scrollY * 20.0).coerceIn(0.0, rightPanelMaxScroll)
+                return true
+            }
         }
 
         val (leftX, topY, areaW, areaH) = getLeftAreaBounds()

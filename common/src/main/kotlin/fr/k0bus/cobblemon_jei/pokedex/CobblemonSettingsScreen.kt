@@ -8,14 +8,13 @@ import fr.k0bus.cobblemon_jei.domain.session.WorldSessionManager
 import fr.k0bus.cobblemon_jei.infrastructure.persistence.DiskChunkCacheStorage
 import fr.k0bus.cobblemon_jei.journeymap.ChunkBiomeTagCache
 import fr.k0bus.cobblemon_jei.journeymap.CobblemonJourneyMapPlugin
-import fr.k0bus.cobblemon_jei.journeymap.JourneyMapDiskScanner
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.components.Button
 import net.minecraft.client.gui.components.Tooltip
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.world.level.Level
 import kotlin.math.max
@@ -23,15 +22,16 @@ import kotlin.math.min
 
 /**
  * Écran de configuration, de contrôle du scan global et de diagnostic pour le mod Cobblemon & JourneyMap.
+ * Entièrement aligné sur la Direction Artistique (DA) sombre du mod avec boutons custom et zéro chevauchement.
  */
 class CobblemonSettingsScreen(
     private val parentScreen: Screen? = null
 ) : Screen(Component.literal("Paramètres & Diagnostic Cobblemon JEI")) {
 
-    enum class SettingsTab(val label: String, val icon: String) {
-        OPTIONS("Options & Radar", "⚙"),
-        GLOBAL_SCAN("Cartographie & Scan", "🌍"),
-        INFO("Informations & Statut", "ℹ")
+    enum class SettingsTab(val label: String, val iconRes: ResourceLocation) {
+        OPTIONS("Options & Radar", CobblemonPokedexScreen.SETTINGS_ICON),
+        GLOBAL_SCAN("Cartographie & Scan", CobblemonPokedexScreen.EXPEDITION_ICON),
+        INFO("Statut & Info", CobblemonPokedexScreen.POKEDEX_ICON)
     }
 
     private var currentTab: SettingsTab = SettingsTab.OPTIONS
@@ -50,28 +50,38 @@ class CobblemonSettingsScreen(
         val tabW = (modalW - 16) / 3
         val tabH = 20
 
-        // Boutons d'onglets
+        // Boutons d'onglets au style CobblemonDarkButton
         for ((index, tab) in SettingsTab.values().withIndex()) {
             val tabX = modalX + 8 + index * tabW
-            val isSelected = currentTab == tab
-            val label = "${tab.icon} ${tab.label}"
-            val btn = Button.builder(Component.literal(label)) {
+            val btn = CobblemonDarkButton(
+                tabX, tabY, tabW - 2, tabH,
+                Component.literal(tab.label),
+                tab.iconRes,
+                isTab = true,
+                isSelected = { currentTab == tab }
+            ) {
                 currentTab = tab
                 init()
                 minecraft?.soundManager?.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
-            }.bounds(tabX, tabY, tabW - 2, tabH).build()
+            }
             addRenderableWidget(btn)
         }
 
+        // Bouton Fermer (croix en haut à droite)
+        val closeBtn = CobblemonDarkButton(modalX + modalW - 22, modalY + 4, 16, 16, Component.literal("✕")) {
+            onClose()
+        }
+        addRenderableWidget(closeBtn)
+
         // Bouton Retour / Fermer au bas
-        val returnBtnW = 100
+        val returnBtnW = 110
         val returnBtnH = 20
         val returnBtnX = modalX + (modalW - returnBtnW) / 2
         val returnBtnY = modalY + modalH - returnBtnH - 8
 
-        val returnBtn = Button.builder(Component.literal("⬅ Retour")) {
+        val returnBtn = CobblemonDarkButton(returnBtnX, returnBtnY, returnBtnW, returnBtnH, Component.literal("← Retour")) {
             onClose()
-        }.bounds(returnBtnX, returnBtnY, returnBtnW, returnBtnH).build()
+        }
         addRenderableWidget(returnBtn)
 
         val contentY = tabY + tabH + 8
@@ -92,48 +102,48 @@ class CobblemonSettingsScreen(
 
         // 1. Notifications HUD
         addRenderableWidget(
-            Button.builder(Component.literal(if (CobblemonModConfig.hudNotificationsEnabled) "§aACTIVÉ" else "§7DÉSACTIVÉ")) {
+            CobblemonDarkButton(btnX, y, btnW, btnH, Component.literal(if (CobblemonModConfig.hudNotificationsEnabled) "§aACTIVÉ" else "§7DÉSACTIVÉ")) {
                 CobblemonModConfig.hudNotificationsEnabled = !CobblemonModConfig.hudNotificationsEnabled
                 PokemonTrackingManager.saveConfig()
                 init()
-            }.bounds(btnX, y, btnW, btnH).build()
+            }
         )
         y += rowH
 
         // 2. Son d'alerte HUD
         addRenderableWidget(
-            Button.builder(Component.literal(if (CobblemonModConfig.hudSoundEnabled) "§aACTIVÉ" else "§7DÉSACTIVÉ")) {
+            CobblemonDarkButton(btnX, y, btnW, btnH, Component.literal(if (CobblemonModConfig.hudSoundEnabled) "§aACTIVÉ" else "§7DÉSACTIVÉ")) {
                 CobblemonModConfig.hudSoundEnabled = !CobblemonModConfig.hudSoundEnabled
                 PokemonTrackingManager.saveConfig()
                 init()
-            }.bounds(btnX, y, btnW, btnH).build()
+            }
         )
         y += rowH
 
         // 3. Halo lumineux in-world
         addRenderableWidget(
-            Button.builder(Component.literal(if (CobblemonModConfig.inWorldGlowing) "§aACTIVÉ" else "§7DÉSACTIVÉ")) {
+            CobblemonDarkButton(btnX, y, btnW, btnH, Component.literal(if (CobblemonModConfig.inWorldGlowing) "§aACTIVÉ" else "§7DÉSACTIVÉ")) {
                 CobblemonModConfig.inWorldGlowing = !CobblemonModConfig.inWorldGlowing
                 init()
-            }.bounds(btnX, y, btnW, btnH).build()
+            }
         )
         y += rowH
 
         // 4. Particules in-world
         addRenderableWidget(
-            Button.builder(Component.literal(if (CobblemonModConfig.inWorldParticles) "§aACTIVÉ" else "§7DÉSACTIVÉ")) {
+            CobblemonDarkButton(btnX, y, btnW, btnH, Component.literal(if (CobblemonModConfig.inWorldParticles) "§aACTIVÉ" else "§7DÉSACTIVÉ")) {
                 CobblemonModConfig.inWorldParticles = !CobblemonModConfig.inWorldParticles
                 init()
-            }.bounds(btnX, y, btnW, btnH).build()
+            }
         )
         y += rowH
 
         // 5. Talent Caché Uniquement
         addRenderableWidget(
-            Button.builder(Component.literal(if (CobblemonModConfig.filterOnlyHiddenAbility) "§dOUI" else "§7NON")) {
+            CobblemonDarkButton(btnX, y, btnW, btnH, Component.literal(if (CobblemonModConfig.filterOnlyHiddenAbility) "§dOUI" else "§7NON")) {
                 CobblemonModConfig.filterOnlyHiddenAbility = !CobblemonModConfig.filterOnlyHiddenAbility
                 init()
-            }.bounds(btnX, y, btnW, btnH).build()
+            }
         )
         y += rowH
 
@@ -144,10 +154,10 @@ class CobblemonSettingsScreen(
             else -> "${CobblemonModConfig.filterMinPerfectIvs}+ IVs"
         }
         addRenderableWidget(
-            Button.builder(Component.literal(ivText)) {
+            CobblemonDarkButton(btnX, y, btnW, btnH, Component.literal(ivText)) {
                 CobblemonModConfig.filterMinPerfectIvs = (CobblemonModConfig.filterMinPerfectIvs + 1) % 7
                 init()
-            }.bounds(btnX, y, btnW, btnH).build()
+            }
         )
         y += rowH
 
@@ -159,67 +169,63 @@ class CobblemonSettingsScreen(
             SizeFilter.ONLY_GIGANTIC -> "Géant"
         }
         addRenderableWidget(
-            Button.builder(Component.literal(sizeText)) {
+            CobblemonDarkButton(btnX, y, btnW, btnH, Component.literal(sizeText)) {
                 CobblemonModConfig.filterSize = CobblemonModConfig.filterSize.next()
                 init()
-            }.bounds(btnX, y, btnW, btnH).build()
+            }
         )
         y += rowH
 
         // 8. Vider la Watchlist
-        val clearBtn = Button.builder(Component.literal("🗑 Vider")) {
+        val clearBtn = CobblemonDarkButton(btnX, y, btnW, btnH, Component.literal("🗑 Vider")) {
             PokemonTrackingManager.clearWatchlist()
             minecraft?.player?.displayClientMessage(Component.literal("§eWatchlist vidée."), true)
             init()
-        }.bounds(btnX, y, btnW, btnH).build()
+        }
         clearBtn.tooltip = Tooltip.create(Component.literal("Retire tous les Pokémon de la liste personnalisée"))
         addRenderableWidget(clearBtn)
     }
 
     private fun initScanWidgets(modalX: Int, contentY: Int, modalW: Int) {
-        val actionBtnW = 200
-        val actionBtnH = 22
+        val actionBtnW = 230
         val actionBtnX = modalX + (modalW - actionBtnW) / 2
-        var y = contentY + 110
+        val actionsStartY = contentY + 114
 
-        // Bouton de bascule Mode Approfondi
-        val deepBtnW = 160
-        val deepBtnX = modalX + (modalW - deepBtnW) / 2
-        val deepBtn = Button.builder(Component.literal(if (forceDeepScan) "§a✔ Scan approfondi" else "§7✕ Scan incrémental")) {
+        // 1. Bouton de bascule Mode Approfondi / Incrémental
+        val deepBtnText = if (forceDeepScan) "§a✔ Scan Approfondi (Tous fichiers)" else "§7✕ Scan Incrémental (Nouveaux)"
+        val deepBtn = CobblemonDarkButton(actionBtnX, actionsStartY, actionBtnW, 20, Component.literal(deepBtnText)) {
             forceDeepScan = !forceDeepScan
             init()
-        }.bounds(deepBtnX, contentY + 76, deepBtnW, 18).build()
+        }
         deepBtn.tooltip = Tooltip.create(Component.literal("Si activé, force l'analyse intégrale de tous les fichiers de région sur disque."))
         addRenderableWidget(deepBtn)
 
+        // 2. Bouton Lancer Scan Global ou Interrompre
         if (GlobalScanService.isScanning) {
-            val cancelBtn = Button.builder(Component.literal("✕ Interrompre le Scan")) {
+            val cancelBtn = CobblemonDarkButton(actionBtnX, actionsStartY + 26, actionBtnW, 22, Component.literal("§c✕ Interrompre le Scan")) {
                 GlobalScanService.cancelScan()
                 init()
-            }.bounds(actionBtnX, y, actionBtnW, actionBtnH).build()
+            }
             addRenderableWidget(cancelBtn)
         } else {
-            val scanBtn = Button.builder(Component.literal("🔄 Lancer un Scan Global")) {
+            val scanBtn = CobblemonDarkButton(actionBtnX, actionsStartY + 26, actionBtnW, 22, Component.literal("§6🔄 Lancer un Scan Global")) {
                 GlobalScanService.startScan(forceRefresh = forceDeepScan, onProgressUpdate = {
                     // Update live
                 }, onComplete = {
                     // Complete
                 })
                 init()
-            }.bounds(actionBtnX, y, actionBtnW, actionBtnH).build()
-            scanBtn.tooltip = Tooltip.create(Component.literal("Scanne l'ensemble des chunks explorés pour mettre à jour la base de biomes et sous-sols."))
+            }
+            scanBtn.tooltip = Tooltip.create(Component.literal("Scanne l'ensemble des chunks explorés pour répertorier tous les biomes de surface et sous-sols."))
             addRenderableWidget(scanBtn)
 
-            y += actionBtnH + 10
-
-            val wipeBtnW = 160
-            val wipeBtnX = modalX + (modalW - wipeBtnW) / 2
-            val wipeBtn = Button.builder(Component.literal("🗑 Vider le cache mémoire")) {
+            // 3. Bouton Vider le cache mémoire
+            val wipeBtn = CobblemonDarkButton(actionBtnX, actionsStartY + 54, actionBtnW, 20, Component.literal("§c🗑 Vider le Cache Mémoire")) {
                 GlobalScanService.clearCache()
                 minecraft?.player?.displayClientMessage(Component.literal("§6Cache de biomes réinitialisé."), true)
                 init()
-            }.bounds(wipeBtnX, y, wipeBtnW, 18).build()
-            wipeBtn.tooltip = Tooltip.create(Component.literal("Efface les données de biomes en mémoire pour forcer une réévaluation propre."))
+            }
+            wipeBtn.tooltip = Tooltip.create(Component.literal("Efface les données de biomes en mémoire pour forcer une réévaluation complète."))
             addRenderableWidget(wipeBtn)
         }
     }
@@ -235,7 +241,7 @@ class CobblemonSettingsScreen(
     }
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
-        // 1. Fond sombre moderne et opaque (AUCUN renderBackground pour éviter l'application du shader menu_blur)
+        // 1. Fond sombre moderne et opaque
         guiGraphics.fill(0, 0, width, height, 0xF00E121B.toInt())
 
         val modalW = min(560, width - 24)
@@ -243,7 +249,7 @@ class CobblemonSettingsScreen(
         val modalX = (width - modalW) / 2
         val modalY = (height - modalH) / 2
 
-        // 2. Fenêtre modale opaque et nette
+        // 2. Fenêtre modale opaque et nette (DA Cobblemon)
         guiGraphics.fill(modalX, modalY, modalX + modalW, modalY + modalH, 0xFF141724.toInt())
         guiGraphics.fill(modalX - 1, modalY - 1, modalX + modalW + 1, modalY, 0xFF353D52.toInt())
         guiGraphics.fill(modalX - 1, modalY + modalH, modalX + modalW + 1, modalY + modalH + 1, 0xFF353D52.toInt())
@@ -259,9 +265,9 @@ class CobblemonSettingsScreen(
 
         // 5. Rendu du texte et des informations par-dessus pour une netteté absolue
         guiGraphics.drawString(font, "§6§lPARAMÈTRES & DIAGNOSTIC DU MOD§r", modalX + 10, modalY + 8, 0xFFFFAA00.toInt(), false)
-        val verText = "§7Cobblemon & JourneyMap • v1.6.1"
+        val verText = "§7Cobblemon & JourneyMap • v1.7.0"
         val verW = font.width(verText)
-        guiGraphics.drawString(font, verText, modalX + modalW - verW - 10, modalY + 8, 0xFFAAAAAA.toInt(), false)
+        guiGraphics.drawString(font, verText, modalX + modalW - verW - 30, modalY + 8, 0xFFAAAAAA.toInt(), false)
 
         val contentY = modalY + 28 + 20 + 8
 
@@ -279,7 +285,7 @@ class CobblemonSettingsScreen(
         val labels = listOf(
             "Bandeau HUD de capture & scan" to "Affiche la notification dynamique en haut de l'écran",
             "Effets sonores du bandeau HUD" to "Joue le jingle Pokédex lors des captures et scans",
-            "Surbrillance in-world des cibles" to "Entoure les Pokémon ciblés d'un halo lumineux lumineux",
+            "Surbrillance in-world des cibles" to "Entoure les Pokémon ciblés d'un halo lumineux",
             "Particules in-world autour des cibles" to "Fait scintiller les Pokémon recherchés dans le monde",
             "Radar : Talents Cachés uniquement" to "Filtre uniquement les spécimens avec leur talent rare",
             "Radar : Seuil minimum d'IVs parfaits" to "Cible les Pokémon ayant au moins X statistiques à 31",
@@ -295,15 +301,11 @@ class CobblemonSettingsScreen(
     }
 
     private fun renderScan(guiGraphics: GuiGraphics, modalX: Int, contentY: Int, modalW: Int) {
-        var y = contentY + 6
-        guiGraphics.drawString(font, "§e§lCartographie & Analyse des Fichiers Régions§r", modalX + 14, y, 0xFFFFAA00.toInt(), false)
-        y += 14
-        guiGraphics.drawString(font, "§7Scanne les fichiers de régions Anvil (.mca) et caches JourneyMap pour", modalX + 14, y, 0xFFCCCCCC.toInt(), false)
-        y += 10
-        guiGraphics.drawString(font, "§7répertorier les biomes de surface et les cavités (Lush Caves, Deep Dark...).", modalX + 14, y, 0xFFCCCCCC.toInt(), false)
+        val y = contentY + 4
+        guiGraphics.drawString(font, "§6§lCartographie & Analyse des Fichiers Régions§r", modalX + 14, y, 0xFFFFAA00.toInt(), false)
+        guiGraphics.drawString(font, "§7Scanne les fichiers Anvil (.mca) et JourneyMap pour répertorier les biomes de surface et cavités.", modalX + 14, y + 12, 0xFFCCCCCC.toInt(), false)
 
-        y += 20
-        // Compteurs de chunks en cache
+        // Compteurs de chunks en cache dans une carte dédiée DA sombre
         val mc = minecraft
         val dim = mc?.level?.dimension() ?: Level.OVERWORLD
         val surfaceChunks = ChunkBiomeTagCache.getChunkProfilesForDimension(dim).size
@@ -311,24 +313,25 @@ class CobblemonSettingsScreen(
         val subCount = subProfiles.values.sumOf { it.size }
 
         val statusBoxX = modalX + 14
+        val statusBoxY = contentY + 30
         val statusBoxW = modalW - 28
-        val statusBoxH = 68
-        guiGraphics.fill(statusBoxX, y, statusBoxX + statusBoxW, y + statusBoxH, 0xFF1B2230.toInt())
-        guiGraphics.fill(statusBoxX, y, statusBoxX + statusBoxW, y + 1, 0xFF2C394F.toInt())
-        guiGraphics.fill(statusBoxX, y + statusBoxH - 1, statusBoxX + statusBoxW, y + statusBoxH, 0xFF2C394F.toInt())
-        guiGraphics.fill(statusBoxX, y, statusBoxX + 1, y + statusBoxH, 0xFF2C394F.toInt())
-        guiGraphics.fill(statusBoxX + statusBoxW - 1, y, statusBoxX + statusBoxW, y + statusBoxH, 0xFF2C394F.toInt())
+        val statusBoxH = 56
 
-        guiGraphics.drawString(font, "§b📍 Dimension : §f${dim.location()}", statusBoxX + 8, y + 6, 0xFFFFFFFF.toInt(), false)
-        guiGraphics.drawString(font, "§a✔ Chunks surface en mémoire : §f$surfaceChunks", statusBoxX + 8, y + 18, 0xFFFFFFFF.toInt(), false)
-        guiGraphics.drawString(font, "§6⛏ Chunks sous-sol (Lush, Deep Dark) : §f$subCount", statusBoxX + 8, y + 30, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.fill(statusBoxX, statusBoxY, statusBoxX + statusBoxW, statusBoxY + statusBoxH, 0xFF161A26.toInt())
+        guiGraphics.fill(statusBoxX, statusBoxY, statusBoxX + statusBoxW, statusBoxY + 1, 0xFF282D3C.toInt())
+        guiGraphics.fill(statusBoxX, statusBoxY + statusBoxH - 1, statusBoxX + statusBoxW, statusBoxY + statusBoxH, 0xFF282D3C.toInt())
+        guiGraphics.fill(statusBoxX, statusBoxY, statusBoxX + 1, statusBoxY + statusBoxH, 0xFF282D3C.toInt())
+        guiGraphics.fill(statusBoxX + statusBoxW - 1, statusBoxY, statusBoxX + statusBoxW, statusBoxY + statusBoxH, 0xFF282D3C.toInt())
 
-        val scanMsg = "§7Statut : §e${GlobalScanService.statusMessage}"
-        guiGraphics.drawString(font, scanMsg, statusBoxX + 8, y + 46, 0xFFFFAA00.toInt(), false)
+        guiGraphics.drawString(font, "§b📍 Dimension : §f${dim.location()}", statusBoxX + 10, statusBoxY + 6, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, "§a✔ Chunks surface en mémoire : §f$surfaceChunks", statusBoxX + 10, statusBoxY + 18, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, "§6⛏ Chunks sous-sol (Lush, Deep Dark...) : §f$subCount", statusBoxX + 10, statusBoxY + 30, 0xFFFFFFFF.toInt(), false)
+        val scanMsg = "§7Statut du Scan : §e${GlobalScanService.statusMessage}"
+        guiGraphics.drawString(font, scanMsg, statusBoxX + 10, statusBoxY + 42, 0xFFFFAA00.toInt(), false)
 
-        // Barre de progression
+        // Barre de progression (située entre la boîte de statut et les boutons d'action)
         if (GlobalScanService.isScanning || GlobalScanService.progressPercent > 0) {
-            val barY = y + statusBoxH + 8
+            val barY = statusBoxY + statusBoxH + 6
             val barH = 10
             val barW = statusBoxW
             guiGraphics.fill(statusBoxX, barY, statusBoxX + barW, barY + barH, 0xFF10141D.toInt())
@@ -348,9 +351,20 @@ class CobblemonSettingsScreen(
         val jmConnected = CobblemonJourneyMapPlugin.clientApi != null
         val cacheFile = DiskChunkCacheStorage.getCacheFile(worldId, dim)
 
+        val cardX = modalX + 14
+        val cardW = modalW - 28
+        val cardH = 200
+
+        guiGraphics.fill(cardX, y - 2, cardX + cardW, y + cardH, 0xFF161A26.toInt())
+        guiGraphics.fill(cardX, y - 2, cardX + cardW, y - 1, 0xFF282D3C.toInt())
+        guiGraphics.fill(cardX, y + cardH - 1, cardX + cardW, y + cardH, 0xFF282D3C.toInt())
+        guiGraphics.fill(cardX, y - 2, cardX + 1, y + cardH, 0xFF282D3C.toInt())
+        guiGraphics.fill(cardX + cardW - 1, y - 2, cardX + cardW, y + cardH, 0xFF282D3C.toInt())
+
+        y += 6
         val infoItems = listOf(
             "Identifiant du Mod" to "cobblemon_jei",
-            "Version" to "1.6.1 (Minecraft 1.21.1)",
+            "Version" to "1.7.0 (Minecraft 1.21.1)",
             "Auteur" to "K0bus",
             "Intégration JourneyMap" to if (jmConnected) "§aConnectée (API v2 active)" else "§cNon détectée",
             "Monde / Session active" to "§e$worldId",
@@ -361,9 +375,9 @@ class CobblemonSettingsScreen(
         )
 
         for ((label, value) in infoItems) {
-            guiGraphics.drawString(font, "§6• $label :", modalX + 16, y, 0xFFFFAA00.toInt(), false)
-            guiGraphics.drawString(font, "§f$value", modalX + 175, y, 0xFFFFFFFF.toInt(), false)
-            y += 18
+            guiGraphics.drawString(font, "§6• $label :", cardX + 12, y, 0xFFFFAA00.toInt(), false)
+            guiGraphics.drawString(font, "§f$value", cardX + 180, y, 0xFFFFFFFF.toInt(), false)
+            y += 19
         }
     }
 

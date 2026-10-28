@@ -3,6 +3,8 @@ package fr.k0bus.cobblemon_jei.compat.rct
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
 import com.cobblemon.mod.common.item.PokemonItem
 import fr.k0bus.cobblemon_jei.journeymap.CobblemonOverlayManager
+import fr.k0bus.cobblemon_jei.pokedex.CobblemonDarkButton
+import fr.k0bus.cobblemon_jei.pokedex.CobblemonPokedexScreen
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Button
@@ -75,41 +77,42 @@ class CobblemonRctProgressionScreen(
 
     // Animation de pulsation
     private var animTick: Float = 0f
+    private var isGraphLoading: Boolean = false
 
     override fun init() {
-        RctDataLoader.ensureLoaded()
         currentSeriesId = RctProgressionService.getSelectedSeriesId()
         onlyKeyTrainers = RctProgressionService.isOnlyKeyTrainers()
-        reloadGraph()
+        isGraphLoading = true
 
         val topY = 12
         val btnH = 20
 
         // Bouton Retour Pokédex
-        val backBtn = Button.builder(Component.literal("← Pokédex")) {
+        val backBtn = CobblemonDarkButton(12, topY, 82, btnH, Component.literal("← Pokédex")) {
             onClose()
-        }.bounds(12, topY, 82, btnH).build()
+        }
         backBtn.tooltip = Tooltip.create(Component.literal("Retourner au Pokédex"))
         addRenderableWidget(backBtn)
 
         // Sélecteur de série
         val currentSeries = RctDataLoader.getSeries(currentSeriesId)
-        val seriesTitle = currentSeries?.title ?: currentSeriesId
-        seriesBtn = Button.builder(Component.literal("Série : $seriesTitle ▾")) {
+        val seriesTitle = currentSeries?.title ?: if (RctDataLoader.isDataLoaded()) currentSeriesId else "Chargement..."
+        seriesBtn = CobblemonDarkButton(98, topY, 145, btnH, Component.literal("Série : $seriesTitle ▾"), CobblemonPokedexScreen.RCT_ICON) {
             cycleSeries()
-        }.bounds(98, topY, 145, btnH).build()
+        }
         seriesBtn.tooltip = Tooltip.create(Component.literal("Changer de série (Radical Red, Unbound, Sinnoh...)"))
+        seriesBtn.active = RctDataLoader.isDataLoaded() && !isGraphLoading
         addRenderableWidget(seriesBtn)
 
         // Bascule : Dresseurs majeurs / Tous
-        keyFilterBtn = Button.builder(getKeyFilterButtonText()) {
+        keyFilterBtn = CobblemonDarkButton(247, topY, 115, btnH, getKeyFilterButtonText()) {
             onlyKeyTrainers = !onlyKeyTrainers
             RctProgressionService.setOnlyKeyTrainers(onlyKeyTrainers)
             keyFilterBtn.message = getKeyFilterButtonText()
             reloadGraph()
-            centerOnNextTarget()
-        }.bounds(247, topY, 115, btnH).build()
+        }
         keyFilterBtn.tooltip = Tooltip.create(Component.literal("Basculer entre les dresseurs clés (Arènes/Boss/Histoire) et la totalité des dresseurs"))
+        keyFilterBtn.active = RctDataLoader.isDataLoaded() && !isGraphLoading
         addRenderableWidget(keyFilterBtn)
 
         // Champ de recherche
@@ -124,40 +127,39 @@ class CobblemonRctProgressionScreen(
 
         // Boutons de navigation canevas
         val ctrlX = width - 150
-        zoomInBtn = Button.builder(Component.literal("+")) {
+        zoomInBtn = CobblemonDarkButton(ctrlX, topY, 20, btnH, Component.literal("+")) {
             zoomAt(width / 2.0, height / 2.0, 1.2)
-        }.bounds(ctrlX, topY, 20, btnH).build()
+        }
         zoomInBtn.tooltip = Tooltip.create(Component.literal("Zoom avant"))
         addRenderableWidget(zoomInBtn)
 
-        zoomOutBtn = Button.builder(Component.literal("-")) {
+        zoomOutBtn = CobblemonDarkButton(ctrlX + 22, topY, 20, btnH, Component.literal("-")) {
             zoomAt(width / 2.0, height / 2.0, 0.8)
-        }.bounds(ctrlX + 22, topY, 20, btnH).build()
+        }
         zoomOutBtn.tooltip = Tooltip.create(Component.literal("Zoom arrière"))
         addRenderableWidget(zoomOutBtn)
 
-        resetViewBtn = Button.builder(Component.literal("⟲")) {
+        resetViewBtn = CobblemonDarkButton(ctrlX + 44, topY, 22, btnH, Component.literal("⟲")) {
             resetView()
-        }.bounds(ctrlX + 44, topY, 22, btnH).build()
+        }
         resetViewBtn.tooltip = Tooltip.create(Component.literal("Réinitialiser la vue"))
         addRenderableWidget(resetViewBtn)
 
-        centerTargetBtn = Button.builder(Component.literal("🎯")) {
+        centerTargetBtn = CobblemonDarkButton(ctrlX + 68, topY, 22, btnH, Component.empty(), CobblemonPokedexScreen.TRACKER_ICON) {
             centerOnNextTarget()
-        }.bounds(ctrlX + 68, topY, 22, btnH).build()
+        }
         centerTargetBtn.tooltip = Tooltip.create(Component.literal("Centrer sur le prochain dresseur à battre"))
+        centerTargetBtn.active = graph != null
         addRenderableWidget(centerTargetBtn)
 
         // Bouton Fermer
-        val closeBtn = Button.builder(Component.literal("✕")) {
+        val closeBtn = CobblemonDarkButton(width - 28, topY, 20, btnH, Component.literal("✕")) {
             onClose()
-        }.bounds(width - 28, topY, 20, btnH).build()
+        }
         addRenderableWidget(closeBtn)
 
-        if (selectedNode == null) {
-            selectedNode = graph?.nodes?.firstOrNull { it.status == RctProgressionStatus.AVAILABLE }
-                ?: graph?.nodes?.firstOrNull()
-        }
+        // Lancement immédiat du chargement asynchrone sans aucun blocage du thread principal
+        reloadGraph()
     }
 
     private fun getKeyFilterButtonText(): Component {
@@ -169,8 +171,55 @@ class CobblemonRctProgressionScreen(
     }
 
     private fun reloadGraph() {
-        graph = RctProgressionService.buildTreeGraph(currentSeriesId, onlyKeyTrainers)
-        recomputeSearchMatches()
+        isGraphLoading = true
+        if (::seriesBtn.isInitialized) seriesBtn.active = false
+        if (::keyFilterBtn.isInitialized) keyFilterBtn.active = false
+        if (::centerTargetBtn.isInitialized) centerTargetBtn.active = false
+
+        val seriesToLoad = currentSeriesId
+        val keyTrainersFilter = onlyKeyTrainers
+
+        java.util.concurrent.CompletableFuture.supplyAsync({
+            RctDataLoader.ensureLoaded()
+            RctProgressionService.refresh()
+
+            var effectiveSeriesId = seriesToLoad
+            if (RctDataLoader.getSeries(effectiveSeriesId) == null) {
+                val available = RctDataLoader.getAllSeries()
+                if (available.isNotEmpty()) {
+                    effectiveSeriesId = available.first().id
+                }
+            }
+
+            val loadedGraph = RctProgressionService.buildTreeGraph(effectiveSeriesId, keyTrainersFilter)
+            val seriesTitle = RctDataLoader.getSeries(effectiveSeriesId)?.title ?: effectiveSeriesId
+            Triple(loadedGraph, effectiveSeriesId, seriesTitle)
+        }).thenAcceptAsync({ (loadedGraph, effectiveSeriesId, seriesTitle) ->
+            if (minecraft?.screen != this) return@thenAcceptAsync
+
+            this.graph = loadedGraph
+            this.currentSeriesId = effectiveSeriesId
+            this.isGraphLoading = false
+
+            if (::seriesBtn.isInitialized) {
+                seriesBtn.message = Component.literal("Série : $seriesTitle ▾")
+                seriesBtn.active = true
+            }
+            if (::keyFilterBtn.isInitialized) {
+                keyFilterBtn.message = getKeyFilterButtonText()
+                keyFilterBtn.active = true
+            }
+            if (::centerTargetBtn.isInitialized) {
+                centerTargetBtn.active = true
+            }
+
+            recomputeSearchMatches()
+
+            val targetNode = loadedGraph.nodes.firstOrNull { it.status == RctProgressionStatus.AVAILABLE }
+                ?: loadedGraph.nodes.firstOrNull()
+            selectedNode = targetNode
+            centerOnNextTarget()
+        }, Minecraft.getInstance())
     }
 
     private fun recomputeSearchMatches() {
@@ -205,9 +254,8 @@ class CobblemonRctProgressionScreen(
         RctProgressionService.setSelectedSeriesId(currentSeriesId)
 
         seriesBtn.message = Component.literal("Série : ${nextSeries.title} ▾")
+        selectedNode = null
         reloadGraph()
-        selectedNode = graph?.nodes?.firstOrNull { it.status == RctProgressionStatus.AVAILABLE }
-            ?: graph?.nodes?.firstOrNull()
         resetView()
     }
 
@@ -331,6 +379,25 @@ class CobblemonRctProgressionScreen(
 
         pose.popPose()
         guiGraphics.disableScissor()
+
+        // Indicateur d'attente animé pendant le calcul du graphe
+        if (isGraphLoading) {
+            val cx = width / 2
+            val cy = height / 2
+            val boxW = 270
+            val boxH = 52
+            guiGraphics.fill(cx - boxW / 2, cy - boxH / 2, cx + boxW / 2, cy + boxH / 2, 0xF0141722.toInt())
+            guiGraphics.fill(cx - boxW / 2, cy - boxH / 2, cx + boxW / 2, cy - boxH / 2 + 1, 0xFF3498DB.toInt())
+            guiGraphics.fill(cx - boxW / 2, cy + boxH / 2 - 1, cx + boxW / 2, cy + boxH / 2, 0xFF282D3C.toInt())
+            guiGraphics.fill(cx - boxW / 2, cy - boxH / 2, cx - boxW / 2 + 1, cy + boxH / 2, 0xFF282D3C.toInt())
+            guiGraphics.fill(cx + boxW / 2 - 1, cy - boxH / 2, cx + boxW / 2, cy + boxH / 2, 0xFF282D3C.toInt())
+
+            val dots = ".".repeat(((animTick * 0.1).toInt() % 4))
+            val loadingMsg = "⚔ Chargement de l'arbre de progression$dots"
+            val subMsg = "Indexation des dresseurs et calcul du graphe..."
+            guiGraphics.drawCenteredString(font, loadingMsg, cx, cy - 13, 0xFFF1C40F.toInt())
+            guiGraphics.drawCenteredString(font, subMsg, cx, cy + 3, 0xFFAAAAAA.toInt())
+        }
 
         // 7. Panneau latéral de détails (si ouvert)
         if (isDetailDrawerOpen && selectedNode != null) {
@@ -884,6 +951,10 @@ class CobblemonRctProgressionScreen(
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        if (isGraphLoading) {
+            return super.mouseClicked(mouseX, mouseY, button)
+        }
+
         val headerH = 46
         val footerH = 22
         val canvasW = if (isDetailDrawerOpen) width - 240 else width

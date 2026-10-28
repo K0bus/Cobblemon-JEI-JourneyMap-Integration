@@ -92,4 +92,17 @@ class RctProgressionTest {
         assertEquals("bdsp", bdspGraph.series.id)
         assertTrue(bdspGraph.nodes.any { it.trainer.id == "bdsp_roark" })
     }
+
+    @Test
+    fun testCustomAtmSeriesSupport() {
+        val atmSeries = RctDataLoader.registerCustomSeries("atm")
+        assertNotNull(atmSeries)
+        assertEquals("atm", atmSeries.id)
+        assertEquals("All The Mods", atmSeries.title)
+
+        val graph = RctProgressionService.buildTreeGraph("atm")
+        assertNotNull(graph)
+        assertEquals("atm", graph.series.id)
+        assertEquals("All The Mods", graph.series.title)
+    }
 }
