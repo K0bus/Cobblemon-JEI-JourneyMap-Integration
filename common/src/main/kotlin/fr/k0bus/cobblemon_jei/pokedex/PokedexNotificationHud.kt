@@ -177,6 +177,23 @@ object PokedexNotificationHud {
         PokemonTrackerService.refresh()
         val stats = PokemonTrackerService.getStats()
 
+        // Diffusion instantanée vers l'application web compagnon
+        try {
+            if (type == NotificationType.CAPTURED) {
+                fr.k0bus.cobblemon_jei.web.WebServerService.broadcast("pokemon_captured", mapOf(
+                    "speciesId" to species.resourceIdentifier.toString(),
+                    "speciesName" to species.translatedName.string,
+                    "shiny" to shiny,
+                    "level" to 0
+                ))
+            }
+            fr.k0bus.cobblemon_jei.web.WebServerService.broadcast("pokedex_updated", mapOf(
+                "speciesId" to species.resourceIdentifier.toString()
+            ))
+            fr.k0bus.cobblemon_jei.web.WebServerService.broadcast("party_updated", emptyMap<String, Any>())
+            fr.k0bus.cobblemon_jei.web.WebServerService.broadcast("pc_updated", emptyMap<String, Any>())
+        } catch (_: Throwable) {}
+
         // Création de l'ItemStack 3D avec propagation complète des aspects
         val targetForm = form ?: species.standardForm
         val aspects = mutableSetOf<String>()

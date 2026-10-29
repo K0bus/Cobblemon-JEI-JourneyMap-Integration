@@ -23,3 +23,5 @@ temp/
 /cobblemon_jei/
 /neoforge/cobblemon_jei/
 /fabric/cobblemon_jei/
+web/node_modules/
+web/dist/

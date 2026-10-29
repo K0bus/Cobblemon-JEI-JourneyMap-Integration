@@ -287,6 +287,26 @@ object PokemonTrackerService {
     }
 
     /**
+     * Retourne la liste de toutes les évolutions déclenchées par un objet ou une pierre,
+     * pour consultation encyclopédique et suivi d'inventaire.
+     */
+    fun getItemEvolutionGoals(): List<EvolutionGoal> {
+        if (trackedSpeciesList.isEmpty() || System.currentTimeMillis() - lastScanTime > 2000L) {
+            refresh()
+        }
+        val allRecipes = PokemonEvolutionDataLoader.loadEvolutionRecipes().filter { it.requiredItems.isNotEmpty() }
+        val inventoryItems = scanPlayerInventory()
+        return allRecipes.map { recipe ->
+            evaluateEvolutionRecipe(recipe, trackedSpeciesMap, inventoryItems)
+        }.sortedWith(
+            compareBy<EvolutionGoal> { it.feasibility.ordinal }
+                .thenByDescending { it.hasAllRequiredItems }
+                .thenBy { it.sourceSpecies.nationalPokedexNumber }
+                .thenBy { it.targetSpecies.nationalPokedexNumber }
+        )
+    }
+
+    /**
      * Retourne les formes d'origine manquantes que le joueur peut reproduire.
      */
     fun getMissingOriginGoals(): List<BreedingOriginGoal> {
@@ -457,8 +477,16 @@ object PokemonTrackerService {
             val targetTracked = trackedMap[targetKey]
             val targetStatus = targetTracked?.status ?: PokedexStatus.MISSING
 
-            // On s'intéresse en priorité aux Pokémon cibles qui n'ont PAS encore été capturés
-            if (targetStatus == PokedexStatus.CAUGHT) {
+            val sourceKey = getSpeciesKey(recipe.sourceSpecies)
+            val sourceTracked = trackedMap[sourceKey]
+            val hasOwnedSource = (sourceTracked?.ownedCount ?: 0) > 0
+
+            // Si le Pokémon cible est déjà capturé au Pokédex ET que le joueur ne possède AUCUN
+            // Pokémon source dans son équipe ou son PC, alors cette recette n'a aucun intérêt
+            // (cible déjà complétée et aucune évolution réalisable en stock).
+            // EN REVANCHE : si le joueur possède un spécimen dans son équipe ou son PC (ex: Pikachu prêt
+            // avec pierre foudre, ou Starter qui peut encore évoluer), on conserve absolument l'objectif !
+            if (targetStatus == PokedexStatus.CAUGHT && !hasOwnedSource) {
                 continue
             }
 

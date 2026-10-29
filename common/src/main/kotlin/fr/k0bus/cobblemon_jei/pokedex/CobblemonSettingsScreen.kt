@@ -30,6 +30,7 @@ class CobblemonSettingsScreen(
 
     enum class SettingsTab(val label: String, val iconRes: ResourceLocation) {
         OPTIONS("Options & Radar", CobblemonPokedexScreen.SETTINGS_ICON),
+        WEB_SERVER("Écran 2 & Web", CobblemonPokedexScreen.TRACKER_ICON),
         GLOBAL_SCAN("Cartographie & Scan", CobblemonPokedexScreen.EXPEDITION_ICON),
         INFO("Statut & Info", CobblemonPokedexScreen.POKEDEX_ICON)
     }
@@ -47,7 +48,7 @@ class CobblemonSettingsScreen(
         val modalY = (height - modalH) / 2
 
         val tabY = modalY + 28
-        val tabW = (modalW - 16) / 3
+        val tabW = (modalW - 16) / SettingsTab.values().size
         val tabH = 20
 
         // Boutons d'onglets au style CobblemonDarkButton
@@ -88,8 +89,51 @@ class CobblemonSettingsScreen(
 
         when (currentTab) {
             SettingsTab.OPTIONS -> initOptionsWidgets(modalX, contentY, modalW)
+            SettingsTab.WEB_SERVER -> initWebServerWidgets(modalX, contentY, modalW)
             SettingsTab.GLOBAL_SCAN -> initScanWidgets(modalX, contentY, modalW)
             SettingsTab.INFO -> initInfoWidgets(modalX, contentY, modalW)
+        }
+    }
+
+    private fun initWebServerWidgets(modalX: Int, contentY: Int, modalW: Int) {
+        val actionBtnW = 240
+        val actionBtnX = modalX + (modalW - actionBtnW) / 2
+        var y = contentY + 95
+
+        // Bouton Ouvrir dans le navigateur
+        val openBtn = CobblemonDarkButton(actionBtnX, y, actionBtnW, 22, Component.literal("§a🌐 Ouvrir sur l'Écran Secondaire")) {
+            try {
+                net.minecraft.Util.getPlatform().openUri(java.net.URI.create("http://localhost:${fr.k0bus.cobblemon_jei.web.WebServerService.activePort}"))
+            } catch (e: Throwable) {
+                minecraft?.player?.displayClientMessage(Component.literal("§cErreur ouverture navigateur: ${e.message}"), true)
+            }
+        }
+        openBtn.tooltip = Tooltip.create(Component.literal("Ouvre l'application web Modern Glasses sur votre second écran"))
+        addRenderableWidget(openBtn)
+        y += 28
+
+        // Bouton Activer / Désactiver le serveur
+        val isRunning = fr.k0bus.cobblemon_jei.web.WebServerService.isRunning
+        val toggleText = if (isRunning) "§e⏸ Arrêter le Micro-Serveur" else "§a▶ Démarrer le Micro-Serveur"
+        val toggleBtn = CobblemonDarkButton(actionBtnX, y, actionBtnW, 20, Component.literal(toggleText)) {
+            if (isRunning) {
+                fr.k0bus.cobblemon_jei.web.WebServerService.stop()
+            } else {
+                fr.k0bus.cobblemon_jei.web.WebServerService.start()
+            }
+            init()
+        }
+        addRenderableWidget(toggleBtn)
+        y += 26
+
+        // Bouton Redémarrer
+        if (isRunning) {
+            val restartBtn = CobblemonDarkButton(actionBtnX, y, actionBtnW, 20, Component.literal("§6🔄 Redémarrer le Serveur")) {
+                fr.k0bus.cobblemon_jei.web.WebServerService.stop()
+                fr.k0bus.cobblemon_jei.web.WebServerService.start()
+                init()
+            }
+            addRenderableWidget(restartBtn)
         }
     }
 
@@ -273,9 +317,36 @@ class CobblemonSettingsScreen(
 
         when (currentTab) {
             SettingsTab.OPTIONS -> renderOptions(guiGraphics, modalX, contentY, modalW)
+            SettingsTab.WEB_SERVER -> renderWebServer(guiGraphics, modalX, contentY, modalW)
             SettingsTab.GLOBAL_SCAN -> renderScan(guiGraphics, modalX, contentY, modalW)
             SettingsTab.INFO -> renderInfo(guiGraphics, modalX, contentY, modalW)
         }
+    }
+
+    private fun renderWebServer(guiGraphics: GuiGraphics, modalX: Int, contentY: Int, modalW: Int) {
+        val y = contentY + 4
+        guiGraphics.drawString(font, "§6§lMicro-Serveur Web Interne & Écran Secondaire§r", modalX + 14, y, 0xFFFFAA00.toInt(), false)
+        guiGraphics.drawString(font, "§7Diffuse toutes vos données en temps réel (Pokédex, Évolutions, PC, Équipe, Radar).", modalX + 14, y + 12, 0xFFCCCCCC.toInt(), false)
+
+        val cardX = modalX + 14
+        val cardY = contentY + 30
+        val cardW = modalW - 28
+        val cardH = 56
+
+        guiGraphics.fill(cardX, cardY, cardX + cardW, cardY + cardH, 0xFF161A26.toInt())
+        guiGraphics.fill(cardX, cardY, cardX + cardW, cardY + 1, 0xFF282D3C.toInt())
+        guiGraphics.fill(cardX, cardY + cardH - 1, cardX + cardW, cardY + cardH, 0xFF282D3C.toInt())
+        guiGraphics.fill(cardX, cardY, cardX + 1, cardY + cardH, 0xFF282D3C.toInt())
+        guiGraphics.fill(cardX + cardW - 1, cardY, cardX + cardW, cardY + cardH, 0xFF282D3C.toInt())
+
+        val isRunning = fr.k0bus.cobblemon_jei.web.WebServerService.isRunning
+        val statusText = if (isRunning) "§a✔ Actif et en écoute" else "§c✕ Serveur arrêté"
+        val port = fr.k0bus.cobblemon_jei.web.WebServerService.activePort
+        val url = if (isRunning) "http://localhost:$port" else "Désactivé"
+
+        guiGraphics.drawString(font, "§bStatut du serveur : §f$statusText", cardX + 10, cardY + 8, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, "§6URL locale : §f§n$url§r", cardX + 10, cardY + 22, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, "§7Protocole : §fHTTP/1.1 REST + Flux temps réel SSE (Server-Sent Events)", cardX + 10, cardY + 36, 0xFF888888.toInt(), false)
     }
 
     private fun renderOptions(guiGraphics: GuiGraphics, modalX: Int, contentY: Int, modalW: Int) {

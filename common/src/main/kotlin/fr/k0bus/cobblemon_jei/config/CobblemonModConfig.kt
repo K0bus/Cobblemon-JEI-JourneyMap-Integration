@@ -12,6 +12,11 @@ object CobblemonModConfig {
     var hudNotificationsEnabled: Boolean = true
     var hudSoundEnabled: Boolean = true
 
+    // Micro-serveur Web interne (Écran secondaire)
+    var webServerEnabled: Boolean = true
+    var webServerPort: Int = 8420
+    var webServerAutoOpenBrowser: Boolean = false
+
     // JourneyMap & Repères
     var autoWaypointOnTracking: Boolean = false
 

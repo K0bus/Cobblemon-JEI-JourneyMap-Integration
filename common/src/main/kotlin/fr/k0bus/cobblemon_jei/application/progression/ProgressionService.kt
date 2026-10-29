@@ -11,6 +11,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvents
+import fr.k0bus.cobblemon_jei.pokedex.PokemonTrackerService
 import org.slf4j.LoggerFactory
 
 /**
@@ -54,6 +55,13 @@ object ProgressionService {
                     for (goal in completedGoals) {
                         notifyGoalCompleted(goal, "chat.cobblemon_jei.goal.completed.capture")
                     }
+
+                    fr.k0bus.cobblemon_jei.web.WebServerService.broadcast("pokemon_captured", mapOf(
+                        "speciesId" to speciesResId.toString(),
+                        "speciesName" to pokemon.species.translatedName.string,
+                        "shiny" to isShiny,
+                        "level" to pokemon.level
+                    ))
                 } catch (t: Throwable) {
                     logger.debug("Erreur lors du traitement de l'événement POKEMON_CAPTURED: {}", t.message)
                 }
@@ -85,6 +93,17 @@ object ProgressionService {
                     for (goal in completedGoals) {
                         notifyGoalCompleted(goal, "chat.cobblemon_jei.goal.completed.evolve")
                     }
+
+                    fr.k0bus.cobblemon_jei.web.WebServerService.broadcast("evolution_complete", mapOf(
+                        "speciesId" to speciesResId.toString(),
+                        "speciesName" to pokemon.species.translatedName.string,
+                        "shiny" to isShiny,
+                        "level" to pokemon.level
+                    ))
+                    PokemonTrackerService.refresh()
+                    fr.k0bus.cobblemon_jei.web.WebServerService.broadcast("pokedex_updated", mapOf("speciesId" to speciesResId.toString()))
+                    fr.k0bus.cobblemon_jei.web.WebServerService.broadcast("party_updated", emptyMap<String, Any>())
+                    fr.k0bus.cobblemon_jei.web.WebServerService.broadcast("pc_updated", emptyMap<String, Any>())
                 } catch (t: Throwable) {
                     logger.debug("Erreur lors du traitement de l'événement EVOLUTION_COMPLETE: {}", t.message)
                 }
@@ -113,7 +132,21 @@ object ProgressionService {
                         for (goal in completedGoals) {
                             notifyGoalCompleted(goal, "chat.cobblemon_jei.goal.completed.form")
                         }
+
+                        fr.k0bus.cobblemon_jei.web.WebServerService.broadcast("pokemon_captured", mapOf(
+                            "speciesId" to speciesResId.toString(),
+                            "speciesName" to pokemon.species.translatedName.string,
+                            "shiny" to isShiny,
+                            "level" to pokemon.level
+                        ))
                     }
+
+                    fr.k0bus.cobblemon_jei.web.WebServerService.broadcast("pokedex_updated", mapOf(
+                        "speciesId" to speciesResId.toString(),
+                        "knowledge" to event.knowledge.name
+                    ))
+                    fr.k0bus.cobblemon_jei.web.WebServerService.broadcast("party_updated", emptyMap<String, Any>())
+                    fr.k0bus.cobblemon_jei.web.WebServerService.broadcast("pc_updated", emptyMap<String, Any>())
                 } catch (t: Throwable) {
                     logger.debug("Erreur lors du traitement de l'événement POKEDEX_DATA_CHANGED_POST: {}", t.message)
                 }

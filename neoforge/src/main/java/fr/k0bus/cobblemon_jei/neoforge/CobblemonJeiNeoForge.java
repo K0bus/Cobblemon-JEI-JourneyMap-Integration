@@ -62,7 +62,8 @@ public class CobblemonJeiNeoForge {
 
             fr.k0bus.cobblemon_jei.pokedex.PokedexNotificationHud.INSTANCE.init();
             fr.k0bus.cobblemon_jei.application.progression.ProgressionService.INSTANCE.init();
-            LOGGER.info("Cobblemon JEI: HUD de notification Pokédex et ProgressionService initialisés et enregistrés.");
+            fr.k0bus.cobblemon_jei.web.WebServerService.INSTANCE.start(fr.k0bus.cobblemon_jei.config.CobblemonModConfig.INSTANCE.getWebServerPort());
+            LOGGER.info("Cobblemon JEI: HUD de notification, ProgressionService et WebServerService initialisés et enregistrés.");
         } catch (Throwable t) {
             LOGGER.warn("Cobblemon JEI: Erreur lors de l'enregistrement des événements HUD/touches: {}", t.getMessage());
         }

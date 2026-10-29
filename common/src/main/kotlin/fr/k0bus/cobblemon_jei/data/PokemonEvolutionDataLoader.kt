@@ -55,6 +55,7 @@ object PokemonEvolutionDataLoader {
     private val localSpeciesByName = mutableMapOf<String, Species>()
     private val rawSpeciesJsonMap = mutableMapOf<String, String>()
     private var hasPreloadedSpecies = false
+    private var cachedSpeciesCount: Int = 0
 
     /**
      * S'assure que toutes les définitions d'espèces Cobblemon sont préchargées en mémoire.
@@ -63,6 +64,13 @@ object PokemonEvolutionDataLoader {
      */
     @Synchronized
     fun ensureSpeciesLoaded() {
+        val cobblemonSpecies = try { PokemonSpecies.species.toList() } catch (_: Throwable) { emptyList() }
+        if (cobblemonSpecies.isNotEmpty() && cobblemonSpecies.size > localSpeciesById.size) {
+            for (sp in cobblemonSpecies) {
+                indexSpeciesLocally(sp, sp.resourceIdentifier.path.lowercase())
+            }
+        }
+
         if (hasPreloadedSpecies) return
 
         logger.info("Cobblemon JEI: Préchargement des espèces Cobblemon depuis les fichiers de données...")
@@ -116,7 +124,9 @@ object PokemonEvolutionDataLoader {
             }
         } catch (_: Throwable) {}
 
-        hasPreloadedSpecies = true
+        if (parsedMap.isNotEmpty() || cobblemonSpecies.isNotEmpty()) {
+            hasPreloadedSpecies = true
+        }
         logger.info("Cobblemon JEI: Index d'espèces prêt avec ${localSpeciesById.size} entrées uniques.")
     }
 
@@ -189,20 +199,26 @@ object PokemonEvolutionDataLoader {
     @Synchronized
     fun clearCache() {
         cachedEvolutions = null
+        cachedSpeciesCount = 0
     }
 
     /**
      * Charge et retourne l'ensemble des recettes d'évolution de Cobblemon.
      */
+    @Synchronized
     fun loadEvolutionRecipes(): List<PokemonEvolutionRecipe> {
-        cachedEvolutions?.let { return it }
+        val currentSpeciesCount = try { PokemonSpecies.species.size } catch (_: Throwable) { 0 }
+        val cached = cachedEvolutions
+        if (cached != null && cached.isNotEmpty() && currentSpeciesCount <= cachedSpeciesCount) {
+            return cached
+        }
 
         ensureSpeciesLoaded()
 
         val recipes = mutableListOf<PokemonEvolutionRecipe>()
         val seenKeys = mutableSetOf<String>()
 
-        logger.info("Cobblemon JEI: Début de l'extraction des recettes d'évolution...")
+        logger.info("Cobblemon JEI: Début de l'extraction des recettes d'évolution (espèces en mémoire: {})...", currentSpeciesCount)
 
         // 1. Parsing depuis les fichiers JSON bruts collectés
         for ((filePath, jsonText) in rawSpeciesJsonMap) {
@@ -263,7 +279,10 @@ object PokemonEvolutionDataLoader {
         loadFromInMemorySpecies(recipes, seenKeys)
 
         logger.info("Cobblemon JEI: ${recipes.size} recettes d'évolution consolidées prêtes pour JEI.")
-        cachedEvolutions = recipes
+        if (recipes.isNotEmpty() || currentSpeciesCount > 0) {
+            cachedEvolutions = recipes
+            cachedSpeciesCount = currentSpeciesCount
+        }
         return recipes
     }
 
