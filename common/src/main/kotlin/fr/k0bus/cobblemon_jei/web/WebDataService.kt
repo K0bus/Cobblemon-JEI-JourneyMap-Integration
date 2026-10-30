@@ -527,6 +527,94 @@ object WebDataService {
     }
 
     private fun mapEvolutionGoalToDto(g: EvolutionGoal): EvolutionGoalDto {
+        val methods = mutableListOf<String>()
+
+        val isTrade = g.recipe.evolutionVariant.contains("Échange", ignoreCase = true) ||
+            g.requirementsSummary.contains("Échange", ignoreCase = true) ||
+            g.additionalConditions.any { it.contains("Échange", ignoreCase = true) } ||
+            g.requiredItems.any { it.hoverName.string.contains("Câble de liaison", ignoreCase = true) }
+
+        if (isTrade) {
+            methods.add("TRADE")
+        }
+
+        val hasNonCableItem = g.requiredItems.any { !it.hoverName.string.contains("Câble de liaison", ignoreCase = true) }
+        val isItem = g.recipe.evolutionVariant.contains("objet", ignoreCase = true) ||
+            hasNonCableItem ||
+            g.additionalConditions.any { it.contains("Objet tenu", ignoreCase = true) || it.contains("Pierre", ignoreCase = true) }
+
+        if (isItem) {
+            methods.add("ITEM")
+        }
+
+        val isFriendship = (g.minFriendship != null && g.minFriendship > 0) ||
+            g.additionalConditions.any { it.contains("Bonheur", ignoreCase = true) }
+
+        if (isFriendship) {
+            methods.add("FRIENDSHIP")
+        }
+
+        val hasMove = !g.requiredMove.isNullOrBlank() || !g.requiredMoveType.isNullOrBlank() || (g.useMoveCount != null && g.useMoveCount > 0)
+        if (hasMove) {
+            methods.add("MOVE")
+        }
+
+        val hasWeatherTime = !g.recipe.moonPhase.isNullOrBlank() ||
+            g.additionalConditions.any { cond ->
+                cond.contains("Période", ignoreCase = true) ||
+                cond.contains("Météo", ignoreCase = true) ||
+                cond.contains("Jour", ignoreCase = true) ||
+                cond.contains("Nuit", ignoreCase = true) ||
+                cond.contains("Phase de lune", ignoreCase = true) ||
+                cond.contains("Lieu", ignoreCase = true) ||
+                cond.contains("Biome", ignoreCase = true) ||
+                cond.contains("Structure", ignoreCase = true)
+            }
+        if (hasWeatherTime) {
+            methods.add("WEATHER_TIME")
+        }
+
+        val hasAction = (g.stepsRequired != null && g.stepsRequired > 0) ||
+            (g.recipe.criticalHits != null && g.recipe.criticalHits > 0) ||
+            (g.recipe.damageTaken != null && g.recipe.damageTaken > 0) ||
+            (g.recipe.recoilDamage != null && g.recipe.recoilDamage > 0) ||
+            !g.recipe.defeatTarget.isNullOrBlank() ||
+            !g.specialActionSummary.isNullOrBlank() ||
+            g.additionalConditions.any { cond ->
+                cond.contains("Marcher", ignoreCase = true) ||
+                cond.contains("coups critiques", ignoreCase = true) ||
+                cond.contains("dégâts", ignoreCase = true) ||
+                cond.contains("Vaincre", ignoreCase = true) ||
+                cond.contains("recul", ignoreCase = true)
+            }
+        if (hasAction) {
+            methods.add("ACTION")
+        }
+
+        val hasOtherSpecial = g.requiredGender != null ||
+            !g.recipe.partyMember.isNullOrBlank() ||
+            !g.recipe.statCompare.isNullOrBlank() ||
+            g.additionalConditions.any { cond ->
+                cond.contains("Sexe", ignoreCase = true) ||
+                cond.contains("Dans l'équipe", ignoreCase = true) ||
+                cond.contains("Statistique", ignoreCase = true) ||
+                cond.contains("Nature", ignoreCase = true) ||
+                cond.contains("Pièces", ignoreCase = true)
+            }
+        if (hasOtherSpecial) {
+            methods.add("SPECIAL")
+        }
+
+        val isMechanic = isFriendship || hasMove || hasWeatherTime || hasAction || hasOtherSpecial
+        if (isMechanic) {
+            methods.add("MECHANIC")
+        }
+
+        val isLevelOnly = !isTrade && !isItem && !isMechanic
+        if (isLevelOnly) {
+            methods.add("LEVEL_ONLY")
+        }
+
         return EvolutionGoalDto(
             sourceSpeciesId = g.sourceSpecies.resourceIdentifier.toString(),
             sourceSpeciesName = g.sourceSpecies.name,
@@ -547,7 +635,14 @@ object WebDataService {
             isFriendshipMet = g.isFriendshipMet,
             ownedLocationSummary = g.sourceLocationSummary,
             ownedInstancesCount = g.ownedSourcePokemons.size,
-            targetStatus = g.targetStatus.name
+            targetStatus = g.targetStatus.name,
+            evolutionVariant = g.recipe.evolutionVariant,
+            additionalConditions = g.additionalConditions,
+            specialActionSummary = g.specialActionSummary,
+            requiredGender = g.requiredGender?.name,
+            requiredMove = g.requiredMove,
+            requiredMoveType = g.requiredMoveType,
+            methods = methods
         )
     }
 

@@ -49,11 +49,11 @@ export function useMinecraftLive() {
           connectionStatus.value = 'CONNECTED'
         }
 
-        // Si le nombre de Pokémon capturés ou rencontrés a changé, forcer le rafraîchissement
+        // Si le nombre de Pokémon capturés ou rencontrés a changé, forcer le rafraîchissement silencieux
         if (prevData && (newData.pokedexCaught !== prevData.pokedexCaught || newData.pokedexEncountered !== prevData.pokedexEncountered)) {
-          pokedexStore.fetchPokedex()
-          evolutionStore.fetchAllEvolutions()
-          partyPcStore.fetchAll()
+          pokedexStore.fetchPokedex(true)
+          evolutionStore.fetchAllEvolutions(true)
+          partyPcStore.fetchAll(true)
         }
       }
     } catch {
@@ -85,9 +85,10 @@ export function useMinecraftLive() {
           `${data.speciesName || 'Nouveau Pokémon'} a été enregistré au Pokédex !`,
           'capture'
         )
-        pokedexStore.fetchPokedex()
-        evolutionStore.fetchAllEvolutions()
-        partyPcStore.fetchAll()
+        // Mise à jour ciblée et dynamique sans interruption visuelle
+        pokedexStore.fetchPokedex(true)
+        evolutionStore.fetchAllEvolutions(true)
+        partyPcStore.fetchAll(true)
         fetchStatus()
       } catch (err) {
         console.error('Erreur event capture:', err)
@@ -102,18 +103,18 @@ export function useMinecraftLive() {
           `${data.speciesName || 'Votre Pokémon'} a évolué !`,
           'evolution'
         )
-        evolutionStore.fetchAllEvolutions()
-        pokedexStore.fetchPokedex()
-        partyPcStore.fetchAll()
+        evolutionStore.fetchAllEvolutions(true)
+        pokedexStore.fetchPokedex(true)
+        partyPcStore.fetchAll(true)
         fetchStatus()
       } catch (err) {
         console.error('Erreur event evolution:', err)
       }
     })
 
-    eventSource.addEventListener('pokedex_updated', (e: MessageEvent) => {
-      pokedexStore.fetchPokedex()
-      evolutionStore.fetchAllEvolutions()
+    eventSource.addEventListener('pokedex_updated', () => {
+      pokedexStore.fetchPokedex(true)
+      evolutionStore.fetchAllEvolutions(true)
       partyPcStore.fetchParty()
       fetchStatus()
     })

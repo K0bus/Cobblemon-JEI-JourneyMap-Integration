@@ -171,6 +171,13 @@ export interface EvolutionGoal {
   ownedLocationSummary?: string | null
   ownedInstancesCount: number
   targetStatus: string
+  evolutionVariant?: string
+  additionalConditions?: string[]
+  specialActionSummary?: string | null
+  requiredGender?: string | null
+  requiredMove?: string | null
+  requiredMoveType?: string | null
+  methods?: string[]
 }
 
 export interface BreedingOrigin {

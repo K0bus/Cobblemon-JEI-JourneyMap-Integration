@@ -14,8 +14,10 @@ const isLoading = ref<boolean>(false)
 const onlyPcFeasible = ref<boolean>(false)
 
 export function useEvolutionStore() {
-  async function fetchAllEvolutions() {
-    isLoading.value = true
+  async function fetchAllEvolutions(silent = false) {
+    if (!silent || pendingGoals.value.length === 0) {
+      isLoading.value = true
+    }
     try {
       const [pendingRes, itemsRes, originsRes, fossilsRes, legRes] = await Promise.all([
         fetch('/api/evolutions/pending').then(r => r.json()).catch(() => []),

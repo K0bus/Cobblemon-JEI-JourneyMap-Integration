@@ -16,8 +16,10 @@ const isDetailOpen = ref<boolean>(false)
 const isLoadingDetail = ref<boolean>(false)
 
 export function usePokedexStore() {
-  async function fetchPokedex() {
-    isLoading.value = true
+  async function fetchPokedex(silent = false) {
+    if (!silent || pokemonList.value.length === 0) {
+      isLoading.value = true
+    }
     error.value = null
     try {
       const res = await fetch('/api/pokedex')

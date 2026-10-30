@@ -31,8 +31,10 @@ export function usePartyPcStore() {
     }
   }
 
-  async function fetchAll() {
-    isLoading.value = true
+  async function fetchAll(silent = false) {
+    if (!silent || pcBoxes.value.length === 0) {
+      isLoading.value = true
+    }
     try {
       await Promise.all([fetchParty(), fetchPcBoxes()])
     } finally {

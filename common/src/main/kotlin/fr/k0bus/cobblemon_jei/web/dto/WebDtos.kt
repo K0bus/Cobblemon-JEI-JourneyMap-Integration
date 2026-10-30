@@ -214,7 +214,14 @@ data class EvolutionGoalDto(
     val isFriendshipMet: Boolean,
     val ownedLocationSummary: String?, // ex: "PC : Boîte 2, Slot 3"
     val ownedInstancesCount: Int,
-    val targetStatus: String = "MISSING"
+    val targetStatus: String = "MISSING",
+    val evolutionVariant: String = "Montée de niveau",
+    val additionalConditions: List<String> = emptyList(),
+    val specialActionSummary: String? = null,
+    val requiredGender: String? = null,
+    val requiredMove: String? = null,
+    val requiredMoveType: String? = null,
+    val methods: List<String> = emptyList()
 )
 
 /**

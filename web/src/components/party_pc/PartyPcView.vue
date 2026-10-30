@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { usePartyPcStore } from '../../stores/partyPcStore'
 import { usePokedexStore } from '../../stores/pokedexStore'
 import { usePokemonSprites } from '../../composables/usePokemonSprites'
@@ -11,17 +11,48 @@ const partyStore = usePartyPcStore()
 const pokedexStore = usePokedexStore()
 const { getSpriteUrl, getFallbackSpriteUrl, handleImgError } = usePokemonSprites()
 
-onMounted(() => {
-  partyStore.fetchAll()
-})
-
+const searchBoxRef = ref<HTMLElement | null>(null)
 const activeSubTab = ref<'PARTY' | 'PC'>('PARTY')
 const selectedPokemon = ref<OwnedPokemon | null>(null)
 const pcSearchQuery = ref('')
 const isSearchFocused = ref(false)
+const isFuzzyDropdownOpen = ref(false)
+const targetedPokemonUuid = ref<string | null>(null)
+
+function handleClickOutside(event: MouseEvent) {
+  if (searchBoxRef.value && !searchBoxRef.value.contains(event.target as Node)) {
+    isFuzzyDropdownOpen.value = false
+    isSearchFocused.value = false
+  }
+}
+
+onMounted(() => {
+  partyStore.fetchAll()
+  window.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('click', handleClickOutside)
+})
+
+function onSearchInput() {
+  targetedPokemonUuid.value = null
+  isFuzzyDropdownOpen.value = true
+}
+
+function clearSearch() {
+  pcSearchQuery.value = ''
+  targetedPokemonUuid.value = null
+  isFuzzyDropdownOpen.value = false
+}
 
 function selectPokemon(p: OwnedPokemon | null) {
   selectedPokemon.value = p
+}
+
+function openInspect(p: OwnedPokemon) {
+  selectedPokemon.value = p
+  isFuzzyDropdownOpen.value = false
 }
 
 function getHpPercentage(mon: OwnedPokemon): number {
@@ -91,19 +122,26 @@ const fuzzySearchResults = computed<IndexedPcPokemon[]>(() => {
 
 function selectFuzzyResult(match: IndexedPcPokemon) {
   partyStore.selectedBoxIndex = match.boxIndex
-  selectedPokemon.value = match.pokemon
+  pcSearchQuery.value = match.pokemon.displayName
+  targetedPokemonUuid.value = match.pokemon.uuid
+  isFuzzyDropdownOpen.value = false
   isSearchFocused.value = false
 }
 
 function isMatchingCurrentSearch(mon: OwnedPokemon | null): boolean {
   if (!pcSearchQuery.value.trim() || !mon) return false
+  if (targetedPokemonUuid.value) {
+    return mon.uuid === targetedPokemonUuid.value
+  }
   const q = pcSearchQuery.value.trim().toLowerCase()
   return mon.displayName.toLowerCase().includes(q) ||
          (mon.speciesName || '').toLowerCase().includes(q) ||
          (mon.nationalDexNumber?.toString() || '').includes(q) ||
          (mon.ability || '').toLowerCase().includes(q) ||
          (mon.heldItem || '').toLowerCase().includes(q) ||
-         (mon.isShiny && (q.includes('shiny') || q.includes('chroma')))
+         (mon.isShiny && (q.includes('shiny') || q.includes('chroma'))) ||
+         `lv.${mon.level}`.includes(q) ||
+         `niv.${mon.level}`.includes(q)
 }
 </script>
 
@@ -132,7 +170,7 @@ function isMatchingCurrentSearch(mon: OwnedPokemon | null): boolean {
       </div>
 
       <div class="actions">
-        <button class="glass-btn refresh-btn" @click="partyStore.fetchAll" :disabled="partyStore.isLoading">
+        <button class="glass-btn refresh-btn" @click="partyStore.fetchAll()" :disabled="partyStore.isLoading">
           🔄 Actualiser
         </button>
       </div>
@@ -244,18 +282,20 @@ function isMatchingCurrentSearch(mon: OwnedPokemon | null): boolean {
         <div class="glass-panel box-nav-panel">
           <!-- Fuzzy Search Bar -->
           <div class="pc-search-row">
-            <div class="pc-search-box-wrap">
+            <div class="pc-search-box-wrap" ref="searchBoxRef">
               <span class="search-icon">🔍</span>
               <input 
                 v-model="pcSearchQuery" 
                 class="glass-input pc-search-input" 
                 placeholder="Rechercher dans tout le PC (Pikachu, #25, Shiny, Talent, Niveau...)"
-                @focus="isSearchFocused = true"
+                @focus="isFuzzyDropdownOpen = true"
+                @input="onSearchInput"
+                @keydown.esc="isFuzzyDropdownOpen = false"
               />
-              <button v-if="pcSearchQuery" class="clear-search-btn" @click="pcSearchQuery = ''">✕</button>
+              <button v-if="pcSearchQuery" class="clear-search-btn" @click="clearSearch">✕</button>
 
               <!-- Fuzzy Dropdown Suggestions -->
-              <div v-if="pcSearchQuery && fuzzySearchResults.length > 0" class="fuzzy-dropdown glass-panel">
+              <div v-if="isFuzzyDropdownOpen && pcSearchQuery.trim() && fuzzySearchResults.length > 0" class="fuzzy-dropdown glass-panel">
                 <div class="fuzzy-header">
                   <span>{{ fuzzySearchResults.length }} Pokémon trouvé(s) dans le PC</span>
                 </div>
@@ -280,13 +320,26 @@ function isMatchingCurrentSearch(mon: OwnedPokemon | null): boolean {
                       📍 <strong>{{ item.boxName }}</strong> • Emplacement #{{ item.slotIndex + 1 }}
                     </div>
                   </div>
-                  <div class="fuzzy-action">
-                    <span class="fuzzy-jump-pill">Sélectionner ➔</span>
+                  <div class="fuzzy-actions-group">
+                    <button 
+                      class="fuzzy-info-btn glass-btn" 
+                      title="Voir la fiche d'informations"
+                      @click.stop="openInspect(item.pokemon)"
+                    >
+                      ℹ️ Infos
+                    </button>
+                    <button 
+                      class="fuzzy-jump-btn" 
+                      title="Sélectionner et localiser dans la boîte"
+                      @click.stop="selectFuzzyResult(item)"
+                    >
+                      Sélectionner ➔
+                    </button>
                   </div>
                 </div>
               </div>
 
-              <div v-else-if="pcSearchQuery && isSearchFocused" class="fuzzy-dropdown glass-panel empty-fuzzy">
+              <div v-else-if="isFuzzyDropdownOpen && pcSearchQuery.trim() && !fuzzySearchResults.length" class="fuzzy-dropdown glass-panel empty-fuzzy">
                 Aucun Pokémon correspondant dans vos boîtes PC.
               </div>
             </div>
@@ -340,6 +393,7 @@ function isMatchingCurrentSearch(mon: OwnedPokemon | null): boolean {
               :class="{ 
                 'pc-slot-empty': !mon, 
                 'pc-slot-active': mon && selectedPokemon?.uuid === mon.uuid,
+                'pc-slot-targeted': mon && targetedPokemonUuid === mon.uuid,
                 'pc-slot-shiny': mon?.isShiny,
                 'pc-slot-match': isMatchingCurrentSearch(mon),
                 'pc-slot-dimmed': pcSearchQuery && mon && !isMatchingCurrentSearch(mon)
@@ -347,7 +401,8 @@ function isMatchingCurrentSearch(mon: OwnedPokemon | null): boolean {
               @click="mon && selectPokemon(mon)"
             >
               <template v-if="mon">
-                <span v-if="mon.isShiny" class="mini-shiny">✨</span>
+                <span v-if="targetedPokemonUuid === mon.uuid" class="targeted-pin">🎯</span>
+                <span v-else-if="mon.isShiny" class="mini-shiny">✨</span>
                 <img 
                   :src="getSpriteUrl(mon.speciesName || mon.displayName, mon.nationalDexNumber, mon.isShiny)" 
                   class="pc-mini-sprite"
@@ -729,6 +784,8 @@ function isMatchingCurrentSearch(mon: OwnedPokemon | null): boolean {
 
 /* PC Box view */
 .box-nav-panel {
+  position: relative;
+  z-index: 50;
   padding: 12px 16px;
   margin-bottom: 16px;
 }
@@ -765,6 +822,8 @@ function isMatchingCurrentSearch(mon: OwnedPokemon | null): boolean {
 }
 
 .pc-grid-wrap {
+  position: relative;
+  z-index: 1;
   padding: 20px;
 }
 
@@ -1106,6 +1165,8 @@ function isMatchingCurrentSearch(mon: OwnedPokemon | null): boolean {
 
 /* PC Search & Fuzzy Suggestions */
 .pc-search-row {
+  position: relative;
+  z-index: 60;
   margin-bottom: 14px;
 }
 
@@ -1161,11 +1222,11 @@ function isMatchingCurrentSearch(mon: OwnedPokemon | null): boolean {
   right: 0;
   max-height: 380px;
   overflow-y: auto;
-  z-index: 500;
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(56, 189, 248, 0.3);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7);
+  z-index: 100;
+  background: rgba(15, 23, 42, 0.98);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85), 0 0 20px rgba(56, 189, 248, 0.2);
   border-radius: 12px;
   padding: 8px 0;
 }
@@ -1241,14 +1302,48 @@ function isMatchingCurrentSearch(mon: OwnedPokemon | null): boolean {
   color: var(--text-main);
 }
 
-.fuzzy-jump-pill {
-  font-size: 0.72rem;
+.fuzzy-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.fuzzy-info-btn {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.fuzzy-info-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #FFFFFF;
+  color: #FFFFFF;
+}
+
+.fuzzy-jump-btn {
+  padding: 5px 12px;
+  font-size: 0.75rem;
   font-weight: 700;
-  color: var(--accent-cyan);
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: rgba(6, 182, 212, 0.12);
-  border: 1px solid rgba(6, 182, 212, 0.3);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.3), rgba(59, 130, 246, 0.3));
+  border: 1px solid var(--accent-cyan);
+  color: #FFFFFF;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.fuzzy-jump-btn:hover {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.6), rgba(59, 130, 246, 0.6));
+  box-shadow: 0 0 14px rgba(6, 182, 212, 0.5);
+  transform: translateY(-1px);
 }
 
 .empty-fuzzy {
@@ -1256,6 +1351,40 @@ function isMatchingCurrentSearch(mon: OwnedPokemon | null): boolean {
   font-size: 0.82rem;
   color: var(--text-dim);
   text-align: center;
+}
+
+/* PC Slot Targeted State */
+.pc-slot-targeted {
+  border-color: #06b6d4 !important;
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.8), inset 0 0 12px rgba(6, 182, 212, 0.3) !important;
+  background: rgba(6, 182, 212, 0.18) !important;
+  animation: pulseTarget 1.8s ease-in-out infinite alternate !important;
+  z-index: 5;
+}
+
+@keyframes pulseTarget {
+  0% {
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.5), inset 0 0 8px rgba(6, 182, 212, 0.2);
+    transform: scale(1);
+  }
+  100% {
+    box-shadow: 0 0 24px rgba(6, 182, 212, 0.95), inset 0 0 16px rgba(6, 182, 212, 0.4);
+    transform: scale(1.04);
+  }
+}
+
+.targeted-pin {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 0.85rem;
+  filter: drop-shadow(0 0 4px #06b6d4);
+  animation: bouncePin 1s infinite alternate;
+}
+
+@keyframes bouncePin {
+  from { transform: translateY(0); }
+  to { transform: translateY(-3px); }
 }
 
 /* PC Slot Matching Highlight */

@@ -1,6 +1,5 @@
 package fr.k0bus.cobblemon_jei.data
 
-import com.cobblemon.mod.common.CobblemonItems
 import com.cobblemon.mod.common.api.fossil.Fossils
 import com.cobblemon.mod.common.pokemon.FormData
 import com.cobblemon.mod.common.pokemon.Species
@@ -300,25 +299,9 @@ object PokemonFossilDataLoader {
 
     private fun getCobblemonItemFallback(cleanId: String): ItemStack {
         return try {
-            val itm = when (cleanId) {
-                "helix_fossil" -> CobblemonItems.HELIX_FOSSIL
-                "dome_fossil" -> CobblemonItems.DOME_FOSSIL
-                "old_amber_fossil" -> CobblemonItems.OLD_AMBER_FOSSIL
-                "root_fossil" -> CobblemonItems.ROOT_FOSSIL
-                "claw_fossil" -> CobblemonItems.CLAW_FOSSIL
-                "skull_fossil" -> CobblemonItems.SKULL_FOSSIL
-                "armor_fossil" -> CobblemonItems.ARMOR_FOSSIL
-                "cover_fossil" -> CobblemonItems.COVER_FOSSIL
-                "plume_fossil" -> CobblemonItems.PLUME_FOSSIL
-                "jaw_fossil" -> CobblemonItems.JAW_FOSSIL
-                "sail_fossil" -> CobblemonItems.SAIL_FOSSIL
-                "fossilized_bird" -> CobblemonItems.FOSSILIZED_BIRD
-                "fossilized_dino" -> CobblemonItems.FOSSILIZED_DINO
-                "fossilized_drake" -> CobblemonItems.FOSSILIZED_DRAKE
-                "fossilized_fish" -> CobblemonItems.FOSSILIZED_FISH
-                else -> Items.AIR
-            }
-            if (itm != Items.AIR) ItemStack(itm) else ItemStack.EMPTY
+            val itemLoc = ResourceLocation.fromNamespaceAndPath("cobblemon", cleanId)
+            val item = BuiltInRegistries.ITEM.get(itemLoc)
+            if (item != Items.AIR) ItemStack(item) else ItemStack.EMPTY
         } catch (_: Throwable) {
             ItemStack.EMPTY
         }

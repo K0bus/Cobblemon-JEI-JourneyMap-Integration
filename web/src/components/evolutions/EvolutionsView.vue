@@ -15,10 +15,97 @@ const statusFilter = ref<'ALL' | 'CAUGHT' | 'MISSING'>('MISSING') // Manquants p
 
 // Sous-filtres contextuels
 const pendingFilter = ref<'ALL' | 'READY' | 'PC'>('ALL')
+export type EvolutionMethodFilter = 
+  | 'ALL'
+  | 'LEVEL_ONLY'
+  | 'ITEM'
+  | 'TRADE'
+  | 'MECHANIC'
+  | 'FRIENDSHIP'
+  | 'MOVE'
+  | 'WEATHER_TIME'
+  | 'ACTION'
+
+const methodFilter = ref<EvolutionMethodFilter>('ALL')
 const itemInventoryFilter = ref<'ALL' | 'OWNED' | 'MISSING'>('ALL')
 const originFilter = ref<'ALL' | 'READY'>('ALL')
 const fossilFilter = ref<'ALL' | 'READY'>('ALL')
 const legendaryFilter = ref<'ALL' | 'MONUMENT'>('ALL')
+
+// Fonctions d'identification du type / de la méthode d'évolution
+function isTradeEvolution(g: EvolutionGoal): boolean {
+  if (g.methods && g.methods.length > 0) return g.methods.includes('TRADE')
+  const req = (g.requirementsSummary || '').toLowerCase()
+  const variant = (g.evolutionVariant || '').toLowerCase()
+  const conds = (g.additionalConditions || []).map(c => c.toLowerCase())
+  return variant.includes('échange') || req.includes('échange') || conds.some(c => c.includes('échange')) ||
+    g.requiredItems.some(it => it.toLowerCase().includes('câble de liaison'))
+}
+
+function isItemEvolution(g: EvolutionGoal): boolean {
+  if (g.methods && g.methods.length > 0) return g.methods.includes('ITEM')
+  const variant = (g.evolutionVariant || '').toLowerCase()
+  const conds = (g.additionalConditions || []).map(c => c.toLowerCase())
+  const hasNonCableItem = g.requiredItems.some(it => !it.toLowerCase().includes('câble de liaison'))
+  return variant.includes('objet') || hasNonCableItem ||
+    conds.some(c => c.includes('objet tenu') || c.includes('pierre'))
+}
+
+function isFriendshipEvolution(g: EvolutionGoal): boolean {
+  if (g.methods && g.methods.length > 0) return g.methods.includes('FRIENDSHIP')
+  const conds = (g.additionalConditions || []).map(c => c.toLowerCase())
+  return (g.minFriendship !== undefined && g.minFriendship !== null && g.minFriendship > 0) ||
+    conds.some(c => c.includes('bonheur')) ||
+    (g.requirementsSummary || '').toLowerCase().includes('bonheur')
+}
+
+function isMoveEvolution(g: EvolutionGoal): boolean {
+  if (g.methods && g.methods.length > 0) return g.methods.includes('MOVE')
+  const conds = (g.additionalConditions || []).map(c => c.toLowerCase())
+  return Boolean(g.requiredMove || g.requiredMoveType) ||
+    conds.some(c => c.includes('capacité') || c.includes('utiliser'))
+}
+
+function isWeatherOrTimeEvolution(g: EvolutionGoal): boolean {
+  if (g.methods && g.methods.length > 0) return g.methods.includes('WEATHER_TIME')
+  const conds = (g.additionalConditions || []).map(c => c.toLowerCase())
+  return conds.some(c =>
+    c.includes('période') || c.includes('jour') || c.includes('nuit') || c.includes('crépuscule') ||
+    c.includes('météo') || c.includes('pluie') || c.includes('orage') || c.includes('lune') ||
+    c.includes('biome') || c.includes('lieu') || c.includes('structure')
+  )
+}
+
+function isActionEvolution(g: EvolutionGoal): boolean {
+  if (g.methods && g.methods.length > 0) return g.methods.includes('ACTION')
+  const conds = (g.additionalConditions || []).map(c => c.toLowerCase())
+  return Boolean(g.specialActionSummary) ||
+    conds.some(c =>
+      c.includes('marcher') || c.includes('critique') || c.includes('dégât') ||
+      c.includes('vaincre') || c.includes('recul')
+    )
+}
+
+function isSpecialEvolution(g: EvolutionGoal): boolean {
+  if (g.methods && g.methods.length > 0) return g.methods.includes('SPECIAL')
+  const conds = (g.additionalConditions || []).map(c => c.toLowerCase())
+  return Boolean(g.requiredGender) ||
+    conds.some(c =>
+      c.includes('sexe') || c.includes('nature') || c.includes('pièces') ||
+      c.includes('équipe') || c.includes('statistique')
+    )
+}
+
+function isMechanicEvolution(g: EvolutionGoal): boolean {
+  if (g.methods && g.methods.length > 0) return g.methods.includes('MECHANIC')
+  return isFriendshipEvolution(g) || isMoveEvolution(g) || isWeatherOrTimeEvolution(g) ||
+    isActionEvolution(g) || isSpecialEvolution(g)
+}
+
+function isLevelOnlyEvolution(g: EvolutionGoal): boolean {
+  if (g.methods && g.methods.length > 0) return g.methods.includes('LEVEL_ONLY')
+  return !isTradeEvolution(g) && !isItemEvolution(g) && !isMechanicEvolution(g)
+}
 
 onMounted(() => {
   evoStore.fetchAllEvolutions()
@@ -64,8 +151,36 @@ function countPendingByFeasibility(feas: 'ALL' | 'READY' | 'PC') {
   if (statusFilter.value === 'CAUGHT') list = list.filter(g => g.targetStatus === 'CAUGHT')
   else if (statusFilter.value === 'MISSING') list = list.filter(g => g.targetStatus !== 'CAUGHT')
 
+  if (methodFilter.value === 'LEVEL_ONLY') list = list.filter(g => isLevelOnlyEvolution(g))
+  else if (methodFilter.value === 'ITEM') list = list.filter(g => isItemEvolution(g))
+  else if (methodFilter.value === 'TRADE') list = list.filter(g => isTradeEvolution(g))
+  else if (methodFilter.value === 'MECHANIC') list = list.filter(g => isMechanicEvolution(g))
+  else if (methodFilter.value === 'FRIENDSHIP') list = list.filter(g => isFriendshipEvolution(g))
+  else if (methodFilter.value === 'MOVE') list = list.filter(g => isMoveEvolution(g))
+  else if (methodFilter.value === 'WEATHER_TIME') list = list.filter(g => isWeatherOrTimeEvolution(g))
+  else if (methodFilter.value === 'ACTION') list = list.filter(g => isActionEvolution(g))
+
   if (feas === 'READY') return list.filter(g => g.feasibility === 'READY_TO_EVOLVE').length
   if (feas === 'PC') return list.filter(g => g.feasibility === 'CAN_EVOLVE_WITH_PC').length
+  return list.length
+}
+
+function countPendingByMethod(method: EvolutionMethodFilter) {
+  let list = evoStore.pendingGoals as EvolutionGoal[]
+  if (statusFilter.value === 'CAUGHT') list = list.filter(g => g.targetStatus === 'CAUGHT')
+  else if (statusFilter.value === 'MISSING') list = list.filter(g => g.targetStatus !== 'CAUGHT')
+
+  if (pendingFilter.value === 'READY') list = list.filter(g => g.feasibility === 'READY_TO_EVOLVE')
+  else if (pendingFilter.value === 'PC') list = list.filter(g => g.feasibility === 'CAN_EVOLVE_WITH_PC')
+
+  if (method === 'LEVEL_ONLY') return list.filter(g => isLevelOnlyEvolution(g)).length
+  if (method === 'ITEM') return list.filter(g => isItemEvolution(g)).length
+  if (method === 'TRADE') return list.filter(g => isTradeEvolution(g)).length
+  if (method === 'MECHANIC') return list.filter(g => isMechanicEvolution(g)).length
+  if (method === 'FRIENDSHIP') return list.filter(g => isFriendshipEvolution(g)).length
+  if (method === 'MOVE') return list.filter(g => isMoveEvolution(g)).length
+  if (method === 'WEATHER_TIME') return list.filter(g => isWeatherOrTimeEvolution(g)).length
+  if (method === 'ACTION') return list.filter(g => isActionEvolution(g)).length
   return list.length
 }
 
@@ -120,6 +235,24 @@ const filteredPending = computed(() => {
     list = list.filter(g => g.feasibility === 'READY_TO_EVOLVE')
   } else if (pendingFilter.value === 'PC') {
     list = list.filter(g => g.feasibility === 'CAN_EVOLVE_WITH_PC')
+  }
+
+  if (methodFilter.value === 'LEVEL_ONLY') {
+    list = list.filter(g => isLevelOnlyEvolution(g))
+  } else if (methodFilter.value === 'ITEM') {
+    list = list.filter(g => isItemEvolution(g))
+  } else if (methodFilter.value === 'TRADE') {
+    list = list.filter(g => isTradeEvolution(g))
+  } else if (methodFilter.value === 'MECHANIC') {
+    list = list.filter(g => isMechanicEvolution(g))
+  } else if (methodFilter.value === 'FRIENDSHIP') {
+    list = list.filter(g => isFriendshipEvolution(g))
+  } else if (methodFilter.value === 'MOVE') {
+    list = list.filter(g => isMoveEvolution(g))
+  } else if (methodFilter.value === 'WEATHER_TIME') {
+    list = list.filter(g => isWeatherOrTimeEvolution(g))
+  } else if (methodFilter.value === 'ACTION') {
+    list = list.filter(g => isActionEvolution(g))
   }
 
   if (searchQuery.value.trim()) {
@@ -321,7 +454,7 @@ const filteredLegendaries = computed(() => {
         </button>
       </div>
 
-      <button class="glass-btn refresh-btn" @click="evoStore.fetchAllEvolutions" :disabled="evoStore.isLoading">
+      <button class="glass-btn refresh-btn" @click="evoStore.fetchAllEvolutions()" :disabled="evoStore.isLoading">
         🔄 Actualiser
       </button>
     </div>
@@ -396,6 +529,76 @@ const filteredLegendaries = computed(() => {
             @click="pendingFilter = 'PC'"
           >
             📦 Faisables via PC ({{ countPendingByFeasibility('PC') }})
+          </button>
+        </div>
+      </div>
+
+      <!-- Evolution Method Sub-Pills -->
+      <div v-if="evoStore.activeSubTab === 'PENDING'" class="secondary-pills-row method-row">
+        <span class="pills-label">Méthode :</span>
+        <div class="pills-list">
+          <button 
+            class="glass-btn filter-pill" 
+            :class="{ active: methodFilter === 'ALL' }"
+            @click="methodFilter = 'ALL'"
+          >
+            Toutes ({{ countPendingByMethod('ALL') }})
+          </button>
+          <button 
+            class="glass-btn filter-pill level-pill" 
+            :class="{ active: methodFilter === 'LEVEL_ONLY' }"
+            @click="methodFilter = 'LEVEL_ONLY'"
+          >
+            📈 Niveau uniquement ({{ countPendingByMethod('LEVEL_ONLY') }})
+          </button>
+          <button 
+            class="glass-btn filter-pill item-pill" 
+            :class="{ active: methodFilter === 'ITEM' }"
+            @click="methodFilter = 'ITEM'"
+          >
+            💎 Objets ({{ countPendingByMethod('ITEM') }})
+          </button>
+          <button 
+            class="glass-btn filter-pill trade-pill" 
+            :class="{ active: methodFilter === 'TRADE' }"
+            @click="methodFilter = 'TRADE'"
+          >
+            🔄 Échange ({{ countPendingByMethod('TRADE') }})
+          </button>
+          <button 
+            class="glass-btn filter-pill mechanic-pill" 
+            :class="{ active: methodFilter === 'MECHANIC' }"
+            @click="methodFilter = 'MECHANIC'"
+          >
+            ⚙️ Mécanique ({{ countPendingByMethod('MECHANIC') }})
+          </button>
+          <button 
+            class="glass-btn filter-pill friendship-pill" 
+            :class="{ active: methodFilter === 'FRIENDSHIP' }"
+            @click="methodFilter = 'FRIENDSHIP'"
+          >
+            💖 Bonheur ({{ countPendingByMethod('FRIENDSHIP') }})
+          </button>
+          <button 
+            class="glass-btn filter-pill move-pill" 
+            :class="{ active: methodFilter === 'MOVE' }"
+            @click="methodFilter = 'MOVE'"
+          >
+            ⚔️ Capacités ({{ countPendingByMethod('MOVE') }})
+          </button>
+          <button 
+            class="glass-btn filter-pill weather-pill" 
+            :class="{ active: methodFilter === 'WEATHER_TIME' }"
+            @click="methodFilter = 'WEATHER_TIME'"
+          >
+            ☀️ Météo & Heure ({{ countPendingByMethod('WEATHER_TIME') }})
+          </button>
+          <button 
+            class="glass-btn filter-pill action-pill" 
+            :class="{ active: methodFilter === 'ACTION' }"
+            @click="methodFilter = 'ACTION'"
+          >
+            🏃 Actions ({{ countPendingByMethod('ACTION') }})
           </button>
         </div>
       </div>
@@ -509,7 +712,7 @@ const filteredLegendaries = computed(() => {
           class="evo-card glass-card"
           :class="{ 'ready-card': g.feasibility === 'READY_TO_EVOLVE', 'pc-card': g.feasibility === 'CAN_EVOLVE_WITH_PC' }"
         >
-          <!-- Feasibility Badge -->
+          <!-- Feasibility & Method Badges -->
           <div class="card-status-strip">
             <span v-if="g.feasibility === 'READY_TO_EVOLVE'" class="badge ready-tag">
               ⚡ PRÊT DANS L'ÉQUIPE
@@ -517,6 +720,33 @@ const filteredLegendaries = computed(() => {
             <span v-else class="badge pc-tag">
               📦 EN BOÎTE PC ({{ g.ownedLocationSummary || 'PC' }})
             </span>
+
+            <div class="method-badges">
+              <span v-if="isLevelOnlyEvolution(g)" class="badge method-tag level-method-tag">
+                📈 {{ g.minLevel ? `Niv. ${g.minLevel}` : 'Niveau' }}
+              </span>
+              <span v-if="isItemEvolution(g)" class="badge method-tag item-method-tag">
+                💎 Objet
+              </span>
+              <span v-if="isTradeEvolution(g)" class="badge method-tag trade-method-tag">
+                🔄 Échange
+              </span>
+              <span v-if="isFriendshipEvolution(g)" class="badge method-tag friendship-method-tag">
+                💖 Bonheur
+              </span>
+              <span v-if="isMoveEvolution(g)" class="badge method-tag move-method-tag">
+                ⚔️ Capacité
+              </span>
+              <span v-if="isWeatherOrTimeEvolution(g)" class="badge method-tag weather-method-tag">
+                ☀️ Moment
+              </span>
+              <span v-if="isActionEvolution(g)" class="badge method-tag action-method-tag">
+                🏃 Action
+              </span>
+              <span v-if="isSpecialEvolution(g)" class="badge method-tag special-method-tag">
+                🧬 Spécial
+              </span>
+            </div>
           </div>
 
           <!-- Flow: Source -> Arrow -> Target -->
@@ -538,6 +768,11 @@ const filteredLegendaries = computed(() => {
             <div class="flow-arrow-box">
               <div class="flow-arrow">➔</div>
               <div class="flow-req">{{ g.requirementsSummary || 'Conditions requises' }}</div>
+              <div v-if="g.additionalConditions && g.additionalConditions.length > 0" class="flow-conditions">
+                <span v-for="c in g.additionalConditions" :key="c" class="cond-chip">
+                  {{ c }}
+                </span>
+              </div>
               <div v-if="g.requiredItems.length > 0" class="flow-items">
                 <span 
                   v-for="it in g.requiredItems" 
@@ -1037,6 +1272,54 @@ const filteredLegendaries = computed(() => {
   color: #fb7185;
 }
 
+.level-pill.active {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.item-pill.active {
+  background: rgba(168, 85, 247, 0.25);
+  border-color: #a855f7;
+  color: #c084fc;
+}
+
+.trade-pill.active {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: #f59e0b;
+  color: #fbbf24;
+}
+
+.mechanic-pill.active {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: #6366f1;
+  color: #818cf8;
+}
+
+.friendship-pill.active {
+  background: rgba(236, 72, 153, 0.25);
+  border-color: #ec4899;
+  color: #f472b6;
+}
+
+.move-pill.active {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  color: #f87171;
+}
+
+.weather-pill.active {
+  background: rgba(6, 182, 212, 0.25);
+  border-color: #06b6d4;
+  color: #22d3ee;
+}
+
+.action-pill.active {
+  background: rgba(249, 115, 22, 0.25);
+  border-color: #f97316;
+  color: #fb923c;
+}
+
 .info-banner {
   padding: 14px 18px;
   margin-bottom: 20px;
@@ -1082,7 +1365,96 @@ const filteredLegendaries = computed(() => {
 
 .card-status-strip {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.method-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.method-tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 5px;
+  letter-spacing: 0.3px;
+}
+
+.level-method-tag {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.item-method-tag {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+}
+
+.trade-method-tag {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.mechanic-method-tag {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.friendship-method-tag {
+  background: rgba(236, 72, 153, 0.15);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.35);
+}
+
+.move-method-tag {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.weather-method-tag {
+  background: rgba(6, 182, 212, 0.15);
+  color: #22d3ee;
+  border: 1px solid rgba(6, 182, 212, 0.35);
+}
+
+.action-method-tag {
+  background: rgba(249, 115, 22, 0.15);
+  color: #fb923c;
+  border: 1px solid rgba(249, 115, 22, 0.35);
+}
+
+.special-method-tag {
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+}
+
+.flow-conditions {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.cond-chip {
+  font-size: 0.65rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-dim);
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1.2;
 }
 
 .badge {
