@@ -44,13 +44,12 @@ class CobblemonExpeditionScreen(
     private var scrollOffset: Double = 0.0
     private var maxScroll: Double = 0.0
 
-    // Gestion de la modale Détails des Cibles (Loupe)
-    private var isTargetsDetailModalOpen: Boolean = false
-    private var targetsDetailTitle: String = ""
-    private var targetsDetailSubtitle: String = ""
-    private var targetsDetailList: List<PokemonTarget> = emptyList()
-    private var targetsDetailScrollOffset: Double = 0.0
-    private var targetsDetailMaxScroll: Double = 0.0
+    // Widget partagé de consultation des cibles
+    private val targetsDetailModal = PokemonTargetsDetailModalWidget(
+        getItemStack = { sp, shiny -> getItemStack(sp, shiny) },
+        isPokemonCaught = { sp -> PokemonTrackerService.getAllTracked().find { it.species.resourceIdentifier == sp.resourceIdentifier }?.isCaught == true },
+        isPokemonEncountered = { sp -> PokemonTrackerService.getAllTracked().find { it.species.resourceIdentifier == sp.resourceIdentifier }?.isEncountered == true }
+    )
 
     private val itemStackCache = ConcurrentHashMap<Triple<String, Boolean, Boolean>, ItemStack>()
 
@@ -177,7 +176,7 @@ class CobblemonExpeditionScreen(
         super.render(guiGraphics, mouseX, mouseY, partialTick)
 
         // Rendu de la modale de Détail des Cibles (Loupe)
-        renderTargetsDetailModal(guiGraphics, mouseX, mouseY)
+        targetsDetailModal.render(guiGraphics, mouseX, mouseY, width, height, font)
     }
 
     private fun drawSuggestionCard(
@@ -261,152 +260,15 @@ class CobblemonExpeditionScreen(
     }
 
     fun openTargetsDetailModal(title: String, subtitle: String, targets: List<PokemonTarget>) {
-        targetsDetailTitle = title
-        targetsDetailSubtitle = subtitle
-        targetsDetailList = targets
-        targetsDetailScrollOffset = 0.0
-        isTargetsDetailModalOpen = true
+        targetsDetailModal.open(title, subtitle, targets)
     }
 
     fun closeTargetsDetailModal() {
-        isTargetsDetailModalOpen = false
-    }
-
-    private fun getTargetsDetailModalBounds(): IntArray {
-        val modalW = min(420, width - 24)
-        val modalH = min(280, height - 24)
-        val modalX = (width - modalW) / 2
-        val modalY = (height - modalH) / 2
-        return intArrayOf(modalX, modalY, modalW, modalH)
-    }
-
-    private fun renderTargetsDetailModal(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        if (!isTargetsDetailModalOpen) return
-
-        guiGraphics.flush()
-        val pose = guiGraphics.pose()
-        pose.pushPose()
-        pose.translate(0f, 0f, 600f)
-
-        // Fond sombre
-        guiGraphics.fill(0, 0, width, height, 0xD0050810.toInt())
-
-        val (modalX, modalY, modalW, modalH) = getTargetsDetailModalBounds()
-
-        // Fenêtre principale
-        guiGraphics.fill(modalX, modalY, modalX + modalW, modalY + modalH, 0xFA121622.toInt())
-        guiGraphics.fill(modalX, modalY, modalX + modalW, modalY + 1, 0xFF354464.toInt())
-        guiGraphics.fill(modalX, modalY + modalH - 1, modalX + modalW, modalY + modalH, 0xFF354464.toInt())
-        guiGraphics.fill(modalX, modalY, modalX + 1, modalY + modalH, 0xFF354464.toInt())
-        guiGraphics.fill(modalX + modalW - 1, modalY, modalX + modalW, modalY + modalH, 0xFF354464.toInt())
-
-        // Header
-        guiGraphics.fill(modalX + 1, modalY + 1, modalX + modalW - 1, modalY + 26, 0xFF192030.toInt())
-        guiGraphics.fill(modalX + 1, modalY + 25, modalX + modalW - 1, modalY + 26, 0xFF2F3C55.toInt())
-        guiGraphics.drawString(font, "🔍 §6§l$targetsDetailTitle§r", modalX + 8, modalY + 5, 0xFFFFFFFF.toInt(), false)
-        guiGraphics.drawString(font, "§7$targetsDetailSubtitle", modalX + 8, modalY + 15, 0xFFAAAAAA.toInt(), false)
-
-        val closeBtnX = modalX + modalW - 18
-        val closeBtnY = modalY + 4
-        val isCloseHovered = mouseX >= closeBtnX && mouseX <= closeBtnX + 14 && mouseY >= closeBtnY && mouseY <= closeBtnY + 14
-        val closeColor = if (isCloseHovered) 0xFFFF5555.toInt() else 0xFFAAAAAA.toInt()
-        guiGraphics.drawString(font, "§l✕§r", closeBtnX + 3, closeBtnY + 3, closeColor, false)
-
-        // Grille 2 colonnes
-        val viewportX = modalX + 8
-        val viewportY = modalY + 28
-        val viewportW = modalW - 16
-        val viewportH = modalH - 34
-
-        val colGap = 6
-        val colW = (viewportW - colGap) / 2
-        val rowH = 22
-        val rowGap = 4
-        val totalRows = (targetsDetailList.size + 1) / 2
-        val totalContentH = totalRows * (rowH + rowGap)
-        targetsDetailMaxScroll = max(0.0, (totalContentH - viewportH).toDouble())
-
-        guiGraphics.enableScissor(viewportX, viewportY, viewportX + viewportW, viewportY + viewportH)
-
-        for ((index, target) in targetsDetailList.withIndex()) {
-            val col = index % 2
-            val row = index / 2
-            val cardX = viewportX + col * (colW + colGap)
-            val cardY = (viewportY + row * (rowH + rowGap) - targetsDetailScrollOffset).toInt()
-
-            if (cardY + rowH < viewportY || cardY > viewportY + viewportH) continue
-
-            val isCardHovered = mouseX >= cardX && mouseX <= cardX + colW && mouseY >= cardY && mouseY <= cardY + rowH
-            val cardBg = if (isCardHovered) 0xFF222B3D.toInt() else 0xFF161B27.toInt()
-            val cardBorder = if (isCardHovered) 0xFF4A658E.toInt() else 0xFF252D3F.toInt()
-
-            guiGraphics.fill(cardX, cardY, cardX + colW, cardY + rowH, cardBg)
-            guiGraphics.fill(cardX, cardY, cardX + colW, cardY + 1, cardBorder)
-            guiGraphics.fill(cardX, cardY + rowH - 1, cardX + colW, cardY + rowH, cardBorder)
-            guiGraphics.fill(cardX, cardY, cardX + 1, cardY + rowH, cardBorder)
-            guiGraphics.fill(cardX + colW - 1, cardY, cardX + colW, cardY + rowH, cardBorder)
-
-            val sp = PokemonSpecies.getByIdentifier(target.speciesId)
-            val translatedName = PokemonTrackerService.getSpeciesTranslatedName(target.speciesId)
-
-            if (sp != null) {
-                val stack = getItemStack(sp, shiny = target.shiny)
-                if (!stack.isEmpty) {
-                    guiGraphics.renderItem(stack, cardX + 2, cardY + 3)
-                }
-            }
-
-            val isCaught = PokemonTrackerService.getAllTracked().find { it.species.resourceIdentifier == target.speciesId }?.isCaught == true
-            val isSeen = PokemonTrackerService.getAllTracked().find { it.species.resourceIdentifier == target.speciesId }?.isEncountered == true
-            val statusIcon = when {
-                isCaught -> "§a✔"
-                isSeen -> "§e👁"
-                else -> "§7✕"
-            }
-            val shinyTag = if (target.shiny) "§e★ " else ""
-            val displayName = "$statusIcon $shinyTag§f$translatedName"
-
-            val numStr = if (sp != null) String.format("#%04d • ", sp.nationalPokedexNumber) else ""
-            guiGraphics.drawString(font, displayName, cardX + 22, cardY + 3, 0xFFFFFFFF.toInt(), false)
-            guiGraphics.drawString(font, "§8$numStr${target.speciesId.path}", cardX + 22, cardY + 12, 0xFF888888.toInt(), false)
-        }
-
-        guiGraphics.disableScissor()
-
-        // Scrollbar
-        if (targetsDetailMaxScroll > 0) {
-            val scrollbarW = 4
-            val scrollbarX = modalX + modalW - scrollbarW - 3
-            val thumbH = max(20, (viewportH * (viewportH.toDouble() / totalContentH)).toInt())
-            val thumbY = viewportY + ((viewportH - thumbH) * (targetsDetailScrollOffset / targetsDetailMaxScroll)).toInt()
-            guiGraphics.fill(scrollbarX, viewportY, scrollbarX + scrollbarW, viewportY + viewportH, 0xFF1B2030.toInt())
-            guiGraphics.fill(scrollbarX, thumbY, scrollbarX + scrollbarW, thumbY + thumbH, 0xFF3498DB.toInt())
-        }
-
-        pose.popPose()
-    }
-
-    private fun handleTargetsDetailModalClick(mouseX: Double, mouseY: Double) {
-        val (modalX, modalY, modalW, modalH) = getTargetsDetailModalBounds()
-        val closeBtnX = modalX + modalW - 18
-        val closeBtnY = modalY + 4
-        if (mouseX >= closeBtnX && mouseX <= closeBtnX + 14 && mouseY >= closeBtnY && mouseY <= closeBtnY + 14) {
-            closeTargetsDetailModal()
-            Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
-            return
-        }
-
-        if (mouseX < modalX || mouseX > modalX + modalW || mouseY < modalY || mouseY > modalY + modalH) {
-            closeTargetsDetailModal()
-            return
-        }
+        targetsDetailModal.close()
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        if (isTargetsDetailModalOpen) {
-            targetsDetailScrollOffset = (targetsDetailScrollOffset - scrollY * 20.0).coerceIn(0.0, targetsDetailMaxScroll)
-            return true
-        }
+        if (targetsDetailModal.mouseScrolled(scrollY)) return true
         if (maxScroll > 0) {
             scrollOffset = (scrollOffset - scrollY * 20.0).coerceIn(0.0, maxScroll)
             return true
@@ -417,8 +279,7 @@ class CobblemonExpeditionScreen(
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button)
 
-        if (isTargetsDetailModalOpen) {
-            handleTargetsDetailModalClick(mouseX, mouseY)
+        if (targetsDetailModal.mouseClicked(mouseX, mouseY, width, height)) {
             return true
         }
 
@@ -474,7 +335,7 @@ class CobblemonExpeditionScreen(
     }
 
     override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
-        if (isTargetsDetailModalOpen) {
+        if (targetsDetailModal.isOpen) {
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
                 closeTargetsDetailModal()
                 Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
