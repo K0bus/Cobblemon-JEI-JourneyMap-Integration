@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.pokemon.FormData
 import com.cobblemon.mod.common.pokemon.Species
 import com.google.gson.JsonParser
 import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
@@ -87,6 +88,20 @@ object PokemonFossilDataLoader {
         "frozen_spike" to "Pic Gelé",
         "preserved_skeleton" to "Squelette Préhistorique Préservé"
     )
+
+    fun getFossilDisplayName(fossilId: String): String {
+        val clean = fossilId.substringAfter(":")
+        val key = "gui.cobblemon_jei.fossil.item.$clean"
+        val comp = Component.translatable(key)
+        return if (comp.string != key) comp.string else (FOSSIL_NAMES_FR[clean] ?: clean.replace('_', ' ').replaceFirstChar { it.uppercase() })
+    }
+
+    fun getStructureDisplayName(structId: String): String {
+        val clean = structId.substringAfter(":")
+        val key = "gui.cobblemon_jei.fossil.struct.$clean"
+        val comp = Component.translatable(key)
+        return if (comp.string != key) comp.string else (STRUCTURE_DISPLAY_NAMES_FR[clean] ?: clean.replace('_', ' ').replaceFirstChar { it.uppercase() })
+    }
 
     // Mappage des structures archéologiques Cobblemon vers les items de fossiles trouvables
     private val STRUCTURE_TO_FOSSILS = mapOf(
@@ -275,8 +290,8 @@ object PokemonFossilDataLoader {
                 if (fossilList.contains(cleanId)) {
                     if (!associatedStructs.contains(structKey)) {
                         associatedStructs.add(structKey)
-                        val nameFr = STRUCTURE_DISPLAY_NAMES_FR[structKey] ?: structKey.replace('_', ' ').replaceFirstChar { it.uppercase() }
-                        associatedNames.add(nameFr)
+                        val name = getStructureDisplayName(structKey)
+                        associatedNames.add(name)
                     }
                 }
             }

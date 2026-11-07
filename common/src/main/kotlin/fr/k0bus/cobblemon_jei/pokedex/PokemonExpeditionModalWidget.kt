@@ -110,11 +110,11 @@ class PokemonExpeditionModalWidget(
 
         if (isLoading) {
             guiGraphics.fill(modalX + 8, viewportY, modalX + modalW - 8, viewportY + viewportH, 0xFF191C28.toInt())
-            val loadingMsg = "§e⏳ Analyse des biomes et calcul des 5 expéditions..."
+            val loadingMsg = net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.left.expeditions_analyzing").string
             guiGraphics.drawCenteredString(font, loadingMsg, modalX + modalW / 2, viewportY + viewportH / 2 - 4, 0xFFFFFFFF.toInt())
         } else if (suggestions.isEmpty()) {
             guiGraphics.fill(modalX + 8, viewportY, modalX + modalW - 8, viewportY + viewportH, 0xFF191C28.toInt())
-            guiGraphics.drawString(font, "§7Aucune opportunité pour le moment. Explorez plus de territoires sur JourneyMap !", modalX + 16, viewportY + viewportH / 2 - 4, 0xFF888888.toInt(), false)
+            guiGraphics.drawString(font, net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.expedition.empty").string, modalX + 16, viewportY + viewportH / 2 - 4, 0xFF888888.toInt(), false)
         } else {
             val cardH = 60
             val cardGap = 6
@@ -170,11 +170,11 @@ class PokemonExpeditionModalWidget(
         val zone = suggestion.primaryZone
 
         // 1. Titre & Badge d'activité
-        val badge = if (suggestion.isConditionActiveNow) " §e⚡ ACTIF MAINTENANT" else ""
+        val badge = if (suggestion.isConditionActiveNow) net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.expedition.active_now").string else ""
         guiGraphics.drawString(font, "§6§l${suggestion.title}§r$badge", x + 8, y + 5, 0xFFFFFFFF.toInt(), false)
 
         // Badge Score
-        val scoreText = "Score : ${zone.score.toInt()} pts"
+        val scoreText = net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.expedition.score", zone.score.toInt()).string
         val scoreW = font.width(scoreText) + 8
         val scoreX = x + w - scoreW - 156
         guiGraphics.fill(scoreX, y + 4, scoreX + scoreW, y + 16, 0xFF2E220D.toInt())
@@ -184,14 +184,14 @@ class PokemonExpeditionModalWidget(
         // 2. Région de recherche & Coordonnées
         val distText = if (zone.distanceToPlayer > 0) " (${zone.distanceToPlayer.toInt()}m)" else ""
         val coordStr = if (zone.isSubterranean) "[${zone.centerPos.x}, Y=${zone.centerPos.y}, ${zone.centerPos.z}] §6⛏" else "[${zone.centerPos.x}, ${zone.centerPos.z}]"
-        guiGraphics.drawString(font, "§b📍 Région : §f${zone.name} §7• Coord: $coordStr§e$distText", x + 8, y + 18, 0xFFE0E0E0.toInt(), false)
+        guiGraphics.drawString(font, net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.expedition.region_label", zone.name, coordStr, distText).string, x + 8, y + 18, 0xFFE0E0E0.toInt(), false)
 
         // 3. Liste des Pokémon cibles
         val targetNames = suggestion.targets.take(5).joinToString(", ") {
             PokemonTrackerService.getSpeciesTranslatedName(it.speciesId)
         }
         val moreCount = if (suggestion.targets.size > 5) " +${suggestion.targets.size - 5}" else ""
-        guiGraphics.drawString(font, "§d🎯 Cibles (${suggestion.targets.size}) : §f$targetNames$moreCount", x + 8, y + 31, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.expedition.targets_label", suggestion.targets.size, targetNames, moreCount).string, x + 8, y + 31, 0xFFFFFFFF.toInt(), false)
 
         // 4. Description concise
         guiGraphics.drawString(font, "§8ℹ ${suggestion.description}", x + 8, y + 45, 0xFFAAAAAA.toInt(), false)
@@ -205,7 +205,7 @@ class PokemonExpeditionModalWidget(
         val isPartHovered = mouseX >= partBtnX && mouseX <= partBtnX + partBtnW && mouseY >= partBtnY && mouseY <= partBtnY + partBtnH
         val partBg = if (isPartHovered) 0xFF27AE60.toInt() else 0xFF2ECC71.toInt()
         guiGraphics.fill(partBtnX, partBtnY, partBtnX + partBtnW, partBtnY + partBtnH, partBg)
-        guiGraphics.drawCenteredString(font, "▶ Partir", partBtnX + partBtnW / 2, partBtnY + 5, 0xFFFFFFFF.toInt())
+        guiGraphics.drawCenteredString(font, net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.expedition.start").string, partBtnX + partBtnW / 2, partBtnY + 5, 0xFFFFFFFF.toInt())
 
         val markBtnW = 60
         val markBtnH = 16
@@ -215,7 +215,7 @@ class PokemonExpeditionModalWidget(
         val isMarkHovered = mouseX >= markBtnX && mouseX <= markBtnX + markBtnW && mouseY >= markBtnY && mouseY <= markBtnY + markBtnH
         val markBg = if (isMarkHovered) 0xFFD35400.toInt() else 0xFFE67E22.toInt()
         guiGraphics.fill(markBtnX, markBtnY, markBtnX + markBtnW, markBtnY + markBtnH, markBg)
-        guiGraphics.drawCenteredString(font, "📍 Repère", markBtnX + markBtnW / 2, markBtnY + 4, 0xFFFFFFFF.toInt())
+        guiGraphics.drawCenteredString(font, net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.expedition.waypoint").string, markBtnX + markBtnW / 2, markBtnY + 4, 0xFFFFFFFF.toInt())
 
         val targetBtnW = 60
         val targetBtnH = 16
@@ -225,7 +225,7 @@ class PokemonExpeditionModalWidget(
         val isTargetHovered = mouseX >= targetBtnX && mouseX <= targetBtnX + targetBtnW && mouseY >= targetBtnY && mouseY <= targetBtnY + targetBtnH
         val targetBg = if (isTargetHovered) 0xFF2980B9.toInt() else 0xFF3498DB.toInt()
         guiGraphics.fill(targetBtnX, targetBtnY, targetBtnX + targetBtnW, targetBtnY + targetBtnH, targetBg)
-        guiGraphics.drawCenteredString(font, "🔍 Cibles", targetBtnX + targetBtnW / 2, targetBtnY + 4, 0xFFFFFFFF.toInt())
+        guiGraphics.drawCenteredString(font, net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.expedition.targets_btn").string, targetBtnX + targetBtnW / 2, targetBtnY + 4, 0xFFFFFFFF.toInt())
     }
 
     fun mouseClicked(mouseX: Double, mouseY: Double, screenWidth: Int, screenHeight: Int): Boolean {
@@ -351,11 +351,11 @@ class PokemonExpeditionModalWidget(
             val zone = suggestion.primaryZone
 
             // 1. Titre & Badge d'activité
-            val badge = if (suggestion.isConditionActiveNow) " §e⚡ ACTIF MAINTENANT" else ""
+            val badge = if (suggestion.isConditionActiveNow) net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.expedition.active_now").string else ""
             guiGraphics.drawString(font, "§6§l${suggestion.title}§r$badge", x + 8, y + 5, 0xFFFFFFFF.toInt(), false)
 
             // Badge Score
-            val scoreText = "Score : ${zone.score.toInt()} pts"
+            val scoreText = net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.expedition.score", zone.score.toInt()).string
             val scoreW = font.width(scoreText) + 8
             val scoreX = x + w - scoreW - 156
             guiGraphics.fill(scoreX, y + 4, scoreX + scoreW, y + 16, 0xFF2E220D.toInt())
@@ -365,14 +365,14 @@ class PokemonExpeditionModalWidget(
             // 2. Région de recherche & Coordonnées
             val distText = if (zone.distanceToPlayer > 0) " (${zone.distanceToPlayer.toInt()}m)" else ""
             val coordStr = if (zone.isSubterranean) "[${zone.centerPos.x}, Y=${zone.centerPos.y}, ${zone.centerPos.z}] §6⛏" else "[${zone.centerPos.x}, ${zone.centerPos.z}]"
-            guiGraphics.drawString(font, "§b📍 Région : §f${zone.name} §7• Coord: $coordStr§e$distText", x + 8, y + 18, 0xFFE0E0E0.toInt(), false)
+            guiGraphics.drawString(font, net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.expedition.region_label", zone.name, coordStr, distText).string, x + 8, y + 18, 0xFFE0E0E0.toInt(), false)
 
             // 3. Liste des Pokémon cibles
             val targetNames = suggestion.targets.take(5).joinToString(", ") {
                 PokemonTrackerService.getSpeciesTranslatedName(it.speciesId)
             }
             val moreCount = if (suggestion.targets.size > 5) " +${suggestion.targets.size - 5}" else ""
-            guiGraphics.drawString(font, "§d🎯 Cibles (${suggestion.targets.size}) : §f$targetNames$moreCount", x + 8, y + 31, 0xFFFFFFFF.toInt(), false)
+            guiGraphics.drawString(font, net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.expedition.targets_label", suggestion.targets.size, targetNames, moreCount).string, x + 8, y + 31, 0xFFFFFFFF.toInt(), false)
 
             // 4. Description concise
             guiGraphics.drawString(font, "§8ℹ ${suggestion.description}", x + 8, y + 45, 0xFFAAAAAA.toInt(), false)
@@ -386,7 +386,7 @@ class PokemonExpeditionModalWidget(
             val isPartHovered = mouseX >= partBtnX && mouseX <= partBtnX + partBtnW && mouseY >= partBtnY && mouseY <= partBtnY + partBtnH
             val partBg = if (isPartHovered) 0xFF27AE60.toInt() else 0xFF2ECC71.toInt()
             guiGraphics.fill(partBtnX, partBtnY, partBtnX + partBtnW, partBtnY + partBtnH, partBg)
-            guiGraphics.drawCenteredString(font, "▶ Partir", partBtnX + partBtnW / 2, partBtnY + 5, 0xFFFFFFFF.toInt())
+            guiGraphics.drawCenteredString(font, net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.expedition.start").string, partBtnX + partBtnW / 2, partBtnY + 5, 0xFFFFFFFF.toInt())
 
             val markBtnW = 60
             val markBtnH = 16
@@ -396,7 +396,7 @@ class PokemonExpeditionModalWidget(
             val isMarkHovered = mouseX >= markBtnX && mouseX <= markBtnX + markBtnW && mouseY >= markBtnY && mouseY <= markBtnY + markBtnH
             val markBg = if (isMarkHovered) 0xFF2980B9.toInt() else 0xFF3498DB.toInt()
             guiGraphics.fill(markBtnX, markBtnY, markBtnX + markBtnW, markBtnY + markBtnH, markBg)
-            guiGraphics.drawCenteredString(font, "📍 Repère", markBtnX + markBtnW / 2, markBtnY + 4, 0xFFFFFFFF.toInt())
+            guiGraphics.drawCenteredString(font, net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.expedition.waypoint").string, markBtnX + markBtnW / 2, markBtnY + 4, 0xFFFFFFFF.toInt())
 
             val targetsBtnW = 60
             val targetsBtnH = 16
@@ -406,7 +406,7 @@ class PokemonExpeditionModalWidget(
             val isTargetsHovered = mouseX >= targetsBtnX && mouseX <= targetsBtnX + targetsBtnW && mouseY >= targetsBtnY && mouseY <= targetsBtnY + targetsBtnH
             val targetsBg = if (isTargetsHovered) 0xFF4A5568.toInt() else 0xFF2D3748.toInt()
             guiGraphics.fill(targetsBtnX, targetsBtnY, targetsBtnX + targetsBtnW, targetsBtnY + targetsBtnH, targetsBg)
-            guiGraphics.drawCenteredString(font, "🔍 Cibles", targetsBtnX + targetsBtnW / 2, targetsBtnY + 4, 0xFFFFFFFF.toInt())
+            guiGraphics.drawCenteredString(font, net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.expedition.targets_btn").string, targetsBtnX + targetsBtnW / 2, targetsBtnY + 4, 0xFFFFFFFF.toInt())
         }
     }
 }

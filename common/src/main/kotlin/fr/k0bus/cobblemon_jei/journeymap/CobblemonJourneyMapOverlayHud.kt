@@ -7,6 +7,7 @@ import com.cobblemon.mod.common.pokemon.Species
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.neoforged.neoforge.client.event.ScreenEvent
 import net.neoforged.neoforge.common.NeoForge
@@ -215,13 +216,14 @@ object CobblemonJourneyMapOverlayHud {
         // Ligne 3 : Rareté estimée
         val isLegendaryMonument = fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.isCoveredSpecies(species.name)
         val (rarityText, rarityColor) = if (isLegendaryMonument) {
-            "Rareté : §6★ Légendaire" to 0xFFFFD700.toInt()
+            Component.translatable("gui.cobblemon_jm.hud.rarity_legendary").string to 0xFFFFD700.toInt()
         } else {
             val naturalRecipes = PokemonSpawnDataLoader.getSpawnRecipesForSpecies(species).filter { it.isNaturalSpawn }
             val bestRecipe = naturalRecipes.maxByOrNull { it.weight } ?: naturalRecipes.firstOrNull()
             val rarity = bestRecipe?.let { SpawnRarity.fromBucketOrWeight(it.bucket, it.weight) } ?: SpawnRarity.COMMON
             val color = (0xFF000000 or RarityColorPalette.createShapeProperties(rarity).strokeColor.toLong()).toInt()
-            "Rareté : ${rarity.displayName}" to color
+            val rarityStr = Component.translatable(rarity.translationKey).string
+            Component.translatable("gui.cobblemon_jm.hud.rarity", rarityStr).string to color
         }
         guiGraphics.drawString(font, rarityText, textX, cardY + 37, rarityColor, false)
 
@@ -237,7 +239,7 @@ object CobblemonJourneyMapOverlayHud {
 
         if (progress.isScanning) {
             val pct = progress.progressPercent
-            val scanText = "§b⚡ Scan : $pct% §7(${progress.completedRegions}/${progress.totalRegions} rég.)"
+            val scanText = Component.translatable("gui.cobblemon_jm.hud.scan_progress", pct, progress.completedRegions, progress.totalRegions).string
             guiGraphics.drawString(font, scanText, cardX + 6, cardY + 51, 0xFFFFFFFF.toInt(), false)
 
             // Piste de la barre de progression
@@ -255,7 +257,7 @@ object CobblemonJourneyMapOverlayHud {
 
             // Sous-texte
             val radarSummary = PokemonRadarService.getStatusSummary(species.translatedName.string)
-            val subText = "§7${progress.eligibleChunks} zones • $radarSummary"
+            val subText = Component.translatable("gui.cobblemon_jm.hud.scan_sub", progress.eligibleChunks, radarSummary).string
             guiGraphics.drawString(font, subText, cardX + 6, cardY + 69, 0xFFAAAAAA.toInt(), false)
         } else {
             val totalEligible = progress.eligibleChunks.coerceAtLeast(SpawnOverlayManager.activeRarityCounts.values.sum())
@@ -271,32 +273,36 @@ object CobblemonJourneyMapOverlayHud {
                 if (discoveredMonument != null) {
                     val p = discoveredMonument.pedestalPos ?: discoveredMonument.pos
                     val structName = discoveredMonument.metadata.displayName
-                    val foundText = "§6★ $structName §a✔ Découvert"
+                    val foundText = Component.translatable("gui.cobblemon_jm.hud.struct_discovered", structName).string
                     guiGraphics.drawString(font, foundText, cardX + 6, cardY + 51, 0xFFFFD700.toInt(), false)
 
                     // Barre or légendaire
                     guiGraphics.fill(barX, barY + 1, barX + barW, barY + 3, 0xFFFFD700.toInt())
 
-                    val coordText = "§7Coord : §e[${p.x}, ${p.y}, ${p.z}] §8• Waypoint actif"
+                    val coordText = Component.translatable("gui.cobblemon_jm.hud.struct_coord", p.x, p.y, p.z).string
                     guiGraphics.drawString(font, coordText, cardX + 6, cardY + 69, 0xFFE0E0E0.toInt(), false)
                 } else {
-                    val structName = knownInfo?.structureDisplayName ?: "Structure Légendaire"
-                    val foundText = "§6★ $structName §7(Inexploré)"
+                    val structName = knownInfo?.structureDisplayName ?: Component.translatable("gui.cobblemon_jm.hud.struct_legendary_default").string
+                    val foundText = Component.translatable("gui.cobblemon_jm.hud.struct_unexplored", structName).string
                     guiGraphics.drawString(font, foundText, cardX + 6, cardY + 51, 0xFFFFA500.toInt(), false)
 
                     // Barre orange/ambre
                     guiGraphics.fill(barX, barY + 1, barX + barW, barY + 3, 0xFFFFA500.toInt())
 
-                    val hintText = if (isHovered) "§e▶ Cliquer pour changer" else "§8Explorez les chunks pour cartographier"
+                    val hintText = if (isHovered) {
+                        Component.translatable("gui.cobblemon_jm.hud.hint_click_change").string
+                    } else {
+                        Component.translatable("gui.cobblemon_jm.hud.hint_explore_chunks").string
+                    }
                     guiGraphics.drawString(font, hintText, cardX + 6, cardY + 69, 0xFFAAAAAA.toInt(), false)
                 }
             } else if (totalEligible > 0) {
                 val foundText = if (isShiny) {
-                    "§6★ SHINY détecté ! §7($totalEligible zones)"
+                    Component.translatable("gui.cobblemon_jm.hud.shiny_detected", totalEligible).string
                 } else if (radarCount > 0) {
-                    "§b⚡ $radarCount cible(s) à portée §7($totalEligible zones)"
+                    Component.translatable("gui.cobblemon_jm.hud.targets_in_range", radarCount, totalEligible).string
                 } else {
-                    "§a✔ $totalEligible zones éligibles"
+                    Component.translatable("gui.cobblemon_jm.hud.zones_eligible", totalEligible).string
                 }
                 guiGraphics.drawString(font, foundText, cardX + 6, cardY + 51, if (isShiny) 0xFFFFD700.toInt() else 0xFF2ED573.toInt(), false)
 
@@ -309,45 +315,48 @@ object CobblemonJourneyMapOverlayHud {
 
                 val line1 = if (guidance != null) {
                     when {
-                        guidance.isPhysicallyPresent -> "§b⚡ Présent §f: §e${guidance.arrowSymbol} §f${guidance.distanceBlocks}m"
+                        guidance.isPhysicallyPresent -> Component.translatable("gui.cobblemon_jm.hud.radar_present", guidance.arrowSymbol, guidance.distanceBlocks).string
                         guidance.isInZone -> {
-                            if (guidance.canSpawnNow) "§a✔ Dans la zone §8• §aPeut apparaître !"
-                            else "§6⏳ Dans la zone §8• §6En attente"
+                            if (guidance.canSpawnNow) Component.translatable("gui.cobblemon_jm.hud.in_zone_can_spawn").string
+                            else Component.translatable("gui.cobblemon_jm.hud.in_zone_waiting").string
                         }
-                        else -> "§a✦ Zone proche §f: §e${guidance.arrowSymbol} §f${guidance.distanceBlocks}m"
+                        else -> Component.translatable("gui.cobblemon_jm.hud.zone_nearby", guidance.arrowSymbol, guidance.distanceBlocks).string
                     }
                 } else {
-                    "§7Radar : $radarStatus"
+                    Component.translatable("gui.cobblemon_jm.hud.radar_status", radarStatus).string
                 }
 
                 val line2 = if (isHovered) {
-                    "§e▶ Cliquer pour ouvrir Pokédex"
+                    Component.translatable("gui.cobblemon_jm.hud.click_open_pokedex").string
                 } else if (guidance != null) {
                     when {
                         guidance.isPhysicallyPresent -> {
                             val altSuffix = if (guidance.relativeY != 0) " (${if (guidance.relativeY > 0) "+" else ""}${guidance.relativeY}m Y)" else ""
-                            "§8Guidage : vers ${guidance.targetName}$altSuffix"
+                            Component.translatable("gui.cobblemon_jm.hud.guidance_to", guidance.targetName, altSuffix).string
                         }
                         guidance.isInZone -> {
-                            if (guidance.canSpawnNow) "§aConditions de spawn réunies à 100%"
-                            else "§eManque : ${guidance.waitingReason ?: "Heure / Météo"}"
+                            if (guidance.canSpawnNow) Component.translatable("gui.cobblemon_jm.hud.conditions_met_100").string
+                            else {
+                                val reason = guidance.waitingReason ?: Component.translatable("gui.cobblemon_jm.hud.missing_weather_time").string
+                                Component.translatable("gui.cobblemon_jm.hud.missing_condition", reason).string
+                            }
                         }
-                        else -> "§8Guidage : vers ${guidance.targetName}"
+                        else -> Component.translatable("gui.cobblemon_jm.hud.guidance_to", guidance.targetName, "").string
                     }
                 } else {
-                    "§8Explorez les chunks pour cartographier"
+                    Component.translatable("gui.cobblemon_jm.hud.hint_explore_chunks").string
                 }
 
                 guiGraphics.drawString(font, line1, cardX + 6, cardY + 68, 0xFFFFFFFF.toInt(), false)
                 guiGraphics.drawString(font, line2, cardX + 6, cardY + 79, 0xFFAAAAAA.toInt(), false)
             } else {
-                val noneText = "§c✗ Aucun spawn trouvé"
+                val noneText = Component.translatable("gui.cobblemon_jm.hud.no_spawn_found").string
                 guiGraphics.drawString(font, noneText, cardX + 6, cardY + 51, 0xFFFF4757.toInt(), false)
 
                 // Barre rouge fine
                 guiGraphics.fill(barX, barY + 1, barX + barW, barY + 3, 0xFFFF4757.toInt())
 
-                guiGraphics.drawString(font, "§8Dimension incompatible", cardX + 6, cardY + 69, 0xFF888888.toInt(), false)
+                guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jm.hud.dim_incompatible").string, cardX + 6, cardY + 69, 0xFF888888.toInt(), false)
             }
         }
     }

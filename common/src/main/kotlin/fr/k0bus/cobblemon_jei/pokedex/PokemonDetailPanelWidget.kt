@@ -591,7 +591,7 @@ class PokemonDetailPanelWidget(
         guiGraphics.fill(trackBtnX, btnY, trackBtnX + halfW, btnY + 1, trackBorder)
         guiGraphics.fill(trackBtnX, btnY + 15, trackBtnX + halfW, btnY + 16, trackBorder)
 
-        val trackText = if (isTarget) "✔ Traqué" else "🎯 Tracker"
+        val trackText = if (isTarget) Component.translatable("gui.cobblemon_jei.detail.btn_tracked").string else Component.translatable("gui.cobblemon_jei.detail.btn_track").string
         guiGraphics.drawCenteredString(font, trackText, trackBtnX + halfW / 2, btnY + 4, 0xFFFFFFFF.toInt())
 
         val isJmActive = SpawnOverlayManager.isOverlayActive && SpawnOverlayManager.activeSpecies?.let { PokemonTrackingManager.isSameSpecies(it, sp) } == true
@@ -607,21 +607,21 @@ class PokemonDetailPanelWidget(
         guiGraphics.fill(jmBtnX, btnY, jmBtnX + halfW, btnY + 1, jmBorder)
         guiGraphics.fill(jmBtnX, btnY + 15, jmBtnX + halfW, btnY + 16, jmBorder)
 
-        val jmText = if (isJmActive) "✔ Carte" else "🗺 Carte"
+        val jmText = if (isJmActive) Component.translatable("gui.cobblemon_jei.detail.btn_map_active").string else Component.translatable("gui.cobblemon_jei.detail.btn_map").string
         guiGraphics.drawCenteredString(font, jmText, jmBtnX + halfW / 2, btnY + 4, 0xFFFFFFFF.toInt())
 
         // Tooltip de survol d'onglet et éléments interactifs (affichés uniquement si aucune modale n'est ouverte)
         if (!isAnyModalOpen()) {
             watchlistHeaderButtonRect?.let { (bx, by, bw, bh) ->
                 if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
-                    val tt = if (PokemonTrackingManager.isInWatchlist(sp)) "Retirer de la liste de tracking" else "Ajouter à la liste de tracking personnalisée"
+                    val tt = if (PokemonTrackingManager.isInWatchlist(sp)) Component.translatable("gui.cobblemon_jei.detail.tooltip_watchlist_remove").string else Component.translatable("gui.cobblemon_jei.detail.tooltip_watchlist_add").string
                     guiGraphics.renderTooltip(font, Component.literal(tt), mouseX, mouseY)
                     return
                 }
             }
             trackHeaderButtonRect?.let { (bx, by, bw, bh) ->
                 if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
-                    val tt = "Options du radar & tracker (Cliquer pour gérer)"
+                    val tt = Component.translatable("gui.cobblemon_jei.detail.tooltip_radar_options").string
                     guiGraphics.renderTooltip(font, Component.literal(tt), mouseX, mouseY)
                     return
                 }
@@ -631,31 +631,31 @@ class PokemonDetailPanelWidget(
             } else if (hoveredPokeSnackStack != null) {
                 guiGraphics.renderTooltip(font, hoveredPokeSnackStack!!, mouseX, mouseY)
             } else if (isPreviewHovered) {
-                guiGraphics.renderComponentTooltip(font, listOf(Component.literal("§b🔍 Cliquer pour voir en grand format")), mouseX, mouseY)
+                guiGraphics.renderComponentTooltip(font, listOf(Component.translatable("gui.cobblemon_jei.detail.click_large_view")), mouseX, mouseY)
             } else if (currentTab == RightPanelTab.FORMS) {
                 zoomHeaderButtonRect?.let { (bx, by, bw, bh) ->
                     if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
-                        guiGraphics.renderComponentTooltip(font, listOf(Component.literal("§b🔍 Ouvrir la visionneuse de skins en grand format")), mouseX, mouseY)
+                        guiGraphics.renderComponentTooltip(font, listOf(Component.translatable("gui.cobblemon_jei.detail.open_skin_viewer")), mouseX, mouseY)
                         return
                     }
                 }
                 shinyHeaderButtonRect?.let { (bx, by, bw, bh) ->
                     if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
-                        val tt = if (globalShinyForms) "Désactiver le mode Chromatique (Shiny)" else "Activer le mode Chromatique (Shiny) pour toutes les formes"
-                        guiGraphics.renderTooltip(font, Component.literal(tt), mouseX, mouseY)
+                        val tt = if (globalShinyForms) Component.translatable("gui.cobblemon_jei.detail.shiny_disable_all") else Component.translatable("gui.cobblemon_jei.detail.shiny_enable_all")
+                        guiGraphics.renderTooltip(font, tt, mouseX, mouseY)
                         return
                     }
                 }
                 if (hoveredZoomCardForm != null) {
-                    guiGraphics.renderComponentTooltip(font, listOf(Component.literal("§b🔍 Voir cette variante en grand format")), mouseX, mouseY)
+                    guiGraphics.renderComponentTooltip(font, listOf(Component.translatable("gui.cobblemon_jei.detail.view_variant")), mouseX, mouseY)
                 } else if (mouseX >= panelX && mouseX <= panelX + panelW && mouseY >= contentY && mouseY <= contentY + contentH) {
                     for ((rect, form) in shinyCardButtonRects) {
                         val (bx, by, bw, bh) = rect
                         if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
                             val isSh = isFormShiny(form)
                             val fName = PokedexRenderHelper.getFormDisplayName(form, sp)
-                            val tt = if (isSh) "Cliquer pour afficher la version normale ($fName)" else "Cliquer pour afficher la version Shiny ($fName)"
-                            guiGraphics.renderTooltip(font, Component.literal(tt), mouseX, mouseY)
+                            val tt = if (isSh) Component.translatable("gui.cobblemon_jei.detail.shiny_show_normal", fName) else Component.translatable("gui.cobblemon_jei.detail.shiny_show_shiny", fName)
+                            guiGraphics.renderTooltip(font, tt, mouseX, mouseY)
                             break
                         }
                     }
@@ -668,7 +668,7 @@ class PokemonDetailPanelWidget(
         var y = startY
 
         // Description Pokédex
-        guiGraphics.drawString(font, "§e§lDescription du Pokédex§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.pokedex_description").string, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 12
 
         var hasDesc = false
@@ -685,43 +685,43 @@ class PokemonDetailPanelWidget(
             }
         }
         if (!hasDesc) {
-            guiGraphics.drawString(font, "§7• Aucune description d'archive.§r", contentX + 4, y, 0xFF888888.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.no_archive_desc").string, contentX + 4, y, 0xFF888888.toInt(), false)
             y += 11
         }
 
         y += 4
         // Morphologie & Genre
-        guiGraphics.drawString(font, "§e§lMorphologie & Genre§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.morphology_gender").string, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 11
 
         val heightStr = String.format("%.1f m", sp.height / 10.0)
         val weightStr = String.format("%.1f kg", sp.weight / 10.0)
-        guiGraphics.drawString(font, "Taille : §b$heightStr§r · Poids : §b$weightStr§r", contentX + 4, y, 0xFFCCCCCC.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.height_weight", "§b$heightStr§r", "§b$weightStr§r").string, contentX + 4, y, 0xFFCCCCCC.toInt(), false)
         y += 10
 
         val genderStr = if (sp.maleRatio < 0) {
-            "§7Asexué§r"
+            Component.translatable("gui.cobblemon_jei.detail.genderless").string
         } else {
             val mPct = (sp.maleRatio * 100).toInt()
             val fPct = 100 - mPct
             "§b♂ $mPct%§r §8/§r §d♀ $fPct%§r"
         }
-        guiGraphics.drawString(font, "Genre : $genderStr", contentX + 4, y, 0xFFCCCCCC.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.gender", genderStr).string, contentX + 4, y, 0xFFCCCCCC.toInt(), false)
         y += 14
 
         // Reproduction & Capture
-        guiGraphics.drawString(font, "§e§lReproduction & Capture§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.breeding_capture").string, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 11
 
-        guiGraphics.drawString(font, "Taux de capture : §a${sp.catchRate}§r §8/ 255§r", contentX + 4, y, 0xFFCCCCCC.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.catch_rate", sp.catchRate).string, contentX + 4, y, 0xFFCCCCCC.toInt(), false)
         y += 10
-        guiGraphics.drawString(font, "Bonheur base : §a${sp.baseFriendship}§r · XP base : §6${sp.baseExperienceYield}§r", contentX + 4, y, 0xFFCCCCCC.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.friendship_xp", sp.baseFriendship, sp.baseExperienceYield).string, contentX + 4, y, 0xFFCCCCCC.toInt(), false)
         y += 10
 
-        val eggsStr = if (sp.eggGroups.isEmpty()) "Aucun" else sp.eggGroups.joinToString { it.name.lowercase().replaceFirstChar(Char::titlecase) }
-        guiGraphics.drawString(font, "Œuf : §f$eggsStr§r", contentX + 4, y, 0xFFCCCCCC.toInt(), false)
+        val eggsStr = if (sp.eggGroups.isEmpty()) Component.translatable("gui.cobblemon_jei.detail.none").string else sp.eggGroups.joinToString { it.name.lowercase().replaceFirstChar(Char::titlecase) }
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.egg_group", "§f$eggsStr§r").string, contentX + 4, y, 0xFFCCCCCC.toInt(), false)
         y += 10
-        guiGraphics.drawString(font, "Éclosion : §f${sp.eggCycles} cycles§r", contentX + 4, y, 0xFFCCCCCC.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.egg_cycles", sp.eggCycles).string, contentX + 4, y, 0xFFCCCCCC.toInt(), false)
         y += 14
 
         // Aptitudes & Caractéristiques spéciales
@@ -732,30 +732,30 @@ class PokemonDetailPanelWidget(
             sp.riding.let { it.seats.isNotEmpty() || (it.behaviours?.isNotEmpty() == true) }
         } catch (_: Throwable) { false }
         if (isRideable) {
-            traits.add("§a🏇 Monture chevauchable§r")
+            traits.add(Component.translatable("gui.cobblemon_jei.detail.trait_rideable").string)
         }
         if (activeForm.shoulderMountable || sp.shoulderMountable) {
-            traits.add("§b🐾 Portable sur l'épaule§r")
+            traits.add(Component.translatable("gui.cobblemon_jei.detail.trait_shoulder").string)
         }
         val isFireImmune = try {
             activeForm.behaviour?.fireImmune ?: sp.behaviour.fireImmune
         } catch (_: Throwable) { false }
         if (isFireImmune) {
-            traits.add("§6🔥 Immunisé au feu & lave§r")
+            traits.add(Component.translatable("gui.cobblemon_jei.detail.trait_fire_immune").string)
         }
 
         val dampensVibrations = try {
             activeForm.behaviour?.dampensVibrations ?: sp.behaviour.dampensVibrations
         } catch (_: Throwable) { false }
         if (dampensVibrations) {
-            traits.add("§d🔇 Amortit les vibrations (Sculk)§r")
+            traits.add(Component.translatable("gui.cobblemon_jei.detail.trait_sculk_dampen").string)
         }
         if (try { sp.canGmax() } catch (_: Throwable) { false }) {
-            traits.add("§e⚡ Forme Gigamax disponible§r")
+            traits.add(Component.translatable("gui.cobblemon_jei.detail.trait_gmax").string)
         }
 
         if (traits.isNotEmpty()) {
-            guiGraphics.drawString(font, "§e§lAptitudes & Capacités§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.traits_title").string, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
             y += 11
             for (trait in traits) {
                 guiGraphics.drawString(font, "• $trait", contentX + 4, y, 0xFFE0E0E0.toInt(), false)
@@ -765,21 +765,21 @@ class PokemonDetailPanelWidget(
         }
 
         // Réserves
-        guiGraphics.drawString(font, "§e§lRéserves du joueur§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.player_stock").string, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 11
 
         if (currentTracked.ownedCount > 0) {
             for (owned in currentTracked.ownedInstances.take(4)) {
-                val txt = "• ${owned.location} (Niv. ${owned.level})"
+                val txt = Component.translatable("gui.cobblemon_jei.detail.stock_entry", owned.location, owned.level).string
                 guiGraphics.drawString(font, txt, contentX + 4, y, 0xFF55FF55.toInt(), false)
                 y += 10
             }
             if (currentTracked.ownedCount > 4) {
-                guiGraphics.drawString(font, "• +${currentTracked.ownedCount - 4} autre(s)...", contentX + 4, y, 0xFFAAAAAA.toInt(), false)
+                guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.stock_more", currentTracked.ownedCount - 4).string, contentX + 4, y, 0xFFAAAAAA.toInt(), false)
                 y += 10
             }
         } else {
-            guiGraphics.drawString(font, "• Aucun dans le PC ou l'équipe", contentX + 4, y, 0xFF888888.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.stock_none").string, contentX + 4, y, 0xFF888888.toInt(), false)
             y += 10
         }
 
@@ -959,11 +959,11 @@ class PokemonDetailPanelWidget(
             }
             val evoText = if (formEvos.isNotEmpty()) {
                 val targets = formEvos.map { it.targetSpecies.translatedName.string }.distinct()
-                "§7Évolue en : §e${targets.joinToString(", ")}§r"
+                Component.translatable("gui.cobblemon_jei.detail.evolves_into", "§e${targets.joinToString(", ")}§r").string
             } else if (allForms.size > 1) {
-                "§8✕ Pas d'évolution (cette forme)§r"
+                Component.translatable("gui.cobblemon_jei.detail.no_evo_form").string
             } else {
-                "§8• Aucune évolution connue§r"
+                Component.translatable("gui.cobblemon_jei.detail.no_evo_known").string
             }
             guiGraphics.drawString(font, evoText, infoX, cardY + 39, 0xFFCCCCCC.toInt(), false)
 
@@ -975,19 +975,19 @@ class PokemonDetailPanelWidget(
 
     private fun renderTabAbilities(guiGraphics: GuiGraphics, sp: Species, contentX: Int, startY: Int, contentW: Int): Int {
         var y = startY
-        guiGraphics.drawString(font, "§e§lTalents & Capacités§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.abilities_title").string, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 12
 
         val abilities = sp.standardForm.abilities
         if (abilities.isEmpty()) {
-            guiGraphics.drawString(font, "§7• Aucun talent enregistré§r", contentX + 4, y, 0xFF888888.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.no_abilities").string, contentX + 4, y, 0xFF888888.toInt(), false)
             return y + 14
         }
 
         for (pot in abilities) {
             val template = pot.template
             val isHidden = pot is HiddenAbility || pot.priority == Priority.LOWEST
-            val badge = if (isHidden) "§d[Caché]§r" else "§b[Normal]§r"
+            val badge = if (isHidden) "§d" + Component.translatable("gui.cobblemon_jei.detail.ability_hidden").string + "§r" else "§b" + Component.translatable("gui.cobblemon_jei.detail.ability_normal").string + "§r"
 
             val rawName = template.displayName.ifBlank { template.name }
             val nameComp = Component.translatable(rawName)
@@ -1016,17 +1016,17 @@ class PokemonDetailPanelWidget(
 
     private fun renderTabStats(guiGraphics: GuiGraphics, sp: Species, contentX: Int, startY: Int, contentW: Int): Int {
         var y = startY
-        guiGraphics.drawString(font, "§e§lStatistiques de base§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.base_stats").string, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 12
 
         val bStats = sp.baseStats
         val statsList = listOf(
-            "PV" to (bStats[Stats.HP] ?: 0),
-            "Attaque" to (bStats[Stats.ATTACK] ?: 0),
-            "Défense" to (bStats[Stats.DEFENCE] ?: 0),
-            "Att. Spé" to (bStats[Stats.SPECIAL_ATTACK] ?: 0),
-            "Déf. Spé" to (bStats[Stats.SPECIAL_DEFENCE] ?: 0),
-            "Vitesse" to (bStats[Stats.SPEED] ?: 0)
+            Component.translatable("gui.cobblemon_jei.detail.stat.hp").string to (bStats[Stats.HP] ?: 0),
+            Component.translatable("gui.cobblemon_jei.detail.stat.attack").string to (bStats[Stats.ATTACK] ?: 0),
+            Component.translatable("gui.cobblemon_jei.detail.stat.defense").string to (bStats[Stats.DEFENCE] ?: 0),
+            Component.translatable("gui.cobblemon_jei.detail.stat.sp_atk").string to (bStats[Stats.SPECIAL_ATTACK] ?: 0),
+            Component.translatable("gui.cobblemon_jei.detail.stat.sp_def").string to (bStats[Stats.SPECIAL_DEFENCE] ?: 0),
+            Component.translatable("gui.cobblemon_jei.detail.stat.speed").string to (bStats[Stats.SPEED] ?: 0)
         )
         val bst = statsList.sumOf { it.second }
 
@@ -1055,20 +1055,20 @@ class PokemonDetailPanelWidget(
         }
 
         y += 2
-        guiGraphics.drawString(font, "Total (BST) : §e§l$bst§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.bst_total", bst).string, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 16
 
-        guiGraphics.drawString(font, "§e§lRendement EV§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.ev_yield").string, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 12
 
         val evs = sp.evYield
         val evParts = mutableListOf<String>()
-        if ((evs[Stats.HP] ?: 0) > 0) evParts.add("+${evs[Stats.HP]} PV")
-        if ((evs[Stats.ATTACK] ?: 0) > 0) evParts.add("+${evs[Stats.ATTACK]} Attaque")
-        if ((evs[Stats.DEFENCE] ?: 0) > 0) evParts.add("+${evs[Stats.DEFENCE]} Défense")
-        if ((evs[Stats.SPECIAL_ATTACK] ?: 0) > 0) evParts.add("+${evs[Stats.SPECIAL_ATTACK]} Att. Spé")
-        if ((evs[Stats.SPECIAL_DEFENCE] ?: 0) > 0) evParts.add("+${evs[Stats.SPECIAL_DEFENCE]} Déf. Spé")
-        if ((evs[Stats.SPEED] ?: 0) > 0) evParts.add("+${evs[Stats.SPEED]} Vitesse")
+        if ((evs[Stats.HP] ?: 0) > 0) evParts.add("+${evs[Stats.HP]} " + Component.translatable("gui.cobblemon_jei.detail.stat.hp").string)
+        if ((evs[Stats.ATTACK] ?: 0) > 0) evParts.add("+${evs[Stats.ATTACK]} " + Component.translatable("gui.cobblemon_jei.detail.stat.attack").string)
+        if ((evs[Stats.DEFENCE] ?: 0) > 0) evParts.add("+${evs[Stats.DEFENCE]} " + Component.translatable("gui.cobblemon_jei.detail.stat.defense").string)
+        if ((evs[Stats.SPECIAL_ATTACK] ?: 0) > 0) evParts.add("+${evs[Stats.SPECIAL_ATTACK]} " + Component.translatable("gui.cobblemon_jei.detail.stat.sp_atk").string)
+        if ((evs[Stats.SPECIAL_DEFENCE] ?: 0) > 0) evParts.add("+${evs[Stats.SPECIAL_DEFENCE]} " + Component.translatable("gui.cobblemon_jei.detail.stat.sp_def").string)
+        if ((evs[Stats.SPEED] ?: 0) > 0) evParts.add("+${evs[Stats.SPEED]} " + Component.translatable("gui.cobblemon_jei.detail.stat.speed").string)
 
         if (evParts.isNotEmpty()) {
             val evStr = evParts.joinToString(", ")
@@ -1078,7 +1078,7 @@ class PokemonDetailPanelWidget(
                 y += 10
             }
         } else {
-            guiGraphics.drawString(font, "§7• Aucun EV à la défaite§r", contentX + 4, y, 0xFF888888.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.no_ev").string, contentX + 4, y, 0xFF888888.toInt(), false)
             y += 10
         }
 
@@ -1087,7 +1087,7 @@ class PokemonDetailPanelWidget(
 
     private fun renderTabDrops(guiGraphics: GuiGraphics, sp: Species, contentX: Int, startY: Int, contentW: Int): Int {
         var y = startY
-        guiGraphics.drawString(font, "§e§lObjets lâchés à la défaite§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.drops_title").string, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 14
 
         val recipes = try {
@@ -1098,7 +1098,7 @@ class PokemonDetailPanelWidget(
         val drops = recipes.flatMap { it.drops }.distinctBy { it.itemStack.item.descriptionId + ":" + it.percentage }
 
         if (drops.isEmpty()) {
-            guiGraphics.drawString(font, "§7• Aucun butin répertorié.§r", contentX + 4, y, 0xFF888888.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.no_drops").string, contentX + 4, y, 0xFF888888.toInt(), false)
             return y + 14
         }
 
@@ -1122,13 +1122,13 @@ class PokemonDetailPanelWidget(
 
     private fun renderTabPasture(guiGraphics: GuiGraphics, sp: Species, contentX: Int, startY: Int, contentW: Int): Int {
         var y = startY
-        guiGraphics.drawString(font, "§e§lMétiers au Pâturage§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.pasture_title").string, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 14
 
         if (!CobbleworkersCompat.isLoaded) {
-            guiGraphics.drawString(font, "§c✕ Mod Cobbleworkers absent§r", contentX + 4, y, 0xFFFF7675.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.cobbleworkers_missing").string, contentX + 4, y, 0xFFFF7675.toInt(), false)
             y += 11
-            val lines = font.split(Component.literal("§7Installez Cobbleworkers pour attribuer des tâches de travail dans l'enclos.§r"), contentW - 8)
+            val lines = font.split(Component.translatable("gui.cobblemon_jei.detail.cobbleworkers_hint"), contentW - 8)
             for (l in lines) {
                 guiGraphics.drawString(font, l, contentX + 4, y, 0xFFAAAAAA.toInt(), false)
                 y += 9
@@ -1138,7 +1138,7 @@ class PokemonDetailPanelWidget(
 
         val jobs = CobbleworkersJobDataLoader.loadPastureRecipes().filter { it.eligiblePokemon.any { ing -> PokemonTrackingManager.isSameSpecies(ing.species, sp) } }
         if (jobs.isEmpty()) {
-            guiGraphics.drawString(font, "§7• Aucun métier de travail assignable.§r", contentX + 4, y, 0xFF888888.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.no_pasture_jobs").string, contentX + 4, y, 0xFF888888.toInt(), false)
             return y + 14
         }
 
@@ -1146,7 +1146,7 @@ class PokemonDetailPanelWidget(
             guiGraphics.drawString(font, "§6§l${job.jobTitle.string}§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
             y += 11
 
-            val cadenceStr = if (job.isContinuous) "§aCadence : Continue§r" else "§eCooldown : ${job.cooldownSeconds}s§r"
+            val cadenceStr = if (job.isContinuous) Component.translatable("gui.cobblemon_jei.detail.pasture_continuous").string else Component.translatable("gui.cobblemon_jei.detail.pasture_cooldown", job.cooldownSeconds).string
             guiGraphics.drawString(font, cadenceStr, contentX + 4, y, 0xFFCCCCCC.toInt(), false)
             y += 10
 
@@ -1208,7 +1208,7 @@ class PokemonDetailPanelWidget(
         guiGraphics.fill(naturalX, tabBtnY + tabBtnH - 1, naturalX + tabBtnW, tabBtnY + tabBtnH, natBorder)
         guiGraphics.fill(naturalX, tabBtnY, naturalX + 1, tabBtnY + tabBtnH, natBorder)
         guiGraphics.fill(naturalX + tabBtnW - 1, tabBtnY, naturalX + tabBtnW, tabBtnY + tabBtnH, natBorder)
-        guiGraphics.drawCenteredString(font, "🌲 Naturel", naturalX + tabBtnW / 2, tabBtnY + 4, if (isNatActive) 0xFFFFFFFF.toInt() else 0xFFAAAAAA.toInt())
+        guiGraphics.drawCenteredString(font, SpawnSubCategory.NATURAL.label, naturalX + tabBtnW / 2, tabBtnY + 4, if (isNatActive) 0xFFFFFFFF.toInt() else 0xFFAAAAAA.toInt())
 
         // Bouton 2 : Poké Snack
         val snackBg = when {
@@ -1222,7 +1222,7 @@ class PokemonDetailPanelWidget(
         guiGraphics.fill(snackX, tabBtnY + tabBtnH - 1, snackX + tabBtnW, tabBtnY + tabBtnH, snackBorder)
         guiGraphics.fill(snackX, tabBtnY, snackX + 1, tabBtnY + tabBtnH, snackBorder)
         guiGraphics.fill(snackX + tabBtnW - 1, tabBtnY, snackX + tabBtnW, tabBtnY + tabBtnH, snackBorder)
-        guiGraphics.drawCenteredString(font, "🍪 Poké Snack", snackX + tabBtnW / 2, tabBtnY + 4, if (isSnackActive) 0xFFFFFFFF.toInt() else 0xFFAAAAAA.toInt())
+        guiGraphics.drawCenteredString(font, SpawnSubCategory.POKE_SNACK.label, snackX + tabBtnW / 2, tabBtnY + 4, if (isSnackActive) 0xFFFFFFFF.toInt() else 0xFFAAAAAA.toInt())
 
         y += tabBtnH + 6
 
@@ -1231,7 +1231,7 @@ class PokemonDetailPanelWidget(
             return renderTabPokeSnack(guiGraphics, sp, contentX, y, contentW, mouseX, mouseY)
         }
 
-        guiGraphics.drawString(font, "§e§lZones d'apparition§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.spawns_header").string, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 12
 
         // Badge dynamique temps réel
@@ -1261,9 +1261,9 @@ class PokemonDetailPanelWidget(
         
         if (isBadgeHovered && statusRes.blockingReasons.isNotEmpty()) {
             val tooltipLines = mutableListOf<Component>()
-            tooltipLines.add(Component.literal("§6Conditions manquantes ici :"))
+            tooltipLines.add(Component.translatable("gui.cobblemon_jei.detail.missing_conditions"))
             for (reason in statusRes.blockingReasons) {
-                tooltipLines.add(Component.literal("§7 • $reason"))
+                tooltipLines.add(Component.literal("§7 • ").append(reason))
             }
             guiGraphics.renderComponentTooltip(font, tooltipLines, mouseX, mouseY)
         }
@@ -1274,7 +1274,7 @@ class PokemonDetailPanelWidget(
 
         val spawns = PokemonSpawnDataLoader.getSpawnRecipesForSpecies(sp)
         if (spawns.isEmpty()) {
-            guiGraphics.drawString(font, "§c✕ N'apparaît pas dans la nature§r", contentX + 4, y, 0xFFFF7675.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.no_wild_spawns").string, contentX + 4, y, 0xFFFF7675.toInt(), false)
             y += 12
 
             val fossilOrigin = fr.k0bus.cobblemon_jei.data.PokemonFossilDataLoader.getFossilLineageOrigin(sp)
@@ -1282,17 +1282,17 @@ class PokemonDetailPanelWidget(
                 val (ancestorSpecies, fossilRecipe) = fossilOrigin
                 val isDirect = PokemonTrackingManager.isSameSpecies(ancestorSpecies, sp)
                 val title = if (isDirect) {
-                    "§6🏛 Résurrection de Fossile (Cobblemon)§r"
+                    Component.translatable("gui.cobblemon_jei.detail.fossil_resurrection").string
                 } else {
-                    "§6🏛 Issu du Fossile de ${ancestorSpecies.translatedName.string}§r"
+                    Component.translatable("gui.cobblemon_jei.detail.fossil_origin", ancestorSpecies.translatedName.string).string
                 }
                 guiGraphics.drawString(font, title, contentX + 4, y, 0xFFFFD700.toInt(), false)
                 y += 12
 
-                guiGraphics.drawString(font, "§eMachine requise : §fAnalyseur + Cuve + Moniteur§r", contentX + 4, y, 0xFFFFFFFF.toInt(), false)
+                guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.fossil_machines").string, contentX + 4, y, 0xFFFFFFFF.toInt(), false)
                 y += 11
 
-                guiGraphics.drawString(font, "§7Fossile(s) d'origine :§r", contentX + 4, y, 0xFFCCCCCC.toInt(), false)
+                guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.fossil_source").string, contentX + 4, y, 0xFFCCCCCC.toInt(), false)
                 y += 10
 
                 for ((fIdx, fossilId) in fossilRecipe.requiredFossilItemIds.withIndex()) {
@@ -1303,8 +1303,8 @@ class PokemonDetailPanelWidget(
                     if (!stack.isEmpty) {
                         guiGraphics.renderItem(stack, stackX, stackY)
                     }
-                    val itemName = if (!stack.isEmpty) stack.hoverName.string else (fr.k0bus.cobblemon_jei.data.PokemonFossilDataLoader.FOSSIL_NAMES_FR[fossilId.substringAfter(":")] ?: fossilId.substringAfter(":"))
-                    val countTxt = if (count > 0) "§a✔ $count en inventaire§r" else "§c✕ 0 en inventaire§r"
+                    val itemName = if (!stack.isEmpty) stack.hoverName.string else fr.k0bus.cobblemon_jei.data.PokemonFossilDataLoader.getFossilDisplayName(fossilId)
+                    val countTxt = if (count > 0) Component.translatable("gui.cobblemon_jei.detail.fossil_in_inv", count).string else Component.translatable("gui.cobblemon_jei.detail.fossil_none_inv").string
                     guiGraphics.drawString(font, "§f$itemName§r", stackX + 20, stackY + 1, 0xFFFFFFFF.toInt(), false)
                     guiGraphics.drawString(font, countTxt, stackX + 20, stackY + 10, 0xFFE0E0E0.toInt(), false)
                     y += 20
@@ -1312,10 +1312,10 @@ class PokemonDetailPanelWidget(
 
                 val structs = fossilRecipe.associatedStructures
                 if (structs.isNotEmpty()) {
-                    guiGraphics.drawString(font, "§dFouilles archéologiques (Pinceau) :§r", contentX + 4, y, 0xFFFF77FF.toInt(), false)
+                    guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.fossil_archeology").string, contentX + 4, y, 0xFFFF77FF.toInt(), false)
                     y += 10
                     for (structId in structs) {
-                        val sName = fr.k0bus.cobblemon_jei.data.PokemonFossilDataLoader.STRUCTURE_DISPLAY_NAMES_FR[structId] ?: structId
+                        val sName = fr.k0bus.cobblemon_jei.data.PokemonFossilDataLoader.getStructureDisplayName(structId)
                         guiGraphics.drawString(font, "§7 • §b$sName§r", contentX + 6, y, 0xFFE0E0E0.toInt(), false)
                         y += 9
                     }
@@ -1336,9 +1336,9 @@ class PokemonDetailPanelWidget(
                     }
                     val btnBorder = if (isHighlighted) 0xFF2ED573.toInt() else 0xFFFFA502.toInt()
                     val btnTxt = if (isHighlighted) {
-                        "§a✔ Structures en surbrillance (Désactiver)"
+                        Component.translatable("gui.cobblemon_jei.detail.fossil_highlight_active").string
                     } else {
-                        "§6🗺 Mettre en valeur sur JourneyMap"
+                        Component.translatable("gui.cobblemon_jei.detail.fossil_highlight").string
                     }
                     guiGraphics.fill(btnX, btnY, btnX + btnW, btnY + btnH, btnBg.toInt())
                     guiGraphics.renderOutline(btnX, btnY, btnW, btnH, btnBorder)
@@ -1347,7 +1347,7 @@ class PokemonDetailPanelWidget(
                     y += btnH + 6
                 }
 
-                val tipText = "§8Astuce : Des Pokémon de pâturage (ouvriers miniers) peuvent aussi déterrer des fossiles.§r"
+                val tipText = Component.translatable("gui.cobblemon_jei.detail.fossil_pasture_tip").string
                 val tipLines = font.split(Component.literal(tipText), contentW - 8)
                 for (l in tipLines) {
                     guiGraphics.drawString(font, l, contentX + 4, y, 0xFF888888.toInt(), false)
@@ -1357,10 +1357,10 @@ class PokemonDetailPanelWidget(
                 val allRecipes = PokemonEvolutionDataLoader.loadEvolutionRecipes()
                 val preEvos = allRecipes.filter { PokemonTrackingManager.isSameSpecies(it.targetSpecies, sp) }
                 if (preEvos.isNotEmpty()) {
-                    guiGraphics.drawString(font, "§e🔄 Évolution exclusive§r", contentX + 4, y, 0xFFFFA502.toInt(), false)
+                    guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.exclusive_evo").string, contentX + 4, y, 0xFFFFA502.toInt(), false)
                     y += 10
                     val preNames = preEvos.map { it.sourceSpecies.translatedName.string }.distinct().joinToString(", ")
-                    val evoLine = "§7S'obtient en faisant évoluer : §f$preNames§r"
+                    val evoLine = Component.translatable("gui.cobblemon_jei.detail.obtained_by_evolving", "§f$preNames§r").string
                     for (l in font.split(Component.literal(evoLine), contentW - 8)) {
                         guiGraphics.drawString(font, l, contentX + 4, y, 0xFFAAAAAA.toInt(), false)
                         y += 9
@@ -1370,9 +1370,9 @@ class PokemonDetailPanelWidget(
 
                 val postEvos = allRecipes.filter { PokemonTrackingManager.isSameSpecies(it.sourceSpecies, sp) }
                 if (preEvos.isEmpty() && postEvos.isNotEmpty()) {
-                    guiGraphics.drawString(font, "§d🥚 Reproduction / Événement spécial§r", contentX + 4, y, 0xFFFF77FF.toInt(), false)
+                    guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.breeding_header").string, contentX + 4, y, 0xFFFF77FF.toInt(), false)
                     y += 10
-                    val eggLine = "§7S'obtient par reproduction en pâturage ou événements spécifiques.§r"
+                    val eggLine = Component.translatable("gui.cobblemon_jei.detail.breeding_desc").string
                     for (l in font.split(Component.literal(eggLine), contentW - 8)) {
                         guiGraphics.drawString(font, l, contentX + 4, y, 0xFFAAAAAA.toInt(), false)
                         y += 9
@@ -1385,20 +1385,20 @@ class PokemonDetailPanelWidget(
 
         for (spawn in spawns.take(5)) {
             if (spawn.isMonumentSpawn) {
-                guiGraphics.drawString(font, "§6★ [Monument Légendaire]§r", contentX + 2, y, 0xFFFFD700.toInt(), false)
+                guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.monument.badge").string, contentX + 2, y, 0xFFFFD700.toInt(), false)
                 y += 10
 
                 val info = fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.KNOWN_MONUMENTS[sp.name.lowercase()]
-                val structName = info?.structureDisplayName ?: "Sanctuaire d'invocation"
-                guiGraphics.drawString(font, "§eStructure : §f$structName§r", contentX + 4, y, 0xFFFFFFFF.toInt(), false)
+                val structName = info?.structureDisplayName ?: Component.translatable("gui.cobblemon_jei.monument.sanctuary_default").string
+                guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.monument.structure_label", structName).string, contentX + 4, y, 0xFFFFFFFF.toInt(), false)
                 y += 9
 
-                val pedestal = spawn.monumentPedestalBlock?.substringAfter(":")?.replace('_', ' ')?.replaceFirstChar { it.uppercase() } ?: "Piédestal d'autel"
-                guiGraphics.drawString(font, "§7Bloc rituel : §b$pedestal§r", contentX + 4, y, 0xFFE0E0E0.toInt(), false)
+                val pedestal = spawn.monumentPedestalBlock?.substringAfter(":")?.replace('_', ' ')?.replaceFirstChar { it.uppercase() } ?: Component.translatable("gui.cobblemon_jei.monument.pedestal_default").string
+                guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.monument.pedestal_label", pedestal).string, contentX + 4, y, 0xFFE0E0E0.toInt(), false)
                 y += 9
 
                 val dim = spawn.dimensions.firstOrNull()?.substringAfter(":")?.replaceFirstChar { it.uppercase() } ?: "Overworld"
-                guiGraphics.drawString(font, "§7Dimension : §a$dim§r", contentX + 4, y, 0xFFE0E0E0.toInt(), false)
+                guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.monument.dimension_label", dim).string, contentX + 4, y, 0xFFE0E0E0.toInt(), false)
                 y += 9
 
                 // Badge interactif d'état du tracker
@@ -1411,13 +1411,13 @@ class PokemonDetailPanelWidget(
 
                 val (badgeBg, borderCol, modeText) = when (currentMode) {
                     fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.MonumentTrackingMode.DISABLED ->
-                        Triple(if (isHovered) 0x66FF4757 else 0x44FF4757, 0xFFFF4757.toInt(), "§c⛔ Tracker : Désactivé (Cliquer pour activer)")
+                        Triple(if (isHovered) 0x66FF4757 else 0x44FF4757, 0xFFFF4757.toInt(), Component.translatable("gui.cobblemon_jei.detail.monument_tracker_disabled").string)
                     fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.MonumentTrackingMode.MAJOR_ONLY ->
-                        Triple(if (isHovered) 0x662ED573 else 0x442ED573, 0xFF2ED573.toInt(), "§a🏛 Tracker : Monuments Majeurs (Actif)")
+                        Triple(if (isHovered) 0x662ED573 else 0x442ED573, 0xFF2ED573.toInt(), Component.translatable("gui.cobblemon_jei.detail.monument_tracker_active", Component.translatable("gui.cobblemon_jm.monuments.mode.major").string).string)
                     fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.MonumentTrackingMode.FOOTPRINTS_ONLY ->
-                        Triple(if (isHovered) 0x661E90FF else 0x441E90FF, 0xFF1E90FF.toInt(), "§b🐾 Tracker : Empreintes Seules (Actif)")
+                        Triple(if (isHovered) 0x661E90FF else 0x441E90FF, 0xFF1E90FF.toInt(), Component.translatable("gui.cobblemon_jei.detail.monument_tracker_active", Component.translatable("gui.cobblemon_jm.monuments.mode.footprints").string).string)
                     fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.MonumentTrackingMode.ALL ->
-                        Triple(if (isHovered) 0x66FFA502 else 0x44FFA502, 0xFFFFA502.toInt(), "§6🏛+🐾 Tracker : Tout Tracker (Actif)")
+                        Triple(if (isHovered) 0x66FFA502 else 0x44FFA502, 0xFFFFA502.toInt(), Component.translatable("gui.cobblemon_jei.detail.monument_tracker_active", Component.translatable("gui.cobblemon_jm.monuments.mode.all").string).string)
                 }
 
                 guiGraphics.fill(badgeX, badgeY, badgeX + badgeW, badgeY + badgeH, badgeBg.toInt())
@@ -1430,9 +1430,9 @@ class PokemonDetailPanelWidget(
                 if (discovered != null) {
                     val p = discovered.pedestalPos ?: discovered.pos
                     val sName = discovered.metadata.displayName
-                    guiGraphics.drawString(font, "§a✔ $sName à [${p.x}, ${p.y}, ${p.z}]§r", contentX + 4, y, 0xFF2ED573.toInt(), false)
+                    guiGraphics.drawString(font, "§a✔ $sName " + Component.translatable("gui.cobblemon_jei.monument.discovered_at", p.x, p.y, p.z).string + "§r", contentX + 4, y, 0xFF2ED573.toInt(), false)
                     y += 9
-                    guiGraphics.drawString(font, "§6★ Waypoint actif sur la minimap§r", contentX + 4, y, 0xFFFFD700.toInt(), false)
+                    guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.monument.waypoint_active_label").string, contentX + 4, y, 0xFFFFD700.toInt(), false)
                     y += 10
                 } else {
                     guiGraphics.drawString(font, "§c✗ Non localisé dans ce monde§r", contentX + 4, y, 0xFFFF7675.toInt(), false)
@@ -1618,7 +1618,7 @@ class PokemonDetailPanelWidget(
 
                 val preStack = PokemonItem.from(preSp.create())
                 guiGraphics.renderItem(preStack, evoCardX + 3, y + 2)
-                guiGraphics.drawString(font, "§b➜ ${preSp.name}§r §7(Cliquer pour afficher)§r", evoCardX + 22, y + 6, 0xFFFFFFFF.toInt(), false)
+                guiGraphics.drawString(font, "§b➜ ${preSp.name}§r §7" + Component.translatable("gui.cobblemon_jei.detail.click_to_view").string + "§r", evoCardX + 22, y + 6, 0xFFFFFFFF.toInt(), false)
                 rightPanelClickablePokemon.add(Triple(intArrayOf(evoCardX, y, evoCardW, evoCardH), preSp, false))
                 y += evoCardH + 4
             }
@@ -1655,7 +1655,7 @@ class PokemonDetailPanelWidget(
         y += potBoxH + 6
 
         // 4. Les 3 meilleurs assaisonnements calculés
-        guiGraphics.drawString(font, "§e§l3 Meilleurs Assaisonnements§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.snacks_3_best").string, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 12
 
         for (rec in advice.seasonings) {
@@ -1674,7 +1674,7 @@ class PokemonDetailPanelWidget(
             }
 
             // Titre et Rôle
-            guiGraphics.drawString(font, "§6Slot ${rec.slotNumber} : §f${rec.itemStack.hoverName.string}§r", cardX + 24, y + 1, 0xFFFFFFFF.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.snacks_slot", rec.slotNumber, "§f${rec.itemStack.hoverName.string}§r").string, cardX + 24, y + 1, 0xFFFFFFFF.toInt(), false)
             val roleLines = font.split(Component.literal("§b${rec.roleDescription}§r"), cardW - 26)
             var ry = y + 11
             for (rl in roleLines) {
@@ -1686,7 +1686,7 @@ class PokemonDetailPanelWidget(
             // Comment le créer (Fabrication / Croisement)
             when (val create = rec.howToCreate) {
                 is HowToCreate.BerryMutation -> {
-                    guiGraphics.drawString(font, "§e🧬 Mutation :§r §f${create.description}§r", cardX + 6, y, 0xFFFFFFFF.toInt(), false)
+                    guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.snacks_mutation").string + " §f${create.description}§r", cardX + 6, y, 0xFFFFFFFF.toInt(), false)
                     y += 10
                     val mutY = y
                     guiGraphics.renderItem(create.parent1, cardX + 8, mutY)
@@ -1709,11 +1709,11 @@ class PokemonDetailPanelWidget(
                     y += 19
                 }
                 is HowToCreate.Crafting -> {
-                    guiGraphics.drawString(font, "§a🔨 Fabrication :§r §f${create.recipeDescription}§r", cardX + 6, y, 0xFFFFFFFF.toInt(), false)
+                    guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.snacks_crafting").string + " §f${create.recipeDescription}§r", cardX + 6, y, 0xFFFFFFFF.toInt(), false)
                     y += 10
                 }
                 is HowToCreate.NonCraftable -> {
-                    guiGraphics.drawString(font, "§7🔨 Fabrication :§r §8${create.reason}§r", cardX + 6, y, 0xFFAAAAAA.toInt(), false)
+                    guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.snacks_crafting").string + " §8${create.reason}§r", cardX + 6, y, 0xFFAAAAAA.toInt(), false)
                     y += 10
                 }
             }
@@ -1721,7 +1721,7 @@ class PokemonDetailPanelWidget(
             // Où le trouver (Biomes, Mob drops, Structures)
             val where = rec.whereToFind
             if (where.naturalBiomes.isNotEmpty()) {
-                val bText = "§2🌲 Biomes sauvages :§r §e${where.naturalBiomes.take(4).joinToString(", ")}§r"
+                val bText = Component.translatable("gui.cobblemon_jei.detail.snacks_wild_biomes").string + " §e${where.naturalBiomes.take(4).joinToString(", ")}§r"
                 val bLines = font.split(Component.literal(bText), cardW - 12)
                 for (bl in bLines) {
                     guiGraphics.drawString(font, bl, cardX + 6, y, 0xFFFFFFFF.toInt(), false)
@@ -1730,7 +1730,7 @@ class PokemonDetailPanelWidget(
             }
 
             if (where.mobDrops.isNotEmpty()) {
-                val dText = "§d⚔ Butin Pokémon :§r §f" + where.mobDrops.joinToString(", ") { "${it.speciesName} (${String.format("%.1f", it.percentage)}%)" } + "§r"
+                val dText = Component.translatable("gui.cobblemon_jei.detail.snacks_mob_drops").string + " §f" + where.mobDrops.joinToString(", ") { "${it.speciesName} (${String.format("%.1f", it.percentage)}%)" } + "§r"
                 val dLines = font.split(Component.literal(dText), cardW - 12)
                 for (dl in dLines) {
                     guiGraphics.drawString(font, dl, cardX + 6, y, 0xFFFFFFFF.toInt(), false)
@@ -1739,7 +1739,7 @@ class PokemonDetailPanelWidget(
             }
 
             if (where.specialLocations.isNotEmpty()) {
-                val sText = "§6🏛 Coffres :§r §f${where.specialLocations.take(3).joinToString(", ")}§r"
+                val sText = Component.translatable("gui.cobblemon_jei.detail.snacks_chests").string + " §f${where.specialLocations.take(3).joinToString(", ")}§r"
                 val sLines = font.split(Component.literal(sText), cardW - 12)
                 for (sl in sLines) {
                     guiGraphics.drawString(font, sl, cardX + 6, y, 0xFFFFFFFF.toInt(), false)
@@ -1757,10 +1757,10 @@ class PokemonDetailPanelWidget(
         guiGraphics.fill(contentX + 2, y + tipsH - 1, contentX + contentW - 2, y + tipsH, 0xFF2D3345.toInt())
         guiGraphics.fill(contentX + 2, y, contentX + 3, y + tipsH, 0xFF2D3345.toInt())
         guiGraphics.fill(contentX + contentW - 3, y, contentX + contentW - 2, y + tipsH, 0xFF2D3345.toInt())
-        guiGraphics.drawString(font, "§e💡 Bon à savoir :§r", contentX + 6, y + 3, 0xFFFFFF55.toInt(), false)
-        guiGraphics.drawString(font, "§7• Rayon d'action : 8 blocs autour du snack.§r", contentX + 6, y + 13, 0xFFCCCCCC.toInt(), false)
-        guiGraphics.drawString(font, "§7• Durabilité : 9 bouchées (1 spawn / bouchée).§r", contentX + 6, y + 23, 0xFFCCCCCC.toInt(), false)
-        guiGraphics.drawString(font, "§7• Les baies de type cumulent jusqu'à ×100 !§r", contentX + 6, y + 33, 0xFFCCCCCC.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.snacks_tips_title").string, contentX + 6, y + 3, 0xFFFFFF55.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.snacks_tip_radius").string, contentX + 6, y + 13, 0xFFCCCCCC.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.snacks_tip_bites").string, contentX + 6, y + 23, 0xFFCCCCCC.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.snacks_tip_stack").string, contentX + 6, y + 33, 0xFFCCCCCC.toInt(), false)
         y += tipsH + 6
 
         return y + 4
@@ -1776,14 +1776,14 @@ class PokemonDetailPanelWidget(
         rightPanelClickablePokemon.clear()
 
         // 1. Forme source (Pré-évolutions)
-        guiGraphics.drawString(font, "§e§l1. Forme(s) d'origine§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.evo_pre").string, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 12
 
         val allRecipes = PokemonEvolutionDataLoader.loadEvolutionRecipes()
         val preEvos = allRecipes.filter { PokemonTrackingManager.isSameSpecies(it.targetSpecies, sp) }
 
         if (preEvos.isEmpty()) {
-            guiGraphics.drawString(font, "§7• Aucune pré-évolution (base)§r", contentX + 4, y, 0xFF888888.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.evo_none_pre").string, contentX + 4, y, 0xFF888888.toInt(), false)
             y += 12
         } else {
             for (pre in preEvos) {
@@ -1816,18 +1816,18 @@ class PokemonDetailPanelWidget(
                     if (itemX > contentX + 6) y += 18
                 }
                 if ((pre.stepsAmount ?: 0) > 0) {
-                    guiGraphics.drawString(font, "  §b💡 Sortez le Pokémon (R) et marchez (${pre.stepsAmount} pas)§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
+                    guiGraphics.drawString(font, "  §b" + Component.translatable("gui.cobblemon_jei.detail.evo_walk", pre.stepsAmount ?: 0).string + "§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
                     y += 9
                 }
                 if ((pre.minFriendship ?: 0) > 0) {
-                    guiGraphics.drawString(font, "  §b💡 Augmentez l'amitié (Grelot Zen, combats, baies amitié)§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
+                    guiGraphics.drawString(font, "  §b" + Component.translatable("gui.cobblemon_jei.detail.evo_friendship").string + "§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
                     y += 9
                 }
 
                 val ownedCount = allTracked.find { PokemonTrackingManager.isSameSpecies(it.species, preSp) }?.ownedInstances?.count {
                     PokemonTrackerService.isFormMatch(it.pokemon, pre.sourceForm, preSp)
                 } ?: 0
-                val resTxt = if (ownedCount > 0) "  §a✔ En stock dans le PC/Équipe ($ownedCount)§r" else "  §c✕ Aucun spécimen valide en réserve§r"
+                val resTxt = if (ownedCount > 0) "  §a" + Component.translatable("gui.cobblemon_jei.detail.evo_in_pc", ownedCount).string + "§r" else "  §c" + Component.translatable("gui.cobblemon_jei.detail.evo_no_pc").string + "§r"
                 guiGraphics.drawString(font, resTxt, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
                 y += 13
             }
@@ -1835,13 +1835,13 @@ class PokemonDetailPanelWidget(
 
         y += 4
         // 2. Évolutions suivantes (Destination)
-        guiGraphics.drawString(font, "§e§l2. Évolution(s) suivante(s)§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.evo_next").string, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
         y += 12
 
         val nextEvos = allRecipes.filter { PokemonTrackingManager.isSameSpecies(it.sourceSpecies, sp) }
 
         if (nextEvos.isEmpty()) {
-            guiGraphics.drawString(font, "§7• Aucune évolution suivante (final)§r", contentX + 4, y, 0xFF888888.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.detail.evo_none_next").string, contentX + 4, y, 0xFF888888.toInt(), false)
             y += 12
         } else {
             for (next in nextEvos) {
@@ -1851,7 +1851,7 @@ class PokemonDetailPanelWidget(
                     guiGraphics.renderItem(stack, contentX + 2, y)
                 }
                 val srcFormReqStr = if (next.sourceForm != sp.standardForm && next.sourceForm.name.isNotBlank() && next.sourceForm.name != "normal") {
-                    " [Forme: ${next.sourceForm.name.replaceFirstChar(Char::titlecase)}]"
+                    " " + Component.translatable("gui.cobblemon_jei.detail.form_spec", next.sourceForm.name.replaceFirstChar(Char::titlecase)).string
                 } else ""
                 val tgtFormStr = if (next.targetForm != tgtSp.standardForm && next.targetForm.name.isNotBlank() && next.targetForm.name != "normal") {
                     " (${next.targetForm.name.replaceFirstChar(Char::titlecase)})"
@@ -1877,32 +1877,32 @@ class PokemonDetailPanelWidget(
                     if (itemX > contentX + 6) y += 18
                 }
                 if ((next.stepsAmount ?: 0) > 0) {
-                    guiGraphics.drawString(font, "  §b💡 Sortez le Pokémon (R) et marchez (${next.stepsAmount} pas)§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
+                    guiGraphics.drawString(font, "  §b" + Component.translatable("gui.cobblemon_jei.detail.evo_walk", next.stepsAmount ?: 0).string + "§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
                     y += 9
                 }
                 if ((next.minFriendship ?: 0) > 0) {
-                    guiGraphics.drawString(font, "  §b💡 Augmentez l'amitié (Grelot Zen, combats, baies amitié)§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
+                    guiGraphics.drawString(font, "  §b" + Component.translatable("gui.cobblemon_jei.detail.evo_friendship").string + "§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
                     y += 9
                 }
                 if ((next.damageTaken ?: 0) > 0) {
-                    guiGraphics.drawString(font, "  §b💡 Subir ${next.damageTaken} dégâts sans tomber K.O.§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
+                    guiGraphics.drawString(font, "  §b" + Component.translatable("gui.cobblemon_jei.detail.evo_damage", next.damageTaken ?: 0).string + "§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
                     y += 9
                 }
                 if ((next.recoilDamage ?: 0) > 0) {
-                    guiGraphics.drawString(font, "  §b💡 Subir ${next.recoilDamage} dégâts de recul sans tomber K.O.§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
+                    guiGraphics.drawString(font, "  §b" + Component.translatable("gui.cobblemon_jei.detail.evo_recoil", next.recoilDamage ?: 0).string + "§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
                     y += 9
                 }
                 if ((next.criticalHits ?: 0) > 0) {
-                    guiGraphics.drawString(font, "  §b💡 Infliger ${next.criticalHits} coups critiques en un combat§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
+                    guiGraphics.drawString(font, "  §b" + Component.translatable("gui.cobblemon_jei.detail.evo_crit", next.criticalHits ?: 0).string + "§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
                     y += 9
                 }
                 if (next.defeatAmount != null && next.defeatAmount > 0) {
                     val tgt = next.defeatTarget ?: "ennemis"
-                    guiGraphics.drawString(font, "  §b💡 Vaincre ${next.defeatAmount}x $tgt§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
+                    guiGraphics.drawString(font, "  §b" + Component.translatable("gui.cobblemon_jei.detail.evo_defeat", next.defeatAmount ?: 0, tgt).string + "§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
                     y += 9
                 }
                 if (next.partyMember != null) {
-                    guiGraphics.drawString(font, "  §b💡 Avoir un ${next.partyMember} dans votre équipe§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
+                    guiGraphics.drawString(font, "  §b" + Component.translatable("gui.cobblemon_jei.detail.evo_party_member", next.partyMember ?: "").string + "§r", contentX + 2, y, 0xFF85C1E9.toInt(), false)
                     y += 9
                 }
 
@@ -1912,12 +1912,12 @@ class PokemonDetailPanelWidget(
                 } ?: false
 
                 if (!hasReqForm && (currentTracked?.ownedCount ?: 0) > 0 && next.sourceForm != sp.standardForm && next.sourceForm.name.isNotBlank() && next.sourceForm.name != "normal") {
-                    guiGraphics.drawString(font, "  §c⚠ Nécessite la forme ${next.sourceForm.name.replaceFirstChar(Char::titlecase)} !§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
+                    guiGraphics.drawString(font, "  §c" + Component.translatable("gui.cobblemon_jei.detail.evo_req_form", next.sourceForm.name.replaceFirstChar(Char::titlecase)).string + "§r", contentX + 2, y, 0xFFFFFFFF.toInt(), false)
                     y += 10
                 }
 
                 val isCaught = allTracked.find { PokemonTrackingManager.isSameSpecies(it.species, tgtSp) }?.isCaught == true
-                val caughtTxt = if (isCaught) "  §a✔ Déjà enregistré au Pokédex§r" else "  §6✕ Non découvert au Pokédex§r"
+                val caughtTxt = if (isCaught) "  §a" + Component.translatable("gui.cobblemon_jei.detail.evo_in_dex").string + "§r" else "  §6" + Component.translatable("gui.cobblemon_jei.detail.evo_not_in_dex").string + "§r"
                 guiGraphics.drawString(font, caughtTxt, contentX + 2, y, 0xFFFFFFFF.toInt(), false)
                 y += 13
             }

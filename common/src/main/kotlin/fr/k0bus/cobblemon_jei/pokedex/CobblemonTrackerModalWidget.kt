@@ -8,6 +8,7 @@ import fr.k0bus.cobblemon_jei.journeymap.PokemonRadarService
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.network.chat.Component
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.world.item.ItemStack
@@ -80,8 +81,8 @@ class CobblemonTrackerModalWidget(
         guiGraphics.fill(modalX, modalY, modalX + modalW, modalY + 22, 0xFF1A1F2C.toInt())
         guiGraphics.fill(modalX, modalY + 21, modalX + modalW, modalY + 22, 0xFF2A3144.toInt())
 
-        val title = "§6§lRADAR & TRACKER DE POKÉMON§r"
-        guiGraphics.drawString(font, title, modalX + 8, modalY + 7, 0xFFFFFFFF.toInt(), false)
+        val title = Component.translatable("gui.cobblemon_jei.tracker_modal.title").string
+        guiGraphics.drawString(font, "§6§l$title§r", modalX + 8, modalY + 7, 0xFFFFFFFF.toInt(), false)
 
         // Bouton [🏕 Expéditions] dans la barre de titre
         val expModalBtnX = modalX + modalW - 116
@@ -91,7 +92,7 @@ class CobblemonTrackerModalWidget(
         guiGraphics.fill(expModalBtnX, expModalBtnY, expModalBtnX + 92, expModalBtnY + 14, expBg)
         guiGraphics.fill(expModalBtnX, expModalBtnY, expModalBtnX + 92, expModalBtnY + 1, 0xFF2ECC71.toInt())
         guiGraphics.fill(expModalBtnX, expModalBtnY + 13, expModalBtnX + 92, expModalBtnY + 14, 0xFF2ECC71.toInt())
-        guiGraphics.drawCenteredString(font, "🏕 Expéditions", expModalBtnX + 46, expModalBtnY + 3, 0xFFFFFFFF.toInt())
+        guiGraphics.drawCenteredString(font, Component.translatable("gui.cobblemon_jei.tracker_modal.expeditions_btn").string, expModalBtnX + 46, expModalBtnY + 3, 0xFFFFFFFF.toInt())
 
         // Bouton Fermer [✕] en haut à droite
         val closeBtnX = modalX + modalW - 18
@@ -107,14 +108,14 @@ class CobblemonTrackerModalWidget(
         guiGraphics.fill(modalX + 8, statusY + 21, modalX + modalW - 8, statusY + 22, 0xFF2A3144.toInt())
 
         val modeLabel = when (PokemonTrackingManager.currentMode) {
-            TrackingMode.OFF -> "§7Inactif (Sentinelle Shiny active)"
-            TrackingMode.ALL_UNCAUGHT -> "§aTous les Pokémon non capturés"
-            TrackingMode.SINGLE -> "§bCible : §f${PokemonTrackingManager.targetSpecies?.translatedName?.string ?: "Inconnu"}"
-            TrackingMode.EVOLUTION_LINE -> "§dFamille de §f${PokemonTrackingManager.evolutionBaseSpecies?.translatedName?.string ?: "Inconnu"} §7(${PokemonTrackingManager.evolutionFamily.size})"
-            TrackingMode.CUSTOM_LIST -> "§eListe personnalisée §7(${PokemonTrackingManager.customWatchlist.size} Pokémon)"
-            TrackingMode.GOALS -> "§6Objectifs d'expéd. §7(${GoalService.getActiveGoals().size} actifs)"
+            TrackingMode.OFF -> Component.translatable("gui.cobblemon_jei.tracker_modal.mode_off").string
+            TrackingMode.ALL_UNCAUGHT -> Component.translatable("gui.cobblemon_jei.tracker_modal.mode_all_uncaught").string
+            TrackingMode.SINGLE -> Component.translatable("gui.cobblemon_jei.tracker_modal.mode_target", PokemonTrackingManager.targetSpecies?.translatedName?.string ?: "Inconnu").string
+            TrackingMode.EVOLUTION_LINE -> Component.translatable("gui.cobblemon_jei.tracker_modal.mode_family", PokemonTrackingManager.evolutionBaseSpecies?.translatedName?.string ?: "Inconnu", PokemonTrackingManager.evolutionFamily.size).string
+            TrackingMode.CUSTOM_LIST -> Component.translatable("gui.cobblemon_jei.tracker_modal.mode_custom", PokemonTrackingManager.customWatchlist.size).string
+            TrackingMode.GOALS -> Component.translatable("gui.cobblemon_jei.tracker_modal.mode_goals", GoalService.getActiveGoals().size).string
         }
-        guiGraphics.drawString(font, "Mode actif : $modeLabel", modalX + 12, statusY + 4, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.tracker_modal.mode_label", modeLabel).string, modalX + 12, statusY + 4, 0xFFFFFFFF.toInt(), false)
 
         if (PokemonTrackingManager.currentMode == TrackingMode.GOALS) {
             val goalsBtnW = 68
@@ -124,15 +125,15 @@ class CobblemonTrackerModalWidget(
             val isGoalsHovered = mouseX >= goalsBtnX && mouseX <= goalsBtnX + goalsBtnW && mouseY >= goalsBtnY && mouseY <= goalsBtnY + goalsBtnH
             val goalsBg = if (isGoalsHovered) 0xFFD35400.toInt() else 0xFFE67E22.toInt()
             guiGraphics.fill(goalsBtnX, goalsBtnY, goalsBtnX + goalsBtnW, goalsBtnY + goalsBtnH, goalsBg)
-            guiGraphics.drawCenteredString(font, "🔍 Cibles", goalsBtnX + goalsBtnW / 2, goalsBtnY + 3, 0xFFFFFFFF.toInt())
+            guiGraphics.drawCenteredString(font, Component.translatable("gui.cobblemon_jei.tracker_modal.targets_btn").string, goalsBtnX + goalsBtnW / 2, goalsBtnY + 3, 0xFFFFFFFF.toInt())
         }
 
         val detCount = PokemonRadarService.detectedCount
         val shinyCount = PokemonRadarService.shinyNearbyCount
         val radarInfo = when {
-            shinyCount > 0 -> "§6★ $shinyCount Shiny§r | §a$detCount cible(s) à portée (160m)"
-            detCount > 0 -> "§a$detCount cible(s) à portée du radar (160m)"
-            else -> "§7Aucun spécimen traqué à portée"
+            shinyCount > 0 -> Component.translatable("gui.cobblemon_jei.tracker_modal.radar_shiny", shinyCount, detCount).string
+            detCount > 0 -> Component.translatable("gui.cobblemon_jei.tracker_modal.radar_targets", detCount).string
+            else -> Component.translatable("gui.cobblemon_jei.tracker_modal.radar_none").string
         }
         guiGraphics.drawString(font, radarInfo, modalX + 12, statusY + 13, 0xFFBBBBBB.toInt(), false)
 
@@ -155,7 +156,7 @@ class CobblemonTrackerModalWidget(
         guiGraphics.fill(modalX + 8, btnRow1Y, modalX + 8 + fullW, btnRow1Y + 16, b1Bg)
         guiGraphics.fill(modalX + 8, btnRow1Y, modalX + 8 + fullW, btnRow1Y + 1, b1Border)
         guiGraphics.fill(modalX + 8, btnRow1Y + 15, modalX + 8 + fullW, btnRow1Y + 16, b1Border)
-        val b1Text = if (isUncaughtActive) "✔ Tracker TOUS les non-capturés (Actif)" else "🔍 Tracker TOUS les Pokémon non capturés"
+        val b1Text = if (isUncaughtActive) Component.translatable("gui.cobblemon_jei.tracker_modal.btn_all_uncaught_active").string else Component.translatable("gui.cobblemon_jei.tracker_modal.btn_all_uncaught").string
         guiGraphics.drawCenteredString(font, b1Text, modalX + modalW / 2, btnRow1Y + 4, 0xFFFFFFFF.toInt())
 
         // Choix 2 & 3 : Tracker ce Pokémon OU sa lignée évolutive
@@ -191,7 +192,7 @@ class CobblemonTrackerModalWidget(
         guiGraphics.fill(b3X, btnRow2Y, b3X + halfW, btnRow2Y + 16, b3Bg)
         guiGraphics.fill(b3X, btnRow2Y, b3X + halfW, btnRow2Y + 1, b3Border)
         guiGraphics.fill(b3X, btnRow2Y + 15, b3X + halfW, btnRow2Y + 16, b3Border)
-        val b3Text = if (isLineActive) "✔ Lignée ($b2Short)" else "🧬 Lignée ($b2Short)"
+        val b3Text = if (isLineActive) Component.translatable("gui.cobblemon_jei.tracker_modal.btn_family_active", b2Short).string else Component.translatable("gui.cobblemon_jei.tracker_modal.btn_family", b2Short).string
         guiGraphics.drawCenteredString(font, b3Text, b3X + halfW / 2, btnRow2Y + 4, 0xFFFFFFFF.toInt())
 
         // Choix 4 & 5 : Activer les objectifs du compagnon OU Arrêter le tracking
@@ -208,7 +209,7 @@ class CobblemonTrackerModalWidget(
         guiGraphics.fill(modalX + 8, btnRow3Y, modalX + 8 + halfW, btnRow3Y + 16, b4Bg)
         guiGraphics.fill(modalX + 8, btnRow3Y, modalX + 8 + halfW, btnRow3Y + 1, b4Border)
         guiGraphics.fill(modalX + 8, btnRow3Y + 15, modalX + 8 + halfW, btnRow3Y + 16, b4Border)
-        val b4Text = if (isGoalsActive) "✔ Mes Objectifs ($activeGoalsCount)" else "🎯 Suivre Objectifs ($activeGoalsCount)"
+        val b4Text = if (isGoalsActive) Component.translatable("gui.cobblemon_jei.tracker_modal.btn_goals_active", activeGoalsCount).string else Component.translatable("gui.cobblemon_jei.tracker_modal.btn_goals", activeGoalsCount).string
         guiGraphics.drawCenteredString(font, b4Text, modalX + 8 + halfW / 2, btnRow3Y + 4, 0xFFFFFFFF.toInt())
 
         // Bouton Arrêter le tracking
@@ -217,14 +218,14 @@ class CobblemonTrackerModalWidget(
         guiGraphics.fill(b3X, btnRow3Y, b3X + halfW, btnRow3Y + 16, b5Bg)
         guiGraphics.fill(b3X, btnRow3Y, b3X + halfW, btnRow3Y + 1, 0xFFE74C3C.toInt())
         guiGraphics.fill(b3X, btnRow3Y + 15, b3X + halfW, btnRow3Y + 16, 0xFFE74C3C.toInt())
-        guiGraphics.drawCenteredString(font, "✕ Arrêter le suivi", b3X + halfW / 2, btnRow3Y + 4, 0xFFFFFFFF.toInt())
+        guiGraphics.drawCenteredString(font, Component.translatable("gui.cobblemon_jei.tracker_modal.btn_stop").string, b3X + halfW / 2, btnRow3Y + 4, 0xFFFFFFFF.toInt())
 
         // 5. Section Filtres Avancés & Rendu In-World 3D
         val filterSectionY = modalY + 114
         guiGraphics.fill(modalX + 8, filterSectionY, modalX + modalW - 8, filterSectionY + 1, 0xFF282D3C.toInt())
 
-        val filterTitle = "§6§lFILTRES AVANCÉS & EFFETS 3D§r"
-        guiGraphics.drawString(font, filterTitle, modalX + 10, filterSectionY + 4, 0xFFFFFFFF.toInt(), false)
+        val filterTitle = Component.translatable("gui.cobblemon_jei.tracker_modal.filter_title").string
+        guiGraphics.drawString(font, "§6§l$filterTitle§r", modalX + 10, filterSectionY + 4, 0xFFFFFFFF.toInt(), false)
 
         val advFilter = PokemonTrackingManager.advancedFilter
         val row1Y = filterSectionY + 16
@@ -240,15 +241,15 @@ class CobblemonTrackerModalWidget(
         guiGraphics.fill(modalX + 8, row1Y, modalX + 8 + colW, row1Y + 14, haBg)
         guiGraphics.fill(modalX + 8, row1Y, modalX + 8 + colW, row1Y + 1, haBorder)
         guiGraphics.fill(modalX + 8, row1Y + 13, modalX + 8 + colW, row1Y + 14, haBorder)
-        val haText = if (isHaActive) "Talent Caché : OUI" else "Talent Caché : Tout"
+        val haText = if (isHaActive) Component.translatable("gui.cobblemon_jei.tracker_modal.ha_on").string else Component.translatable("gui.cobblemon_jei.tracker_modal.ha_all").string
         guiGraphics.drawCenteredString(font, haText, modalX + 8 + colW / 2, row1Y + 3, 0xFFFFFFFF.toInt())
 
         // Bouton 2 : IVs 31 Parfaits
         val ivText = when (advFilter.minPerfectIvs) {
-            1 -> "31 IVs : ≥ 1"
-            3 -> "31 IVs : ≥ 3"
-            6 -> "31 IVs : 6 (Max)"
-            else -> "31 IVs : Tout"
+            1 -> Component.translatable("gui.cobblemon_jei.tracker_modal.iv_1").string
+            3 -> Component.translatable("gui.cobblemon_jei.tracker_modal.iv_3").string
+            6 -> Component.translatable("gui.cobblemon_jei.tracker_modal.iv_6").string
+            else -> Component.translatable("gui.cobblemon_jei.tracker_modal.iv_all").string
         }
         val isIvActive = advFilter.minPerfectIvs > 0
         val isIvHovered = mouseX >= modalX + 120 && mouseX <= modalX + 120 + colW && mouseY >= row1Y && mouseY <= row1Y + 14
@@ -261,10 +262,10 @@ class CobblemonTrackerModalWidget(
 
         // Bouton 3 : Filtre de Taille
         val sizeText = when (advFilter.sizeFilter) {
-            SizeFilter.RARE_ONLY -> "Taille : Rares"
-            SizeFilter.ONLY_MICROSCOPIC -> "Taille : Micro"
-            SizeFilter.ONLY_GIGANTIC -> "Taille : Colossal"
-            SizeFilter.ANY -> "Taille : Toute"
+            SizeFilter.RARE_ONLY -> Component.translatable("gui.cobblemon_jei.tracker_modal.size_rare").string
+            SizeFilter.ONLY_MICROSCOPIC -> Component.translatable("gui.cobblemon_jei.tracker_modal.size_micro").string
+            SizeFilter.ONLY_GIGANTIC -> Component.translatable("gui.cobblemon_jei.tracker_modal.size_colossal").string
+            SizeFilter.ANY -> Component.translatable("gui.cobblemon_jei.tracker_modal.size_any").string
         }
         val isSizeActive = advFilter.sizeFilter != SizeFilter.ANY
         val isSizeHovered = mouseX >= modalX + 232 && mouseX <= modalX + 232 + col3W && mouseY >= row1Y && mouseY <= row1Y + 14
@@ -282,7 +283,7 @@ class CobblemonTrackerModalWidget(
         guiGraphics.fill(modalX + 8, row2Y, modalX + 8 + colW, row2Y + 14, glowBg)
         guiGraphics.fill(modalX + 8, row2Y, modalX + 8 + colW, row2Y + 1, glowBorder)
         guiGraphics.fill(modalX + 8, row2Y + 13, modalX + 8 + colW, row2Y + 14, glowBorder)
-        val glowText = if (advFilter.inWorldGlowing) "Lueur 3D : OUI" else "Lueur 3D : NON"
+        val glowText = if (advFilter.inWorldGlowing) Component.translatable("gui.cobblemon_jei.tracker_modal.glow_on").string else Component.translatable("gui.cobblemon_jei.tracker_modal.glow_off").string
         guiGraphics.drawCenteredString(font, glowText, modalX + 8 + colW / 2, row2Y + 3, 0xFFFFFFFF.toInt())
 
         // Bouton 5 : Particules In-World
@@ -292,7 +293,7 @@ class CobblemonTrackerModalWidget(
         guiGraphics.fill(modalX + 120, row2Y, modalX + 120 + colW, row2Y + 14, partBg)
         guiGraphics.fill(modalX + 120, row2Y, modalX + 120 + colW, row2Y + 1, partBorder)
         guiGraphics.fill(modalX + 120, row2Y + 13, modalX + 120 + colW, row2Y + 14, partBorder)
-        val partText = if (advFilter.inWorldParticles) "Particules : OUI" else "Particules : NON"
+        val partText = if (advFilter.inWorldParticles) Component.translatable("gui.cobblemon_jei.tracker_modal.part_on").string else Component.translatable("gui.cobblemon_jei.tracker_modal.part_off").string
         guiGraphics.drawCenteredString(font, partText, modalX + 120 + colW / 2, row2Y + 3, 0xFFFFFFFF.toInt())
 
         // Bouton 6 : Réinitialiser filtres
@@ -304,14 +305,14 @@ class CobblemonTrackerModalWidget(
         guiGraphics.fill(modalX + 232, row2Y, modalX + 232 + col3W, row2Y + 1, resetBorder)
         guiGraphics.fill(modalX + 232, row2Y + 13, modalX + 232 + col3W, row2Y + 14, resetBorder)
         val resetColor = if (hasFilters) 0xFFFFAAAA.toInt() else 0xFF666666.toInt()
-        guiGraphics.drawCenteredString(font, "Réinitialiser", modalX + 232 + col3W / 2, row2Y + 3, resetColor)
+        guiGraphics.drawCenteredString(font, Component.translatable("gui.cobblemon_jei.tracker_modal.btn_reset").string, modalX + 232 + col3W / 2, row2Y + 3, resetColor)
 
         // 6. Section Liste personnalisée (Watchlist)
         val listSectionY = modalY + 166
         guiGraphics.fill(modalX + 8, listSectionY, modalX + modalW - 8, listSectionY + 1, 0xFF282D3C.toInt())
 
-        val listTitle = "§e§lMA LISTE DE TRACKING§r §7(${PokemonTrackingManager.customWatchlist.size})§r"
-        guiGraphics.drawString(font, listTitle, modalX + 10, listSectionY + 5, 0xFFFFFFFF.toInt(), false)
+        val listTitle = Component.translatable("gui.cobblemon_jei.tracker_modal.watchlist_title", PokemonTrackingManager.customWatchlist.size).string
+        guiGraphics.drawString(font, "§e§l$listTitle§r", modalX + 10, listSectionY + 5, 0xFFFFFFFF.toInt(), false)
 
         // Bouton [+ Ajouter / - Retirer]
         val isInList = curSp != null && PokemonTrackingManager.isInWatchlist(curSp)
@@ -325,7 +326,7 @@ class CobblemonTrackerModalWidget(
             if (isToggleHovered) 0xFF27AE60.toInt() else 0xFF1E3A2B.toInt()
         }
         guiGraphics.fill(toggleBtnX, toggleBtnY, toggleBtnX + toggleBtnW, toggleBtnY + 13, toggleBg)
-        val toggleText = if (isInList) "− Retirer $b2Short" else "+ Ajouter $b2Short"
+        val toggleText = if (isInList) Component.translatable("gui.cobblemon_jei.tracker_modal.btn_remove", b2Short).string else Component.translatable("gui.cobblemon_jei.tracker_modal.btn_add", b2Short).string
         guiGraphics.drawCenteredString(font, toggleText, toggleBtnX + toggleBtnW / 2, toggleBtnY + 3, 0xFFFFFFFF.toInt())
 
         // Bouton Vider la liste
@@ -334,7 +335,7 @@ class CobblemonTrackerModalWidget(
             val isClearHovered = mouseX >= clearBtnX && mouseX <= clearBtnX + 40 && mouseY >= toggleBtnY && mouseY <= toggleBtnY + 13
             val clearBg = if (isClearHovered) 0xFF882222.toInt() else 0xFF441818.toInt()
             guiGraphics.fill(clearBtnX, toggleBtnY, clearBtnX + 40, toggleBtnY + 13, clearBg)
-            guiGraphics.drawCenteredString(font, "Vider", clearBtnX + 20, toggleBtnY + 3, 0xFFFFAAAA.toInt())
+            guiGraphics.drawCenteredString(font, Component.translatable("gui.cobblemon_jei.tracker_modal.btn_clear").string, clearBtnX + 20, toggleBtnY + 3, 0xFFFFAAAA.toInt())
         }
 
         // Cadre de liste scrollable
@@ -351,10 +352,10 @@ class CobblemonTrackerModalWidget(
 
         val list = PokemonTrackingManager.customWatchlist.toList()
         if (list.isEmpty()) {
-            val emptyMsg1 = "§7Votre liste de tracking est actuellement vide."
-            val emptyMsg2 = "§8Cliquez sur \"+ Ajouter\" ou sur l'étoile ⭐ pour y inscrire un Pokémon."
-            guiGraphics.drawCenteredString(font, emptyMsg1, boxX + boxW / 2, boxY + boxH / 2 - 8, 0xFF888888.toInt())
-            guiGraphics.drawCenteredString(font, emptyMsg2, boxX + boxW / 2, boxY + boxH / 2 + 3, 0xFF666666.toInt())
+            val emptyMsg1 = Component.translatable("gui.cobblemon_jei.tracker_modal.watchlist_empty_1").string
+            val emptyMsg2 = Component.translatable("gui.cobblemon_jei.tracker_modal.watchlist_empty_2").string
+            guiGraphics.drawCenteredString(font, "§7$emptyMsg1", boxX + boxW / 2, boxY + boxH / 2 - 8, 0xFF888888.toInt())
+            guiGraphics.drawCenteredString(font, "§8$emptyMsg2", boxX + boxW / 2, boxY + boxH / 2 + 3, 0xFF666666.toInt())
         } else {
             val rowH = 19
             val totalContentH = list.size * rowH
@@ -434,7 +435,11 @@ class CobblemonTrackerModalWidget(
             val goalsBtnY = statusY + 4
             if (mouseX >= goalsBtnX && mouseX <= goalsBtnX + goalsBtnW && mouseY >= goalsBtnY && mouseY <= goalsBtnY + goalsBtnH) {
                 val activeGoals = GoalService.getActiveGoals()
-                onOpenTargetsDetail("Objectifs d'Expédition", "${activeGoals.size} Pokémon cibles suivis", activeGoals.map { it.target })
+                onOpenTargetsDetail(
+                    Component.translatable("gui.cobblemon_jei.tracker_modal.exp_targets_title").string,
+                    Component.translatable("gui.cobblemon_jei.tracker_modal.exp_targets_subtitle", activeGoals.size).string,
+                    activeGoals.map { it.target }
+                )
                 Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
                 return true
             }

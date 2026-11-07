@@ -289,7 +289,7 @@ object CobblemonLeaderboardHud {
 
         var rowY = cardY + headerHeight + 2
         if (topEntries.isEmpty()) {
-            guiGraphics.drawString(font, Component.literal("§7Aucun joueur classé"), cardX + 6, rowY + 1, 0x888888, false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.leaderboard.no_ranked_players"), cardX + 6, rowY + 1, 0x888888, false)
         } else {
             for (entry in topEntries) {
                 renderPlayerDetailRow(guiGraphics, font, entry, cardX, rowY, cardWidth, category)

@@ -161,7 +161,7 @@ object PokemonTrackingManager {
     fun trackGoals(notifyPlayer: Boolean = true) {
         val activeGoals = fr.k0bus.cobblemon_jei.application.goals.GoalService.getActiveGoals()
         if (activeGoals.isEmpty()) {
-            displayMessage(Component.literal("§eAucun objectif d'exploration actif. Ajoutez-en depuis JEI ou le Pokédex !"))
+            displayMessage(Component.translatable("chat.cobblemon_jm.tracker.goals_empty"))
             return
         }
         currentMode = TrackingMode.GOALS
@@ -175,7 +175,7 @@ object PokemonTrackingManager {
         saveConfig()
 
         if (notifyPlayer) {
-            displayMessage(Component.literal("§6§lRadar d'Objectifs :§r §aSuivi de ${activeGoals.size} objectif(s) actif(s)."))
+            displayMessage(Component.translatable("chat.cobblemon_jm.tracker.goals_active", activeGoals.size))
         }
     }
 
@@ -416,13 +416,23 @@ object PokemonTrackingManager {
      * Résumé textuel court du mode actuel (pour HUD et tooltips).
      */
     fun getModeSummary(): String {
+        return getModeSummaryComponent().string
+    }
+
+    fun getModeSummaryComponent(): Component {
         return when (currentMode) {
-            TrackingMode.OFF -> "Inactif"
-            TrackingMode.ALL_UNCAUGHT -> "Non capturés"
-            TrackingMode.SINGLE -> targetSpecies?.translatedName?.string ?: "Cible unique"
-            TrackingMode.EVOLUTION_LINE -> "Lignée de ${evolutionBaseSpecies?.translatedName?.string ?: "Inconnu"}"
-            TrackingMode.CUSTOM_LIST -> "Liste (${customWatchlist.size})"
-            TrackingMode.GOALS -> "Objectifs (${fr.k0bus.cobblemon_jei.application.goals.GoalService.getActiveGoals().size})"
+            TrackingMode.OFF -> Component.translatable("cobblemon_jei.tracker.mode.stopped")
+            TrackingMode.ALL_UNCAUGHT -> Component.translatable("cobblemon_jei.tracker.mode.uncaught")
+            TrackingMode.SINGLE -> {
+                val name = targetSpecies?.translatedName ?: Component.literal("?")
+                Component.translatable("cobblemon_jei.tracker.mode.single", name)
+            }
+            TrackingMode.EVOLUTION_LINE -> {
+                val name = evolutionBaseSpecies?.translatedName ?: Component.literal("?")
+                Component.translatable("cobblemon_jei.tracker.mode.evolution_line", name)
+            }
+            TrackingMode.CUSTOM_LIST -> Component.translatable("cobblemon_jei.tracker.mode.watchlist", customWatchlist.size)
+            TrackingMode.GOALS -> Component.translatable("cobblemon_jei.tracker.mode.goals", fr.k0bus.cobblemon_jei.application.goals.GoalService.getActiveGoals().size)
         }
     }
 

@@ -173,7 +173,8 @@ object ProgressionService {
 
         val speciesName = goal.target.speciesId.path.replaceFirstChar { it.uppercase() }
         val shinySuffix = if (goal.target.shiny) " §6★ Shiny" else ""
-        val message = Component.literal("§6§l[Objectif Terminé !]§r §a$speciesName$shinySuffix §7a été complété !")
+        val targetName = speciesName + shinySuffix
+        val message = Component.translatable("chat.cobblemon_jm.goal_completed", targetName)
 
         try {
             player.displayClientMessage(message, false)

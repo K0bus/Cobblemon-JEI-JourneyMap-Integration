@@ -6,6 +6,7 @@ import com.cobblemon.mod.common.pokemon.Pokemon
 import com.cobblemon.mod.common.pokemon.Species
 import fr.k0bus.cobblemon_jei.domain.expedition.ExpeditionSuggestion
 import fr.k0bus.cobblemon_jei.recipe.PokemonEvolutionRecipe
+import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 
@@ -69,23 +70,57 @@ enum class PokedexStatus {
 /**
  * Onglets du panneau droit d'inspection d'un Pokémon.
  */
-enum class RightPanelTab(val label: String, val tooltip: String) {
-    DESCRIPTION("Infos", "Description & Morphologie"),
-    FORMS("Formes", "Formes & Variantes régionales"),
-    ABILITIES("Talents", "Talents & Capacités spéciales"),
-    STATS("Stats", "Statistiques de base & EV"),
-    EVOLUTIONS("Évos", "Lignée évolutive (Source & Destination)"),
-    DROPS("Butin", "Objets lâchés à la défaite"),
-    PASTURE("Pâturage", "Métiers au pâturage (Cobbleworkers)"),
-    SPAWNS("Zones", "Zones d'apparition sauvage")
+enum class RightPanelTab(
+    val labelKey: String,
+    val tooltipKey: String,
+    private val defaultLabel: String,
+    private val defaultTooltip: String
+) {
+    DESCRIPTION("gui.cobblemon_jei.detail.tab.description", "gui.cobblemon_jei.detail.tab.description_tooltip", "Infos", "Description & Morphologie"),
+    FORMS("gui.cobblemon_jei.detail.tab.forms", "gui.cobblemon_jei.detail.tab.forms_tooltip", "Formes", "Formes & Variantes régionales"),
+    ABILITIES("gui.cobblemon_jei.detail.tab.abilities", "gui.cobblemon_jei.detail.tab.abilities_tooltip", "Talents", "Talents & Capacités spéciales"),
+    STATS("gui.cobblemon_jei.detail.tab.stats", "gui.cobblemon_jei.detail.tab.stats_tooltip", "Stats", "Statistiques de base & EV"),
+    EVOLUTIONS("gui.cobblemon_jei.detail.tab.evolutions", "gui.cobblemon_jei.detail.tab.evolutions_tooltip", "Évos", "Lignée évolutive (Source & Destination)"),
+    DROPS("gui.cobblemon_jei.detail.tab.drops", "gui.cobblemon_jei.detail.tab.drops_tooltip", "Butin", "Objets lâchés à la défaite"),
+    PASTURE("gui.cobblemon_jei.detail.tab.pasture", "gui.cobblemon_jei.detail.tab.pasture_tooltip", "Pâturage", "Métiers au pâturage (Cobbleworkers)"),
+    SPAWNS("gui.cobblemon_jei.detail.tab.spawns", "gui.cobblemon_jei.detail.tab.spawns_tooltip", "Zones", "Zones d'apparition sauvage");
+
+    val label: String
+        get() {
+            val trans = Component.translatable(labelKey).string
+            return if (trans == labelKey) defaultLabel else trans
+        }
+
+    val tooltip: String
+        get() {
+            val trans = Component.translatable(tooltipKey).string
+            return if (trans == tooltipKey) defaultTooltip else trans
+        }
 }
 
 /**
  * Sous-catégories de la fiche d'apparition (Zones) d'un Pokémon.
  */
-enum class SpawnSubCategory(val label: String, val tooltip: String) {
-    NATURAL("🌲 Naturel", "Zones et conditions d'apparition sauvage"),
-    POKE_SNACK("🍪 Poké Snack", "Assaisonnements optimaux et recette pour attirer ce Pokémon")
+enum class SpawnSubCategory(
+    val labelKey: String,
+    val tooltipKey: String,
+    private val defaultLabel: String,
+    private val defaultTooltip: String
+) {
+    NATURAL("gui.cobblemon_jei.detail.subtab.natural", "gui.cobblemon_jei.detail.subtab.natural_tooltip", "🌲 Naturel", "Zones et conditions d'apparition sauvage"),
+    POKE_SNACK("gui.cobblemon_jei.detail.subtab.snack", "gui.cobblemon_jei.detail.subtab.snack_tooltip", "🍪 Poké Snack", "Assaisonnements optimaux et recette pour attirer ce Pokémon");
+
+    val label: String
+        get() {
+            val trans = Component.translatable(labelKey).string
+            return if (trans == labelKey) defaultLabel else trans
+        }
+
+    val tooltip: String
+        get() {
+            val trans = Component.translatable(tooltipKey).string
+            return if (trans == tooltipKey) defaultTooltip else trans
+        }
 }
 
 /**

@@ -174,7 +174,7 @@ class PokemonLeftContentWidget(
         val scrolledY = startY - scrollOffset.toInt()
 
         if (list.isEmpty()) {
-            val emptyMsg = "Aucun Pokémon ne correspond à votre recherche."
+            val emptyMsg = Component.translatable("gui.cobblemon_jei.pokedex.no_pokemon_found").string
             guiGraphics.drawCenteredString(font, emptyMsg, startX + usableW / 2, startY + 40, 0xFF888888.toInt())
             return
         }
@@ -257,19 +257,19 @@ class PokemonLeftContentWidget(
             item.species.standardForm.secondaryType?.let { sec ->
                 typeDesc.append(Component.literal(" / ")).append(sec.displayName)
             }
-            tooltip.add(Component.literal("Types : ").withStyle(ChatFormatting.DARK_GRAY).append(typeDesc))
+            tooltip.add(Component.translatable("gui.cobblemon_jei.left.types").withStyle(ChatFormatting.DARK_GRAY).append(typeDesc))
 
             val statusText = when (item.status) {
-                PokedexStatus.CAUGHT -> Component.literal("✔ Capturé / Possédé").withStyle(ChatFormatting.GREEN)
-                PokedexStatus.ENCOUNTERED -> Component.literal("👁 Rencontré (non capturé)").withStyle(ChatFormatting.GOLD)
-                PokedexStatus.MISSING -> Component.literal("❌ Non découvert").withStyle(ChatFormatting.RED)
+                PokedexStatus.CAUGHT -> Component.translatable("gui.cobblemon_jei.left.status_caught").withStyle(ChatFormatting.GREEN)
+                PokedexStatus.ENCOUNTERED -> Component.translatable("gui.cobblemon_jei.left.status_seen").withStyle(ChatFormatting.GOLD)
+                PokedexStatus.MISSING -> Component.translatable("gui.cobblemon_jei.left.status_missing").withStyle(ChatFormatting.RED)
             }
             tooltip.add(statusText)
 
             if (item.ownedCount > 0) {
-                tooltip.add(Component.literal("Dans vos réserves (${item.ownedCount}) :").withStyle(ChatFormatting.AQUA))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.in_stock", item.ownedCount).withStyle(ChatFormatting.AQUA))
                 for (info in item.ownedInstances.take(4)) {
-                    tooltip.add(Component.literal(" • ${info.location} (Niv. ${info.level})").withStyle(ChatFormatting.GRAY))
+                    tooltip.add(Component.translatable("gui.cobblemon_jei.left.stock_entry", info.location, info.level).withStyle(ChatFormatting.GRAY))
                 }
             }
             guiGraphics.renderComponentTooltip(font, tooltip, mouseX, mouseY)
@@ -291,7 +291,7 @@ class PokemonLeftContentWidget(
         val scrolledY = startY - scrollOffset.toInt()
 
         if (goals.isEmpty()) {
-            val emptyMsg = "Aucune évolution trouvée pour cette catégorie."
+            val emptyMsg = Component.translatable("gui.cobblemon_jei.left.evolutions_empty").string
             guiGraphics.drawCenteredString(font, emptyMsg, startX + usableW / 2, startY + 40, 0xFF888888.toInt())
             return
         }
@@ -312,9 +312,9 @@ class PokemonLeftContentWidget(
             }
 
             val (bgColor, borderColor, badgeText, badgeColor) = when (goal.feasibility) {
-                EvolutionFeasibility.READY_TO_EVOLVE -> Quad(0x44143D1A, 0xFF2ECC71.toInt(), "⭐ PRÊT À ÉVOLUER !", 0xFF2ECC71.toInt())
-                EvolutionFeasibility.CAN_EVOLVE_WITH_PC -> Quad(0x443D3014, 0xFFE67E22.toInt(), "⏳ EN STOCK DANS LE PC", 0xFFE67E22.toInt())
-                EvolutionFeasibility.MISSING_BASE_POKEMON -> Quad(0x331C1E26, 0xFF2E3342.toInt(), "POKÉMON DE BASE REQUIS", 0xFF7D8394.toInt())
+                EvolutionFeasibility.READY_TO_EVOLVE -> Quad(0x44143D1A, 0xFF2ECC71.toInt(), Component.translatable("gui.cobblemon_jei.left.badge_ready_evolve").string, 0xFF2ECC71.toInt())
+                EvolutionFeasibility.CAN_EVOLVE_WITH_PC -> Quad(0x443D3014, 0xFFE67E22.toInt(), Component.translatable("gui.cobblemon_jei.left.badge_in_pc").string, 0xFFE67E22.toInt())
+                EvolutionFeasibility.MISSING_BASE_POKEMON -> Quad(0x331C1E26, 0xFF2E3342.toInt(), Component.translatable("gui.cobblemon_jei.left.badge_base_required").string, 0xFF7D8394.toInt())
             }
 
             guiGraphics.fill(startX, cardY, startX + cardW, cardY + EVO_CARD_HEIGHT, bgColor)
@@ -345,13 +345,13 @@ class PokemonLeftContentWidget(
 
             val locText = if (!goal.hasFormMatch) {
                 val fName = goal.sourceForm.name.replaceFirstChar(Char::titlecase)
-                "§c✕ Mauvaise forme (0 $fName)§r"
+                Component.translatable("gui.cobblemon_jei.left.wrong_form", fName).string
             } else if (!goal.hasGenderMatch) {
-                "§c✕ Mauvais sexe (0/${goal.ownedSourcePokemons.size})§r"
+                Component.translatable("gui.cobblemon_jei.left.wrong_gender", goal.ownedSourcePokemons.size).string
             } else if (goal.hasSourceInPC) {
                 "§a✔ ${goal.sourceLocationSummary}§r"
             } else {
-                "§7✕ Non possédé§r"
+                Component.translatable("gui.cobblemon_jei.left.fossil_missing").string
             }
             guiGraphics.drawString(font, locText, startX + 26, cardY + 20, 0xFFAAAAAA.toInt(), false)
 
@@ -394,9 +394,10 @@ class PokemonLeftContentWidget(
             guiGraphics.drawString(font, shortCond, reqItemX + 2, cardY + 10, 0xFFCCCCCC.toInt(), false)
 
             val levelSummary = if (goal.minLevel != null) {
-                if (goal.isLevelMet) "§aNiv. ${goal.minLevel} atteint§r" else "§cNiv. ${goal.minLevel} requis§r"
+                if (goal.isLevelMet) Component.translatable("gui.cobblemon_jei.left.level_reached", goal.minLevel).string else Component.translatable("gui.cobblemon_jei.left.level_required", goal.minLevel).string
             } else if (goal.requiredGender != null) {
-                if (goal.hasGenderMatch) "§aSexe requis validé§r" else "§cSpécimen ${if (goal.requiredGender == Gender.FEMALE) "Femelle ♀" else "Mâle ♂"} requis§r"
+                val gName = if (goal.requiredGender == Gender.FEMALE) Component.translatable("gui.cobblemon_jei.left.gender_female").string else Component.translatable("gui.cobblemon_jei.left.gender_male").string
+                if (goal.hasGenderMatch) Component.translatable("gui.cobblemon_jei.left.gender_ok").string else Component.translatable("gui.cobblemon_jei.left.gender_req", gName).string
             } else {
                 goal.recipe.evolutionVariant
             }
@@ -410,7 +411,7 @@ class PokemonLeftContentWidget(
             }
             val tgtName = goal.targetSpecies.translatedName.string
             guiGraphics.drawString(font, tgtName, tgtX + 20, cardY + 8, 0xFFFFEAA7.toInt(), false)
-            val tgtDex = String.format("#%03d (Manquant)", goal.targetSpecies.nationalPokedexNumber)
+            val tgtDex = Component.translatable("gui.cobblemon_jei.left.missing_target", goal.targetSpecies.nationalPokedexNumber).string
             guiGraphics.drawString(font, tgtDex, tgtX + 20, cardY + 20, 0xFFE74C3C.toInt(), false)
 
             val badgeX = startX + cardW - font.width(badgeText) - 6
@@ -425,125 +426,125 @@ class PokemonLeftContentWidget(
     private fun renderGoalTooltip(guiGraphics: GuiGraphics, goal: EvolutionGoal, mouseX: Int, mouseY: Int, font: Font) {
         val tooltip = mutableListOf<Component>()
         tooltip.add(
-            Component.literal("Évolution : ")
+            Component.translatable("gui.cobblemon_jei.left.evolution_title")
                 .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
                 .append(Component.literal(goal.sourceSpecies.translatedName.string).withStyle(ChatFormatting.WHITE))
                 .append(Component.literal(" ➔ ").withStyle(ChatFormatting.AQUA))
                 .append(Component.literal(goal.targetSpecies.translatedName.string).withStyle(ChatFormatting.YELLOW))
         )
 
-        val feasText = when (goal.feasibility) {
-            EvolutionFeasibility.READY_TO_EVOLVE -> "⭐ Tout est prêt ! Évolution faisable dès maintenant."
+        val feasComp = when (goal.feasibility) {
+            EvolutionFeasibility.READY_TO_EVOLVE -> Component.translatable("gui.cobblemon_jei.left.feasibility_ready")
             EvolutionFeasibility.CAN_EVOLVE_WITH_PC -> {
-                if (!goal.hasFormMatch) "⏳ Pokémon présent mais pas sous la forme requise !"
-                else if (!goal.hasGenderMatch) "⏳ Pokémon présent mais aucun spécimen du sexe requis !"
-                else if (goal.moveStatus == MoveRequirementStatus.TM_MISSING) "⏳ Pokémon présent, mais la CT requise est manquante."
-                else "⏳ Pokémon présent dans votre PC/équipe, prérequis manquants."
+                if (!goal.hasFormMatch) Component.translatable("gui.cobblemon_jei.left.feasibility_form_missing")
+                else if (!goal.hasGenderMatch) Component.translatable("gui.cobblemon_jei.left.feasibility_gender_missing")
+                else if (goal.moveStatus == MoveRequirementStatus.TM_MISSING) Component.translatable("gui.cobblemon_jei.left.feasibility_tm_missing")
+                else Component.translatable("gui.cobblemon_jei.left.feasibility_conditions_missing")
             }
             EvolutionFeasibility.MISSING_BASE_POKEMON -> {
                 if (!goal.hasFormMatch) {
                     val fName = goal.sourceForm.name.replaceFirstChar(Char::titlecase)
-                    "❌ Vous devez capturer la forme spécifique : $fName."
+                    Component.translatable("gui.cobblemon_jei.left.feasibility_catch_form", fName)
                 } else {
-                    "❌ Vous devez d'abord capturer le Pokémon de base."
+                    Component.translatable("gui.cobblemon_jei.left.feasibility_catch_base")
                 }
             }
         }
-        tooltip.add(Component.literal(feasText).withStyle(if (goal.feasibility == EvolutionFeasibility.READY_TO_EVOLVE) ChatFormatting.GREEN else ChatFormatting.GOLD))
+        tooltip.add(feasComp.copy().withStyle(if (goal.feasibility == EvolutionFeasibility.READY_TO_EVOLVE) ChatFormatting.GREEN else ChatFormatting.GOLD))
 
         if (goal.sourceForm != goal.sourceSpecies.standardForm && goal.sourceForm.name.isNotBlank() && goal.sourceForm.name != "normal") {
             tooltip.add(Component.empty())
             val fName = goal.sourceForm.name.replaceFirstChar(Char::titlecase)
             if (goal.hasFormMatch) {
-                tooltip.add(Component.literal("Forme requise : $fName (✔ Spécimen valide en stock)").withStyle(ChatFormatting.GREEN))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.required_form_ok", fName).withStyle(ChatFormatting.GREEN))
             } else {
-                tooltip.add(Component.literal("Forme requise : $fName (✕ Aucun spécimen de cette forme en stock !)").withStyle(ChatFormatting.RED))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.required_form_err", fName).withStyle(ChatFormatting.RED))
             }
         }
 
         if (goal.requiredGender != null) {
             tooltip.add(Component.empty())
-            val gName = if (goal.requiredGender == Gender.FEMALE) "Femelle ♀" else "Mâle ♂"
+            val gName = if (goal.requiredGender == Gender.FEMALE) Component.translatable("gui.cobblemon_jei.left.gender_female").string else Component.translatable("gui.cobblemon_jei.left.gender_male").string
             if (goal.hasGenderMatch) {
-                tooltip.add(Component.literal("Sexe requis : $gName (✔ Spécimen valide en stock)").withStyle(ChatFormatting.GREEN))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.required_gender_ok", gName).withStyle(ChatFormatting.GREEN))
             } else {
-                tooltip.add(Component.literal("Sexe requis : $gName (✕ Aucun spécimen de ce sexe en stock !)").withStyle(ChatFormatting.RED))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.required_gender_err", gName).withStyle(ChatFormatting.RED))
             }
         }
 
         if (goal.requiredMove != null) {
             tooltip.add(Component.empty())
             val mvName = Moves.getByName(goal.requiredMove)?.displayName?.string ?: goal.requiredMove
-            tooltip.add(Component.literal("Capacité requise : ").withStyle(ChatFormatting.GRAY).append(Component.literal(mvName).withStyle(ChatFormatting.WHITE)))
+            tooltip.add(Component.translatable("gui.cobblemon_jei.left.required_move").withStyle(ChatFormatting.GRAY).append(Component.literal(mvName).withStyle(ChatFormatting.WHITE)))
             val moveExpl = when (goal.moveStatus) {
-                MoveRequirementStatus.KNOWN -> Component.literal(" ✔ Déjà apprise par votre Pokémon").withStyle(ChatFormatting.GREEN)
-                MoveRequirementStatus.RELEARNABLE -> Component.literal(" ✔ Réapprenable immédiatement (menu des capacités du Pokémon)").withStyle(ChatFormatting.GREEN)
-                MoveRequirementStatus.TM_IN_INVENTORY -> Component.literal(" ✔ CT possédée dans votre inventaire (prêt à apprendre)").withStyle(ChatFormatting.YELLOW)
-                MoveRequirementStatus.TM_MISSING -> Component.literal(" ✕ CT manquante (vous devez trouver ou fabriquer la CT : $mvName)").withStyle(ChatFormatting.RED)
-                MoveRequirementStatus.LEVEL_UP -> Component.literal(" ⏳ S'apprend par montée de niveau (Niveau ${goal.moveLearnLevel})").withStyle(ChatFormatting.GOLD)
-                else -> Component.literal(" ✕ Capacité non apprise").withStyle(ChatFormatting.RED)
+                MoveRequirementStatus.KNOWN -> Component.translatable("gui.cobblemon_jei.left.move_status_known").withStyle(ChatFormatting.GREEN)
+                MoveRequirementStatus.RELEARNABLE -> Component.translatable("gui.cobblemon_jei.left.move_status_relearnable").withStyle(ChatFormatting.GREEN)
+                MoveRequirementStatus.TM_IN_INVENTORY -> Component.translatable("gui.cobblemon_jei.left.move_status_tm_in_inventory").withStyle(ChatFormatting.YELLOW)
+                MoveRequirementStatus.TM_MISSING -> Component.translatable("gui.cobblemon_jei.left.move_status_tm_missing", mvName).withStyle(ChatFormatting.RED)
+                MoveRequirementStatus.LEVEL_UP -> Component.translatable("gui.cobblemon_jei.left.move_status_level_up", goal.moveLearnLevel ?: 0).withStyle(ChatFormatting.GOLD)
+                else -> Component.translatable("gui.cobblemon_jei.left.move_status_unknown").withStyle(ChatFormatting.RED)
             }
             tooltip.add(moveExpl)
         } else if (goal.requiredMoveType != null) {
             tooltip.add(Component.empty())
-            tooltip.add(Component.literal("Capacité requise de type : ").withStyle(ChatFormatting.GRAY).append(Component.literal(goal.requiredMoveType.replaceFirstChar { it.uppercase() }).withStyle(ChatFormatting.LIGHT_PURPLE)))
+            tooltip.add(Component.translatable("gui.cobblemon_jei.left.required_move_type").withStyle(ChatFormatting.GRAY).append(Component.literal(goal.requiredMoveType.replaceFirstChar { it.uppercase() }).withStyle(ChatFormatting.LIGHT_PURPLE)))
             if (goal.moveStatus == MoveRequirementStatus.KNOWN) {
-                tooltip.add(Component.literal(" ✔ Capacité du type requis déjà connue").withStyle(ChatFormatting.GREEN))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.move_type_known").withStyle(ChatFormatting.GREEN))
             } else {
-                tooltip.add(Component.literal(" ✕ Aucune capacité de ce type connue").withStyle(ChatFormatting.RED))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.move_type_missing").withStyle(ChatFormatting.RED))
             }
         }
 
         if (goal.specialActionSummary != null) {
             tooltip.add(Component.empty())
-            tooltip.add(Component.literal("Actions requises :").withStyle(ChatFormatting.GRAY))
+            tooltip.add(Component.translatable("gui.cobblemon_jei.left.required_actions").withStyle(ChatFormatting.GRAY))
             if (goal.stepsRequired != null) {
-                tooltip.add(Component.literal(" • 🚶 Marcher ${goal.stepsRequired} pas avec le Pokémon sorti").withStyle(ChatFormatting.AQUA))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.action_steps", goal.stepsRequired).withStyle(ChatFormatting.AQUA))
             }
             if (goal.useMoveCount != null && goal.requiredMove != null) {
                 val mvName = Moves.getByName(goal.requiredMove)?.displayName?.string ?: goal.requiredMove
-                tooltip.add(Component.literal(" • ⚔ Utiliser la capacité $mvName ${goal.useMoveCount} fois en combat").withStyle(ChatFormatting.AQUA))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.action_use_move", mvName, goal.useMoveCount).withStyle(ChatFormatting.AQUA))
             }
             if (goal.recipe.criticalHits != null) {
-                tooltip.add(Component.literal(" • 🎯 Infliger ${goal.recipe.criticalHits} coups critiques en un seul combat").withStyle(ChatFormatting.AQUA))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.action_critical_hits", goal.recipe.criticalHits).withStyle(ChatFormatting.AQUA))
             }
             if (goal.recipe.damageTaken != null) {
-                tooltip.add(Component.literal(" • 🛡 Subir ≥ ${goal.recipe.damageTaken} dégâts sans tomber K.O.").withStyle(ChatFormatting.AQUA))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.action_damage_taken", goal.recipe.damageTaken).withStyle(ChatFormatting.AQUA))
             }
             if (goal.recipe.recoilDamage != null) {
-                tooltip.add(Component.literal(" • 💥 Subir ≥ ${goal.recipe.recoilDamage} dégâts de contrecoup").withStyle(ChatFormatting.AQUA))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.action_recoil_damage", goal.recipe.recoilDamage).withStyle(ChatFormatting.AQUA))
             }
             if (goal.recipe.defeatAmount != null) {
-                tooltip.add(Component.literal(" • ⚔ Vaincre ${goal.recipe.defeatAmount} ${goal.recipe.defeatTarget ?: "adversaires"}").withStyle(ChatFormatting.AQUA))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.action_defeat", goal.recipe.defeatAmount, goal.recipe.defeatTarget ?: "adversaires").withStyle(ChatFormatting.AQUA))
             }
             if (goal.recipe.partyMember != null) {
-                tooltip.add(Component.literal(" • 👥 Avoir ${goal.recipe.partyMember} dans l'équipe").withStyle(ChatFormatting.AQUA))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.action_party_member", goal.recipe.partyMember).withStyle(ChatFormatting.AQUA))
             }
             if (goal.recipe.moonPhase != null) {
-                tooltip.add(Component.literal(" • 🌙 Phase lunaire requise : ${goal.recipe.moonPhase}").withStyle(ChatFormatting.AQUA))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.action_moon_phase", goal.recipe.moonPhase).withStyle(ChatFormatting.AQUA))
             }
         }
 
         tooltip.add(Component.empty())
-        tooltip.add(Component.literal("État du Pokémon source :").withStyle(ChatFormatting.GRAY))
+        tooltip.add(Component.translatable("gui.cobblemon_jei.left.source_pokemon_status").withStyle(ChatFormatting.GRAY))
         if (goal.hasSourceInPC) {
             for (owned in goal.ownedSourcePokemons) {
                 val gSym = if (owned.gender == Gender.FEMALE) "§d♀§r" else if (owned.gender == Gender.MALE) "§9♂§r" else "§7⚲§r"
-                tooltip.add(Component.literal(" • ${owned.location} - Niv. ${owned.level} ($gSym) - Bonheur: ${owned.friendship}").withStyle(ChatFormatting.AQUA))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.source_pokemon_entry", owned.location, owned.level, gSym, owned.friendship).withStyle(ChatFormatting.AQUA))
             }
         } else {
-            tooltip.add(Component.literal(" • Aucun spécimen dans l'équipe ou le PC").withStyle(ChatFormatting.RED))
+            tooltip.add(Component.translatable("gui.cobblemon_jei.left.no_specimen_stock").withStyle(ChatFormatting.RED))
         }
 
         if (goal.requiredItems.isNotEmpty()) {
             tooltip.add(Component.empty())
-            tooltip.add(Component.literal("Objets requis :").withStyle(ChatFormatting.GRAY))
+            tooltip.add(Component.translatable("gui.cobblemon_jei.left.required_items").withStyle(ChatFormatting.GRAY))
             for (item in goal.requiredItems) {
                 val has = !goal.missingItems.any { it.item == item.item }
                 val itemLine = if (has) {
-                    Component.literal(" ✔ ${item.hoverName.string} (Possédé dans l'inventaire)").withStyle(ChatFormatting.GREEN)
+                    Component.translatable("gui.cobblemon_jei.left.item_owned", item.hoverName.string).withStyle(ChatFormatting.GREEN)
                 } else {
-                    Component.literal(" ✕ ${item.hoverName.string} (Manquant)").withStyle(ChatFormatting.RED)
+                    Component.translatable("gui.cobblemon_jei.left.item_missing", item.hoverName.string).withStyle(ChatFormatting.RED)
                 }
                 tooltip.add(itemLine)
             }
@@ -551,7 +552,7 @@ class PokemonLeftContentWidget(
 
         if (goal.additionalConditions.isNotEmpty()) {
             tooltip.add(Component.empty())
-            tooltip.add(Component.literal("Autres conditions :").withStyle(ChatFormatting.GRAY))
+            tooltip.add(Component.translatable("gui.cobblemon_jei.left.other_conditions").withStyle(ChatFormatting.GRAY))
             for (cond in goal.additionalConditions) {
                 tooltip.add(Component.literal(" • $cond").withStyle(ChatFormatting.DARK_AQUA))
             }
@@ -575,7 +576,7 @@ class PokemonLeftContentWidget(
         val scrolledY = startY - scrollOffset.toInt()
 
         if (origins.isEmpty()) {
-            val emptyMsg = "Aucune origine ou reproduction manquante trouvée."
+            val emptyMsg = Component.translatable("gui.cobblemon_jei.left.origins_empty").string
             guiGraphics.drawCenteredString(font, emptyMsg, startX + usableW / 2, startY + 40, 0xFF888888.toInt())
             return
         }
@@ -598,9 +599,9 @@ class PokemonLeftContentWidget(
             }
 
             val (bgColor, borderColor, statusBadgeText, statusBadgeColor) = if (goal.isReadyToBreed) {
-                Quad(0x44143D1A, 0xFF2ECC71.toInt(), "✔ PRÊT EN PENSION", 0xFF2ECC71.toInt())
+                Quad(0x44143D1A, 0xFF2ECC71.toInt(), Component.translatable("gui.cobblemon_jei.left.badge_ready_pasture").string, 0xFF2ECC71.toInt())
             } else {
-                Quad(0x331C1E26, 0xFF2E3342.toInt(), "PARENT CAPTURÉ (À RÉCUPÉRER)", 0xFF7D8394.toInt())
+                Quad(0x331C1E26, 0xFF2E3342.toInt(), Component.translatable("gui.cobblemon_jei.left.badge_parent_caught").string, 0xFF7D8394.toInt())
             }
 
             guiGraphics.fill(startX, cardY, startX + cardW, cardY + cardH, bgColor)
@@ -621,10 +622,10 @@ class PokemonLeftContentWidget(
             val dexNum = String.format("#%03d", goal.baseSpecies.nationalPokedexNumber)
             guiGraphics.drawString(font, "$dexNum §f$baseName", startX + 26, cardY + 8, 0xFFFFFFFF.toInt(), false)
 
-            val originBadge = if (goal.isMultipleOrigins) "§6[Multi-lignées] §r" else ""
+            val originBadge = if (goal.isMultipleOrigins) Component.translatable("gui.cobblemon_jei.left.multi_lineage").string else ""
             val baseStatusText = when (goal.targetStatus) {
-                PokedexStatus.ENCOUNTERED -> "§e👁 Rencontré (Non possédé)"
-                else -> "§c✕ Non découvert"
+                PokedexStatus.ENCOUNTERED -> Component.translatable("gui.cobblemon_jei.left.status_seen_unowned").string
+                else -> Component.translatable("gui.cobblemon_jei.left.status_not_discovered").string
             }
             guiGraphics.drawString(font, originBadge + baseStatusText, startX + 26, cardY + 22, 0xFFAAAAAA.toInt(), false)
 
@@ -632,7 +633,7 @@ class PokemonLeftContentWidget(
             guiGraphics.drawString(font, "⮜", arrowX, cardY + 14, 0xFFE67E22.toInt(), false)
 
             val parentLabelX = arrowX + 16
-            guiGraphics.drawString(font, "Parents compatibles :", parentLabelX, cardY + 8, 0xFFB0B0B0.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.left.parents_label").string, parentLabelX, cardY + 8, 0xFFB0B0B0.toInt(), false)
 
             var parentSpriteX = parentLabelX
             for (ancestor in goal.candidateParents.take(4)) {
@@ -650,40 +651,40 @@ class PokemonLeftContentWidget(
             guiGraphics.drawString(font, statusBadgeText, rightInfoX, cardY + 8, statusBadgeColor, false)
 
             if (goal.requiredIncense != null) {
-                guiGraphics.drawString(font, "§d♨ Encens requis :", rightInfoX, cardY + 22, 0xFFE082FF.toInt(), false)
+                guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.left.incense_label").string, rightInfoX, cardY + 22, 0xFFE082FF.toInt(), false)
                 val shortIncense = if (goal.requiredIncense.length > 20) goal.requiredIncense.substring(0, 18) + "…" else goal.requiredIncense
                 guiGraphics.drawString(font, "§f$shortIncense", rightInfoX, cardY + 34, 0xFFFFFFFF.toInt(), false)
             } else {
-                guiGraphics.drawString(font, "§b🏠 Pension / Pâturage", rightInfoX, cardY + 22, 0xFF54A0FF.toInt(), false)
-                guiGraphics.drawString(font, "§7Métamorph ou Partenaire", rightInfoX, cardY + 34, 0xFF888888.toInt(), false)
+                guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.left.daycare_label").string, rightInfoX, cardY + 22, 0xFF54A0FF.toInt(), false)
+                guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.left.ditto_partner").string, rightInfoX, cardY + 34, 0xFF888888.toInt(), false)
             }
 
             val adviceText = if (goal.isReadyToBreed) {
-                "§2💡 Vous possédez un parent ! Déposez-le en pension avec un Métamorph pour obtenir un œuf de $baseName."
+                Component.translatable("gui.cobblemon_jei.left.advice_ready", baseName).string
             } else {
-                "§8💡 Vous avez déjà capturé un parent par le passé. Récupérez-en un pour reproduire $baseName."
+                Component.translatable("gui.cobblemon_jei.left.advice_unready", baseName).string
             }
             guiGraphics.drawString(font, adviceText, startX + 6, cardY + 48, 0xFF666666.toInt(), false)
         }
 
         hoveredOrigin?.let { goal ->
             val tooltip = mutableListOf<Component>()
-            val titleComp = Component.literal("Origine & Reproduction : ").withStyle(ChatFormatting.GOLD)
+            val titleComp = Component.translatable("gui.cobblemon_jei.left.origin_breeding_title").withStyle(ChatFormatting.GOLD)
                 .append(goal.baseSpecies.translatedName.copy().withStyle(ChatFormatting.BOLD, ChatFormatting.WHITE))
             tooltip.add(titleComp)
 
             if (goal.requiredIncense != null) {
-                tooltip.add(Component.literal("Objet requis : ").withStyle(ChatFormatting.LIGHT_PURPLE)
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.required_incense").withStyle(ChatFormatting.LIGHT_PURPLE)
                     .append(Component.literal(goal.requiredIncense).withStyle(ChatFormatting.YELLOW, ChatFormatting.ITALIC)))
-                tooltip.add(Component.literal("L'un des parents doit tenir cet encens pour obtenir cette forme bébé.").withStyle(ChatFormatting.GRAY))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.incense_desc").withStyle(ChatFormatting.GRAY))
             } else {
-                tooltip.add(Component.literal("Reproduction classique (aucun encens requis).").withStyle(ChatFormatting.AQUA))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.classic_breeding").withStyle(ChatFormatting.AQUA))
             }
 
-            tooltip.add(Component.literal("Parents capables de donner naissance à ce Pokémon :").withStyle(ChatFormatting.GRAY))
+            tooltip.add(Component.translatable("gui.cobblemon_jei.left.parents_title").withStyle(ChatFormatting.GRAY))
             for (p in goal.candidateParents) {
                 val isOwned = goal.ownedParents.any { PokemonTrackingManager.isSameSpecies(it.pokemon.species, p) }
-                val state = if (isOwned) "§a✔ Présent en équipe/PC" else "§7✔ Enregistré au Pokédex"
+                val state = if (isOwned) Component.translatable("gui.cobblemon_jei.left.parent_in_pc").string else Component.translatable("gui.cobblemon_jei.left.parent_in_dex").string
                 tooltip.add(Component.literal(" • ${p.translatedName.string} ($state)"))
             }
             guiGraphics.renderComponentTooltip(font, tooltip, mouseX, mouseY)
@@ -705,7 +706,7 @@ class PokemonLeftContentWidget(
         val scrolledY = startY - scrollOffset.toInt()
 
         if (fossilGoals.isEmpty()) {
-            val emptyMsg = "Aucun fossile ne correspond à votre recherche."
+            val emptyMsg = Component.translatable("gui.cobblemon_jei.left.fossils_empty").string
             guiGraphics.drawCenteredString(font, emptyMsg, startX + usableW / 2, startY + 40, 0xFF888888.toInt())
             return
         }
@@ -728,11 +729,11 @@ class PokemonLeftContentWidget(
             }
 
             val (bgColor, borderColor, statusBadgeText, statusBadgeColor) = if (goal.isReadyToRevive) {
-                Quad(0x44143D1A, 0xFF2ECC71.toInt(), "✔ PRÊT À RESSUSCITER", 0xFF2ECC71.toInt())
+                Quad(0x44143D1A, 0xFF2ECC71.toInt(), Component.translatable("gui.cobblemon_jei.left.badge_ready_revive").string, 0xFF2ECC71.toInt())
             } else if (goal.heldFossilCount > 0) {
-                Quad(0x443D3214, 0xFFFFA502.toInt(), "FOSSILE PARTIEL", 0xFFFFA502.toInt())
+                Quad(0x443D3214, 0xFFFFA502.toInt(), Component.translatable("gui.cobblemon_jei.left.badge_partial_fossil").string, 0xFFFFA502.toInt())
             } else {
-                Quad(0x331C1E26, 0xFF2E3342.toInt(), "FOUILLES REQUISES", 0xFF7D8394.toInt())
+                Quad(0x331C1E26, 0xFF2E3342.toInt(), Component.translatable("gui.cobblemon_jei.left.badge_excavation_req").string, 0xFF7D8394.toInt())
             }
 
             guiGraphics.fill(startX, cardY, startX + cardW, cardY + cardH, bgColor)
@@ -758,7 +759,7 @@ class PokemonLeftContentWidget(
             val shortFossilTitle = if (goal.recipe.fossilDisplayName.length > 18) goal.recipe.fossilDisplayName.substring(0, 16) + "…" else goal.recipe.fossilDisplayName
             guiGraphics.drawString(font, "§e$shortFossilTitle", fossilItemTextX, cardY + 8, 0xFFFFFFFF.toInt(), false)
 
-            val invText = if (goal.heldFossilCount > 0) "§a✔ En stock (x${goal.heldFossilCount})§r" else "§7✕ Non possédé§r"
+            val invText = if (goal.heldFossilCount > 0) Component.translatable("gui.cobblemon_jei.left.fossil_in_stock", goal.heldFossilCount).string else Component.translatable("gui.cobblemon_jei.left.fossil_missing").string
             guiGraphics.drawString(font, invText, fossilItemTextX, cardY + 22, 0xFFAAAAAA.toInt(), false)
 
             val arrowX = startX + 148
@@ -776,9 +777,9 @@ class PokemonLeftContentWidget(
                 guiGraphics.drawString(font, "$dexNum §f$shortSpName", targetSpriteX + 20, cardY + 8, 0xFFFFFFFF.toInt(), false)
 
                 val dexStatusText = when {
-                    goal.isCaught -> "§a✔ Capturé au Dex"
-                    goal.isEncountered -> "§e👁 Rencontré"
-                    else -> "§c✕ Non découvert"
+                    goal.isCaught -> Component.translatable("gui.cobblemon_jei.left.status_caught").string
+                    goal.isEncountered -> Component.translatable("gui.cobblemon_jei.left.status_seen").string
+                    else -> Component.translatable("gui.cobblemon_jei.left.status_missing").string
                 }
                 guiGraphics.drawString(font, dexStatusText, targetSpriteX + 20, cardY + 22, 0xFFAAAAAA.toInt(), false)
             }
@@ -789,21 +790,21 @@ class PokemonLeftContentWidget(
             val firstStruct = goal.recipe.associatedStructureDisplayNames.firstOrNull() ?: "Fouilles archéologiques"
             val shortStruct = if (firstStruct.length > 22) firstStruct.substring(0, 20) + "…" else firstStruct
             guiGraphics.drawString(font, "§6⛏ $shortStruct", rightInfoX, cardY + 22, 0xFFFFA502.toInt(), false)
-            guiGraphics.drawString(font, "§b⚙ Analyseur + Cuve", rightInfoX, cardY + 36, 0xFF54A0FF.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.left.fossil_machine_short").string, rightInfoX, cardY + 36, 0xFF54A0FF.toInt(), false)
         }
 
         hoveredFossil?.let { goal ->
             val tooltip = mutableListOf<Component>()
-            tooltip.add(Component.literal("Résurrection de Fossile : ").withStyle(ChatFormatting.GOLD)
+            tooltip.add(Component.translatable("gui.cobblemon_jei.left.fossil_title").withStyle(ChatFormatting.GOLD)
                 .append(Component.literal(goal.recipe.speciesDisplayName).withStyle(ChatFormatting.BOLD, ChatFormatting.WHITE)))
-            tooltip.add(Component.literal("Fossile(s) requis : ${goal.recipe.fossilDisplayName}").withStyle(ChatFormatting.YELLOW))
+            tooltip.add(Component.translatable("gui.cobblemon_jei.left.fossil_required", goal.recipe.fossilDisplayName).withStyle(ChatFormatting.YELLOW))
             if (goal.recipe.associatedStructureDisplayNames.isNotEmpty()) {
-                tooltip.add(Component.literal("Sites de fouilles (Pinceau sur sable/gravier suspect) :").withStyle(ChatFormatting.GRAY))
+                tooltip.add(Component.translatable("gui.cobblemon_jei.left.excavation_sites").withStyle(ChatFormatting.GRAY))
                 for (sName in goal.recipe.associatedStructureDisplayNames.take(5)) {
                     tooltip.add(Component.literal(" • $sName").withStyle(ChatFormatting.AQUA))
                 }
             }
-            tooltip.add(Component.literal("Machine requise : Analyseur de fossiles + Cuve de restauration + Moniteur").withStyle(ChatFormatting.LIGHT_PURPLE))
+            tooltip.add(Component.translatable("gui.cobblemon_jei.left.fossil_machine").withStyle(ChatFormatting.LIGHT_PURPLE))
             guiGraphics.renderComponentTooltip(font, tooltip, mouseX, mouseY)
         }
     }
@@ -822,14 +823,14 @@ class PokemonLeftContentWidget(
     ) {
         if (isLoading) {
             guiGraphics.fill(startX, startY, startX + usableW, startY + usableH, 0xFF191C28.toInt())
-            val loadingMsg = "§e⏳ Analyse des biomes et calcul des 5 expéditions..."
+            val loadingMsg = Component.translatable("gui.cobblemon_jei.left.expeditions_analyzing").string
             guiGraphics.drawCenteredString(font, loadingMsg, startX + usableW / 2, startY + usableH / 2 - 4, 0xFFFFFFFF.toInt())
             return
         }
 
         if (suggestions.isEmpty()) {
             guiGraphics.fill(startX, startY, startX + usableW, startY + usableH, 0xFF191C28.toInt())
-            guiGraphics.drawCenteredString(font, "§7Aucune expédition disponible. Explorez plus de territoires sur JourneyMap !", startX + usableW / 2, startY + usableH / 2 - 4, 0xFF888888.toInt())
+            guiGraphics.drawCenteredString(font, Component.translatable("gui.cobblemon_jei.left.expeditions_empty").string, startX + usableW / 2, startY + usableH / 2 - 4, 0xFF888888.toInt())
             return
         }
 

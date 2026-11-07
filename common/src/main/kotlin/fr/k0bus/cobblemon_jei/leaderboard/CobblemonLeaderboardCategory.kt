@@ -1,6 +1,7 @@
 package fr.k0bus.cobblemon_jei.leaderboard
 
 import net.minecraft.ChatFormatting
+import net.minecraft.network.chat.Component
 
 /**
  * Catégories de classement correspondant aux objectifs scoreboard de CobblemonSB.
@@ -8,11 +9,12 @@ import net.minecraft.ChatFormatting
 enum class CobblemonLeaderboardCategory(
     val objectiveName: String,
     val aliases: List<String>,
-    val displayName: String,
-    val shortName: String,
-    val unit: String,
+    private val defaultDisplayName: String,
+    private val defaultShortName: String,
+    private val defaultUnit: String,
     val iconEmoji: String,
-    val color: ChatFormatting
+    val color: ChatFormatting,
+    val translationKey: String
 ) {
     POKEDEX(
         "cobble_pokedex",
@@ -21,7 +23,8 @@ enum class CobblemonLeaderboardCategory(
         "Pokédex",
         "Espèces",
         "📖",
-        ChatFormatting.GREEN
+        ChatFormatting.GREEN,
+        "gui.cobblemon_jei.leaderboard.cat.pokedex"
     ),
     CAPTURES(
         "cobble_captured",
@@ -30,7 +33,8 @@ enum class CobblemonLeaderboardCategory(
         "Captures",
         "Captures",
         "🔴",
-        ChatFormatting.RED
+        ChatFormatting.RED,
+        "gui.cobblemon_jei.leaderboard.cat.captures"
     ),
     SHINIES(
         "cobble_shinies",
@@ -39,7 +43,8 @@ enum class CobblemonLeaderboardCategory(
         "Shinies",
         "Shinies",
         "✨",
-        ChatFormatting.GOLD
+        ChatFormatting.GOLD,
+        "gui.cobblemon_jei.leaderboard.cat.shinies"
     ),
     CAP_LEVEL(
         "cobble_cap_level",
@@ -48,8 +53,29 @@ enum class CobblemonLeaderboardCategory(
         "Niveau",
         "Niv.",
         "👑",
-        ChatFormatting.LIGHT_PURPLE
+        ChatFormatting.LIGHT_PURPLE,
+        "gui.cobblemon_jei.leaderboard.cat.cap_level"
     );
+
+    val displayName: String
+        get() {
+            val trans = Component.translatable(translationKey).string
+            return if (trans == translationKey) defaultDisplayName else trans
+        }
+
+    val shortName: String
+        get() {
+            val key = "${translationKey}_short"
+            val trans = Component.translatable(key).string
+            return if (trans == key) defaultShortName else trans
+        }
+
+    val unit: String
+        get() {
+            val key = "${translationKey}_unit"
+            val trans = Component.translatable(key).string
+            return if (trans == key) defaultUnit else trans
+        }
 
     val allObjectiveNames: List<String>
         get() = (listOf(objectiveName) + aliases).distinct()

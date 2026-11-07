@@ -80,17 +80,17 @@ object GlobalScanService {
                 )
 
                 if (cancelFlag.get()) {
-                    statusMessage = "Scan interrompu par l'utilisateur."
+                    statusMessage = Component.translatable("chat.cobblemon_jm.scan.cancelled").string
                     mc.player?.displayClientMessage(
-                        Component.literal("§c✕ [Cobblemon JEI] Scan global interrompu."),
+                        Component.translatable("chat.cobblemon_jm.scan.cancelled"),
                         false
                     )
                 } else {
                     scannedChunks = result.size
                     progressPercent = 100
-                    statusMessage = "Scan terminé avec succès : ${result.size} chunks cartographiés et persistés !"
+                    statusMessage = Component.translatable("chat.cobblemon_jm.scan.completed", result.size).string
                     mc.player?.displayClientMessage(
-                        Component.literal("§a✔ [Cobblemon JEI] Scan global terminé : §f${result.size} chunks cartographiés."),
+                        Component.translatable("chat.cobblemon_jm.scan.completed", result.size),
                         false
                     )
                 }

@@ -17,7 +17,7 @@ import kotlin.math.min
  */
 class CobblemonLeaderboardScreen(
     private val parent: Screen? = null
-) : Screen(Component.literal("Classement des Joueurs")) {
+) : Screen(Component.translatable("gui.cobblemon_jei.leaderboard.title")) {
 
     private var selectedCategory: CobblemonLeaderboardCategory = CobblemonLeaderboardCategory.POKEDEX
     private var allEntries: List<LeaderboardPlayerEntry> = emptyList()
@@ -71,7 +71,7 @@ class CobblemonLeaderboardScreen(
         val searchY = 46
         val searchW = min(180, width - 28)
         searchBox = EditBox(font, 14, searchY, searchW, 16, Component.literal(""))
-        searchBox.setHint(Component.literal("Rechercher un joueur..."))
+        searchBox.setHint(Component.translatable("gui.cobblemon_jei.leaderboard.search_hint"))
         searchBox.setResponder { applySearchFilter() }
         addRenderableWidget(searchBox)
     }
@@ -110,7 +110,7 @@ class CobblemonLeaderboardScreen(
         // En-tête : Titre principal
         guiGraphics.drawString(
             font,
-            Component.literal("🏆 §lClassement des Joueurs§r §7— ${selectedCategory.displayName}§r"),
+            Component.translatable("gui.cobblemon_jei.leaderboard.header_title", selectedCategory.displayName),
             14,
             10,
             0xFFFFFF,
@@ -143,13 +143,9 @@ class CobblemonLeaderboardScreen(
         guiGraphics.fill(centerX - boxW / 2, centerY - boxH / 2, centerX + boxW / 2, centerY + boxH / 2, 0xD0121624.toInt())
         guiGraphics.renderOutline(centerX - boxW / 2, centerY - boxH / 2, boxW, boxH, 0xFF4A5568.toInt())
 
-        val title = "§e⚠ Classement non disponible sur ce serveur§r"
-        val desc = "§7Ce serveur n'a pas activé les objectifs de classement (CobblemonSB).§r"
-        val hint = "§8Cette fonctionnalité est automatiquement masquée hors des serveurs compatibles.§r"
-
-        guiGraphics.drawCenteredString(font, Component.literal(title), centerX, centerY - 20, 0xFFFFFF)
-        guiGraphics.drawCenteredString(font, Component.literal(desc), centerX, centerY, 0xCCCCCC)
-        guiGraphics.drawCenteredString(font, Component.literal(hint), centerX, centerY + 16, 0x888888)
+        guiGraphics.drawCenteredString(font, Component.translatable("gui.cobblemon_jei.leaderboard.unavailable_title"), centerX, centerY - 20, 0xFFFFFF)
+        guiGraphics.drawCenteredString(font, Component.translatable("gui.cobblemon_jei.leaderboard.unavailable_desc"), centerX, centerY, 0xCCCCCC)
+        guiGraphics.drawCenteredString(font, Component.translatable("gui.cobblemon_jei.leaderboard.unavailable_hint"), centerX, centerY + 16, 0x888888)
     }
 
     private fun renderPodium(guiGraphics: GuiGraphics, y: Int, height: Int) {
@@ -238,10 +234,10 @@ class CobblemonLeaderboardScreen(
         // Header du tableau
         val headerH = 16
         guiGraphics.fill(listX, y, listX + listW, y + headerH, 0xD0172033.toInt())
-        guiGraphics.drawString(font, Component.literal("§7Rang"), listX + 8, y + 4, 0xAAAAAA, false)
-        guiGraphics.drawString(font, Component.literal("§7Joueur"), listX + 50, y + 4, 0xAAAAAA, false)
-        guiGraphics.drawString(font, Component.literal("§7Capturés / Vus"), listX + listW - 195, y + 4, 0xAAAAAA, false)
-        guiGraphics.drawString(font, Component.literal("§7Score"), listX + listW - 80, y + 4, 0xAAAAAA, false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.leaderboard.col_rank"), listX + 8, y + 4, 0xAAAAAA, false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.leaderboard.col_player"), listX + 50, y + 4, 0xAAAAAA, false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.leaderboard.col_detail"), listX + listW - 195, y + 4, 0xAAAAAA, false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.leaderboard.col_score"), listX + listW - 80, y + 4, 0xAAAAAA, false)
 
         val contentY = y + headerH
         val contentH = h - headerH
@@ -337,12 +333,12 @@ class CobblemonLeaderboardScreen(
         val total = caught + seen
 
         val text = if (localEntry != null) {
-            "Votre position : §6§l#${localEntry.rank}§r | Pokédex : §a§l$caught Capturés§r §8•§r §6§l$seen Vus§r §8(§e§l$total Total§r§8) •§r §d§l$shinies Shinies§r"
+            Component.translatable("gui.cobblemon_jei.leaderboard.local_ranked", localEntry.rank, caught, seen, total, shinies)
         } else {
-            "Votre position : §7Non classé§r | Pokédex : §a§l$caught Capturés§r §8•§r §6§l$seen Vus§r §8(§e§l$total Total§r§8)"
+            Component.translatable("gui.cobblemon_jei.leaderboard.local_unranked", caught, seen, total)
         }
 
-        guiGraphics.drawString(font, Component.literal(text), 14, barY + 6, 0xFFFFFF, true)
+        guiGraphics.drawString(font, text, 14, barY + 6, 0xFFFFFF, true)
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {

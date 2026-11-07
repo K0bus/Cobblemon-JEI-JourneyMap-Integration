@@ -6,6 +6,7 @@ import fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager
 import fr.k0bus.cobblemon_jei.pokedex.TrackingMode
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
+import net.minecraft.network.chat.Component
 import net.minecraft.util.Mth
 import net.minecraft.world.level.ChunkPos
 import kotlin.math.atan2
@@ -105,12 +106,12 @@ object RadarCompassService {
                 val arrow = getRelativeDirectionArrow(playerYaw, closestEntity.blockPos, playerBlockPos)
                 val relY = closestEntity.blockPos.y - playerBlockPos.y
                 val badges = mutableListOf<String>()
-                if (closestEntity.isShiny) badges.add("§6★ Shiny")
+                if (closestEntity.isShiny) badges.add(Component.translatable("gui.cobblemon_jei.radar.badge.shiny").string)
                 if (closestEntity.hasHiddenAbility) badges.add("§d[HA]")
                 if (closestEntity.perfectIvsCount == 6) badges.add("§6[6x31]")
                 else if (closestEntity.perfectIvsCount >= 3) badges.add("§e[${closestEntity.perfectIvsCount}x31]")
-                if (closestEntity.scaleModifier <= 0.75f) badges.add("§b[Micro]")
-                else if (closestEntity.scaleModifier >= 1.25f) badges.add("§6[Colossal]")
+                if (closestEntity.scaleModifier <= 0.75f) badges.add(Component.translatable("gui.cobblemon_jei.radar.badge.micro").string)
+                else if (closestEntity.scaleModifier >= 1.25f) badges.add(Component.translatable("gui.cobblemon_jei.radar.badge.colossal").string)
 
                 return CompassGuidance(
                     targetName = closestEntity.species.translatedName.string,
@@ -138,7 +139,7 @@ object RadarCompassService {
             // Si le joueur se trouve déjà dans la zone
             if (isInZone) {
                 val canSpawn = (eval.status == SpawnEligibilityStatus.AVAILABLE_NOW)
-                val reason = eval.blockingReasons.firstOrNull()
+                val reason = eval.blockingReasons.firstOrNull()?.string
                 return CompassGuidance(
                     targetName = targetSpecies.translatedName.string,
                     targetPos = playerBlockPos,

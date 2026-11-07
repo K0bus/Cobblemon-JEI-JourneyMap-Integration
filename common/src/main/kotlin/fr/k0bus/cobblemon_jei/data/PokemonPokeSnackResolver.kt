@@ -10,6 +10,7 @@ import com.cobblemon.mod.common.item.berry.BerryItem
 import com.cobblemon.mod.common.pokemon.FormData
 import com.cobblemon.mod.common.pokemon.Species
 import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
@@ -252,11 +253,11 @@ object PokemonPokeSnackResolver {
         }
 
         val explanation = if (hasWildSpawns) {
-            "Cette composition cumule les multiplicateurs de type et de groupe d'œuf (jusqu'à ×100) avec une élévation de rareté ou un filtre d'EV strict."
+            Component.translatable("gui.cobblemon_jei.snack.desc_type_egg").string
         } else if (fallbackPreEvolution != null) {
-            "Ce Pokémon ne spawn pas naturellement. Utilisez ces assaisonnements pour attirer sa sous-évolution ${fallbackPreEvolution.name} puis faites-la évoluer."
+            Component.translatable("gui.cobblemon_jei.snack.desc_fallback_pre", fallbackPreEvolution.name).string
         } else {
-            "Ce Pokémon n'apparaît pas dans la nature (obtenu par fossile, œuf ou événement)."
+            Component.translatable("gui.cobblemon_jei.snack.desc_no_wild").string
         }
 
         val result = PokeSnackAdvice(
@@ -335,10 +336,10 @@ object PokemonPokeSnackResolver {
 
         // 3. Baies de base non issues de croisements
         if (idStr.startsWith("cobblemon:") && idStr.endsWith("_berry")) {
-            return HowToCreate.NonCraftable("Baie sauvage naturelle (Arbres à baies dans la nature)")
+            return HowToCreate.NonCraftable(Component.translatable("gui.cobblemon_jei.snack.natural_wild_berry").string)
         }
 
-        return HowToCreate.NonCraftable("Récolte ou cueillette dans la nature")
+        return HowToCreate.NonCraftable(Component.translatable("gui.cobblemon_jei.snack.forage_wild").string)
     }
 
     private fun buildWhereToFind(loc: ResourceLocation, stack: ItemStack): WhereToFind {

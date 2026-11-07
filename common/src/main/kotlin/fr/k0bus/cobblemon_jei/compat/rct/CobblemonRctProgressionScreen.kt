@@ -88,19 +88,19 @@ class CobblemonRctProgressionScreen(
         val btnH = 20
 
         // Bouton Retour Pokédex
-        val backBtn = CobblemonDarkButton(12, topY, 82, btnH, Component.literal("← Pokédex")) {
+        val backBtn = CobblemonDarkButton(12, topY, 82, btnH, Component.translatable("gui.cobblemon_jei.rct.back_to_pokedex")) {
             onClose()
         }
-        backBtn.tooltip = Tooltip.create(Component.literal("Retourner au Pokédex"))
+        backBtn.tooltip = Tooltip.create(Component.translatable("gui.cobblemon_jei.rct.back_tooltip"))
         addRenderableWidget(backBtn)
 
         // Sélecteur de série
         val currentSeries = RctDataLoader.getSeries(currentSeriesId)
-        val seriesTitle = currentSeries?.title ?: if (RctDataLoader.isDataLoaded()) currentSeriesId else "Chargement..."
-        seriesBtn = CobblemonDarkButton(98, topY, 145, btnH, Component.literal("Série : $seriesTitle ▾"), CobblemonPokedexScreen.RCT_ICON) {
+        val seriesTitle = currentSeries?.title ?: if (RctDataLoader.isDataLoaded()) currentSeriesId else "..."
+        seriesBtn = CobblemonDarkButton(98, topY, 145, btnH, Component.translatable("gui.cobblemon_jei.rct.series_label", seriesTitle), CobblemonPokedexScreen.RCT_ICON) {
             cycleSeries()
         }
-        seriesBtn.tooltip = Tooltip.create(Component.literal("Changer de série (Radical Red, Unbound, Sinnoh...)"))
+        seriesBtn.tooltip = Tooltip.create(Component.translatable("gui.cobblemon_jei.rct.series_tooltip"))
         seriesBtn.active = RctDataLoader.isDataLoaded() && !isGraphLoading
         addRenderableWidget(seriesBtn)
 
@@ -111,14 +111,14 @@ class CobblemonRctProgressionScreen(
             keyFilterBtn.message = getKeyFilterButtonText()
             reloadGraph()
         }
-        keyFilterBtn.tooltip = Tooltip.create(Component.literal("Basculer entre les dresseurs clés (Arènes/Boss/Histoire) et la totalité des dresseurs"))
+        keyFilterBtn.tooltip = Tooltip.create(Component.translatable("gui.cobblemon_jei.rct.key_filter_tooltip"))
         keyFilterBtn.active = RctDataLoader.isDataLoaded() && !isGraphLoading
         addRenderableWidget(keyFilterBtn)
 
         // Champ de recherche
         val searchW = 110
         searchBox = EditBox(font, 366, topY + 1, searchW, btnH - 2, Component.literal(""))
-        searchBox.setHint(Component.literal("Chercher..."))
+        searchBox.setHint(Component.translatable("gui.cobblemon_jei.rct.search_hint"))
         searchBox.setResponder { q ->
             searchQuery = q.trim()
             recomputeSearchMatches()
@@ -130,25 +130,25 @@ class CobblemonRctProgressionScreen(
         zoomInBtn = CobblemonDarkButton(ctrlX, topY, 20, btnH, Component.literal("+")) {
             zoomAt(width / 2.0, height / 2.0, 1.2)
         }
-        zoomInBtn.tooltip = Tooltip.create(Component.literal("Zoom avant"))
+        zoomInBtn.tooltip = Tooltip.create(Component.translatable("gui.cobblemon_jei.rct.zoom_in"))
         addRenderableWidget(zoomInBtn)
 
         zoomOutBtn = CobblemonDarkButton(ctrlX + 22, topY, 20, btnH, Component.literal("-")) {
             zoomAt(width / 2.0, height / 2.0, 0.8)
         }
-        zoomOutBtn.tooltip = Tooltip.create(Component.literal("Zoom arrière"))
+        zoomOutBtn.tooltip = Tooltip.create(Component.translatable("gui.cobblemon_jei.rct.zoom_out"))
         addRenderableWidget(zoomOutBtn)
 
         resetViewBtn = CobblemonDarkButton(ctrlX + 44, topY, 22, btnH, Component.literal("⟲")) {
             resetView()
         }
-        resetViewBtn.tooltip = Tooltip.create(Component.literal("Réinitialiser la vue"))
+        resetViewBtn.tooltip = Tooltip.create(Component.translatable("gui.cobblemon_jei.rct.reset_view"))
         addRenderableWidget(resetViewBtn)
 
         centerTargetBtn = CobblemonDarkButton(ctrlX + 68, topY, 22, btnH, Component.empty(), CobblemonPokedexScreen.TRACKER_ICON) {
             centerOnNextTarget()
         }
-        centerTargetBtn.tooltip = Tooltip.create(Component.literal("Centrer sur le prochain dresseur à battre"))
+        centerTargetBtn.tooltip = Tooltip.create(Component.translatable("gui.cobblemon_jei.rct.center_target"))
         centerTargetBtn.active = graph != null
         addRenderableWidget(centerTargetBtn)
 
@@ -164,9 +164,9 @@ class CobblemonRctProgressionScreen(
 
     private fun getKeyFilterButtonText(): Component {
         return if (onlyKeyTrainers) {
-            Component.literal("⭐ Clés & Arènes")
+            Component.translatable("gui.cobblemon_jei.rct.key_and_gyms")
         } else {
-            Component.literal("⭐ Tous dresseurs")
+            Component.translatable("gui.cobblemon_jei.rct.all_trainers")
         }
     }
 
@@ -202,7 +202,7 @@ class CobblemonRctProgressionScreen(
             this.isGraphLoading = false
 
             if (::seriesBtn.isInitialized) {
-                seriesBtn.message = Component.literal("Série : $seriesTitle ▾")
+                seriesBtn.message = Component.translatable("gui.cobblemon_jei.rct.series_label", seriesTitle)
                 seriesBtn.active = true
             }
             if (::keyFilterBtn.isInitialized) {
@@ -253,7 +253,7 @@ class CobblemonRctProgressionScreen(
         currentSeriesId = nextSeries.id
         RctProgressionService.setSelectedSeriesId(currentSeriesId)
 
-        seriesBtn.message = Component.literal("Série : ${nextSeries.title} ▾")
+        seriesBtn.message = Component.translatable("gui.cobblemon_jei.rct.series_label", nextSeries.title)
         selectedNode = null
         reloadGraph()
         resetView()
@@ -393,8 +393,8 @@ class CobblemonRctProgressionScreen(
             guiGraphics.fill(cx + boxW / 2 - 1, cy - boxH / 2, cx + boxW / 2, cy + boxH / 2, 0xFF282D3C.toInt())
 
             val dots = ".".repeat(((animTick * 0.1).toInt() % 4))
-            val loadingMsg = "⚔ Chargement de l'arbre de progression$dots"
-            val subMsg = "Indexation des dresseurs et calcul du graphe..."
+            val loadingMsg = Component.translatable("gui.cobblemon_jei.rct.loading", dots).string
+            val subMsg = Component.translatable("gui.cobblemon_jei.rct.loading_sub").string
             guiGraphics.drawCenteredString(font, loadingMsg, cx, cy - 13, 0xFFF1C40F.toInt())
             guiGraphics.drawCenteredString(font, subMsg, cx, cy + 3, 0xFFAAAAAA.toInt())
         }
@@ -600,10 +600,14 @@ class CobblemonRctProgressionScreen(
     }
 
     private fun renderFooterTexts(guiGraphics: GuiGraphics, y: Int, h: Int) {
-        val helpText = "Glisser : Déplacer | Molette : Zoom | Clic dresseur : Voir équipe & détails"
+        val helpText = Component.translatable("gui.cobblemon_jei.rct.footer_help").string
         guiGraphics.drawString(font, helpText, 14, y + 6, 0xFF8892B0.toInt(), false)
 
-        val countInfo = if (onlyKeyTrainers) "Mode : Arènes & Dresseurs Clés" else "Mode : Tous les dresseurs (${graph?.nodes?.size ?: 0} affichés)"
+        val countInfo = if (onlyKeyTrainers) {
+            Component.translatable("gui.cobblemon_jei.rct.mode_key").string
+        } else {
+            Component.translatable("gui.cobblemon_jei.rct.mode_all", graph?.nodes?.size ?: 0).string
+        }
         val seriesInfo = graph?.series?.let { "${it.title} • $countInfo" } ?: countInfo
         guiGraphics.drawCenteredString(font, seriesInfo, width / 2, y + 6, 0xFFA0AABF.toInt())
     }
@@ -612,7 +616,7 @@ class CobblemonRctProgressionScreen(
         val t = node.trainer
         val lines = mutableListOf<Component>()
         lines.add(Component.literal("§6§l${t.name}§r"))
-        lines.add(Component.literal("§7Type : §f${t.type.replaceFirstChar { it.uppercase() }}"))
+        lines.add(Component.translatable("gui.cobblemon_jei.rct.trainer_type", t.type.replaceFirstChar { it.uppercase() }))
 
         val maxPokeLevel = t.team.maxOfOrNull { it.level } ?: t.computedLevelCap
         val nextSuccessorCap = node.successorIds
@@ -621,18 +625,18 @@ class CobblemonRctProgressionScreen(
             .minOrNull()
         val unlockedCapAfterWin = nextSuccessorCap ?: t.computedLevelCap
 
-        lines.add(Component.literal("§7Niveau max Pokémon : §bNv. $maxPokeLevel§r"))
-        lines.add(Component.literal("§7Cap imposé combat : §eNv. ${t.computedLevelCap}§r"))
-        lines.add(Component.literal("§7Cap débloqué après victoire : §aNv. $unlockedCapAfterWin§r"))
-        lines.add(Component.literal("§7Équipe : §f${t.team.size} Pokémon"))
+        lines.add(Component.translatable("gui.cobblemon_jei.rct.max_level", maxPokeLevel))
+        lines.add(Component.translatable("gui.cobblemon_jei.rct.level_cap", t.computedLevelCap))
+        lines.add(Component.translatable("gui.cobblemon_jei.rct.unlocked_cap", unlockedCapAfterWin))
+        lines.add(Component.translatable("gui.cobblemon_jei.rct.team_size", t.team.size))
 
         when (node.status) {
-            RctProgressionStatus.DEFEATED -> lines.add(Component.literal("§a✓ Déjà vaincu !§r"))
-            RctProgressionStatus.AVAILABLE -> lines.add(Component.literal("§e⚔ Prêt au duel (Prochain objectif)§r"))
+            RctProgressionStatus.DEFEATED -> lines.add(Component.translatable("gui.cobblemon_jei.rct.status_defeated"))
+            RctProgressionStatus.AVAILABLE -> lines.add(Component.translatable("gui.cobblemon_jei.rct.status_ready"))
             RctProgressionStatus.LOCKED -> {
-                lines.add(Component.literal("§c🔒 Verrouillé§r"))
+                lines.add(Component.translatable("gui.cobblemon_jei.rct.status_locked"))
                 if (t.requiredDefeats.isNotEmpty()) {
-                    lines.add(Component.literal("§7Prérequis nécessaires :"))
+                    lines.add(Component.translatable("gui.cobblemon_jei.rct.prerequisites"))
                     for (group in t.requiredDefeats) {
                         val names = group.joinToString(" ou ") { id ->
                             RctDataLoader.getTrainer(id)?.name ?: id
@@ -693,9 +697,9 @@ class CobblemonRctProgressionScreen(
         val statusBannerX = panelX + 14
 
         val (statusBg, statusBorder, statusText) = when (node.status) {
-            RctProgressionStatus.DEFEATED -> Triple(0xFF1E3A2B.toInt(), 0xFF2ECC71.toInt(), "✓ DRESSEUR VAINCU")
-            RctProgressionStatus.AVAILABLE -> Triple(0xFF3E3618.toInt(), 0xFFF1C40F.toInt(), "⚔ OBJECTIF ACTUEL (Prêt)")
-            RctProgressionStatus.LOCKED -> Triple(0xFF232733.toInt(), 0xFF7F8C8D.toInt(), "🔒 VERROUILLÉ (Prérequis manquants)")
+            RctProgressionStatus.DEFEATED -> Triple(0xFF1E3A2B.toInt(), 0xFF2ECC71.toInt(), Component.translatable("gui.cobblemon_jei.rct.status_defeated").string)
+            RctProgressionStatus.AVAILABLE -> Triple(0xFF3E3618.toInt(), 0xFFF1C40F.toInt(), Component.translatable("gui.cobblemon_jei.rct.status_available").string)
+            RctProgressionStatus.LOCKED -> Triple(0xFF232733.toInt(), 0xFF7F8C8D.toInt(), Component.translatable("gui.cobblemon_jei.rct.status_locked").string)
         }
 
         guiGraphics.fill(statusBannerX, curY, statusBannerX + statusBannerW, curY + statusBannerH, statusBg)
@@ -716,21 +720,21 @@ class CobblemonRctProgressionScreen(
         guiGraphics.fill(panelX + 14, curY, panelX + panelW - 14, curY + capBannerH, 0xFF1C2230.toInt())
         guiGraphics.fill(panelX + 14, curY, panelX + 17, curY + capBannerH, getCapBadgeColor(t.computedLevelCap))
 
-        guiGraphics.drawString(font, "CAP DE NIVEAU DU COMBAT", panelX + 22, curY + 4, 0xFFA0AABF.toInt(), false)
-        guiGraphics.drawString(font, "Cap combat : §eNv. ${t.computedLevelCap}§r", panelX + 22, curY + 16, 0xFFFFFFFF.toInt(), false)
-        guiGraphics.drawString(font, "Max adverse : §bNv. $maxPokeLevel§r", panelX + 120, curY + 16, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.rct.level_cap_title").string, panelX + 22, curY + 4, 0xFFA0AABF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.rct.cap_battle", t.computedLevelCap).string, panelX + 22, curY + 16, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.rct.max_opponent", maxPokeLevel).string, panelX + 120, curY + 16, 0xFFFFFFFF.toInt(), false)
 
         val unlockText = if (node.status == RctProgressionStatus.DEFEATED) {
-            "Cap débloqué : §aNv. $unlockedCapAfterWin§r §7(Déjà acquis)§r"
+            Component.translatable("gui.cobblemon_jei.rct.cap_unlocked", unlockedCapAfterWin).string
         } else {
-            "Cap après victoire : §aNv. $unlockedCapAfterWin§r"
+            Component.translatable("gui.cobblemon_jei.rct.cap_after_win", unlockedCapAfterWin).string
         }
         guiGraphics.drawString(font, unlockText, panelX + 22, curY + 28, 0xFFFFFFFF.toInt(), false)
 
         curY += capBannerH + 12
 
         // 4. Objet favoris du dresseur (Signature item)
-        guiGraphics.drawString(font, "OBJET FAVORI DU DRESSEUR", panelX + 14, curY, 0xFFFFFFFF.toInt(), true)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.rct.fav_item_title").string, panelX + 14, curY, 0xFFFFFFFF.toInt(), true)
         guiGraphics.fill(panelX + 14, curY + 10, panelX + panelW - 14, curY + 11, 0xFF282D3C.toInt())
         curY += 15
 
@@ -758,32 +762,32 @@ class CobblemonRctProgressionScreen(
             guiGraphics.drawString(font, "§7${t.signatureItem}§r", itemTextX, curY + 13, 0xFF7F8C8D.toInt(), false)
             curY += itemBoxSize + 10
         } else {
-            guiGraphics.drawString(font, "Aucun objet spécifique", panelX + 18, curY, 0xFF7F8C8D.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.rct.no_item").string, panelX + 18, curY, 0xFF7F8C8D.toInt(), false)
             curY += 16
         }
 
         // 5. Conditions & Prérequis de Spawn
-        guiGraphics.drawString(font, "CONDITIONS D'APPARITION (SPAWN)", panelX + 14, curY, 0xFFFFFFFF.toInt(), true)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.rct.spawn_cond_title").string, panelX + 14, curY, 0xFFFFFFFF.toInt(), true)
         guiGraphics.fill(panelX + 14, curY + 10, panelX + panelW - 14, curY + 11, 0xFF282D3C.toInt())
         curY += 15
 
         val canSpawnNow = (node.status != RctProgressionStatus.LOCKED)
-        val spawnStatusText = if (canSpawnNow) "✓ Éligible à l'apparition" else "✗ Bloqué (Prérequis non satisfaits)"
+        val spawnStatusText = if (canSpawnNow) Component.translatable("gui.cobblemon_jei.rct.spawn_eligible").string else Component.translatable("gui.cobblemon_jei.rct.spawn_blocked").string
         val spawnStatusColor = if (canSpawnNow) 0xFF2ECC71.toInt() else 0xFFE74C3C.toInt()
         guiGraphics.drawString(font, spawnStatusText, panelX + 14, curY, spawnStatusColor, true)
         curY += 12
 
         val weightPct = "${(t.spawnWeightFactor * 100).toInt()}%"
-        guiGraphics.drawString(font, "Poids de spawn : §f$weightPct§r", panelX + 14, curY, 0xFFA0AABF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.rct.spawn_weight", weightPct).string, panelX + 14, curY, 0xFFA0AABF.toInt(), false)
         curY += 12
 
         // Biomes autorisés (avec retour à la ligne automatique sans débordement)
-        guiGraphics.drawString(font, "§aBiomes autorisés :§r", panelX + 14, curY, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.rct.allowed_biomes").string, panelX + 14, curY, 0xFFFFFFFF.toInt(), false)
         curY += 11
         val whiteText = if (t.biomeTagWhitelist.isNotEmpty()) {
             t.biomeTagWhitelist.joinToString(", ") { "#${it.removePrefix("#")}" }
         } else {
-            "Tous les biomes autorisés"
+            Component.translatable("gui.cobblemon_jei.rct.all_biomes").string
         }
         val whiteLines = font.split(Component.literal("§7$whiteText§r"), panelW - 32)
         for (line in whiteLines) {
@@ -794,7 +798,7 @@ class CobblemonRctProgressionScreen(
 
         // Biomes interdits (avec retour à la ligne automatique sans débordement)
         if (t.biomeTagBlacklist.isNotEmpty()) {
-            guiGraphics.drawString(font, "§cBiomes interdits :§r", panelX + 14, curY, 0xFFFFFFFF.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.rct.forbidden_biomes").string, panelX + 14, curY, 0xFFFFFFFF.toInt(), false)
             curY += 11
             val blackText = t.biomeTagBlacklist.joinToString(", ") { "#${it.removePrefix("#")}" }
             val blackLines = font.split(Component.literal("§8$blackText§r"), panelW - 32)
@@ -806,7 +810,7 @@ class CobblemonRctProgressionScreen(
         }
 
         if (t.requiredDefeats.isNotEmpty()) {
-            guiGraphics.drawString(font, "Dresseurs préalables requis :", panelX + 14, curY, 0xFFF1C40F.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.rct.prereq_trainers").string, panelX + 14, curY, 0xFFF1C40F.toInt(), false)
             curY += 11
             for (group in t.requiredDefeats) {
                 val anyBeaten = group.any { RctProgressionService.isTrainerDefeated(it) }
@@ -827,7 +831,7 @@ class CobblemonRctProgressionScreen(
         curY += 8
 
         // 6. Équipe Adverse (avec noms Cobblemon traduits et badges de types)
-        val teamTitle = "ÉQUIPE ADVERSE (${t.team.size} Pokémon)"
+        val teamTitle = Component.translatable("gui.cobblemon_jei.rct.enemy_team", t.team.size).string
         guiGraphics.drawString(font, teamTitle, panelX + 14, curY, 0xFFFFFFFF.toInt(), true)
         guiGraphics.fill(panelX + 14, curY + 10, panelX + panelW - 14, curY + 11, 0xFF282D3C.toInt())
 
@@ -913,7 +917,7 @@ class CobblemonRctProgressionScreen(
         // 7. Objets en Sac
         if (t.bag.isNotEmpty()) {
             curY += 8
-            guiGraphics.drawString(font, "OBJETS EN SAC", panelX + 14, curY, 0xFFFFFFFF.toInt(), true)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.rct.bag_items_title").string, panelX + 14, curY, 0xFFFFFFFF.toInt(), true)
             guiGraphics.fill(panelX + 14, curY + 10, panelX + panelW - 14, curY + 11, 0xFF282D3C.toInt())
             curY += 16
 

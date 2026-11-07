@@ -6,17 +6,30 @@ import fr.k0bus.cobblemon_jei.data.PokemonEvolutionDataLoader
 import fr.k0bus.cobblemon_jei.data.PokemonSpawnDataLoader
 import fr.k0bus.cobblemon_jei.journeymap.SpawnRarity
 import fr.k0bus.cobblemon_jei.recipe.PokemonSpawnRecipe
+import net.minecraft.network.chat.Component
 
 /**
  * Modèle de filtrage par niveau de rareté Cobblemon.
  */
-enum class SpawnRarityFilter(val id: String, val displayName: String, val formatCode: String, val rarity: SpawnRarity?) {
-    ALL("all", "Toutes les raretés", "§f", null),
-    COMMON("common", "Commun", "§a", SpawnRarity.COMMON),
-    UNCOMMON("uncommon", "Peu commun", "§b", SpawnRarity.UNCOMMON),
-    RARE("rare", "Rare", "§d", SpawnRarity.RARE),
-    ULTRA_RARE("ultra_rare", "Ultra-Rare", "§6", SpawnRarity.ULTRA_RARE),
-    NO_WILD_SPAWN("no_wild", "Sans spawn sauvage (Évo/Dons)", "§7", null)
+enum class SpawnRarityFilter(
+    val id: String,
+    val translationKey: String,
+    val defaultFallback: String,
+    val formatCode: String,
+    val rarity: SpawnRarity?
+) {
+    ALL("all", "gui.cobblemon_jei.filter.rarity.all", "Toutes les raretés", "§f", null),
+    COMMON("common", "gui.cobblemon_jei.filter.rarity.common", "Commun", "§a", SpawnRarity.COMMON),
+    UNCOMMON("uncommon", "gui.cobblemon_jei.filter.rarity.uncommon", "Peu commun", "§b", SpawnRarity.UNCOMMON),
+    RARE("rare", "gui.cobblemon_jei.filter.rarity.rare", "Rare", "§d", SpawnRarity.RARE),
+    ULTRA_RARE("ultra_rare", "gui.cobblemon_jei.filter.rarity.ultra_rare", "Ultra-Rare", "§6", SpawnRarity.ULTRA_RARE),
+    NO_WILD_SPAWN("no_wild", "gui.cobblemon_jei.filter.rarity.no_wild", "Sans spawn sauvage (Évo/Dons)", "§7", null);
+
+    val displayName: String
+        get() {
+            val trans = Component.translatable(translationKey).string
+            return if (trans == translationKey) defaultFallback else trans
+        }
 }
 
 /**
@@ -25,33 +38,40 @@ enum class SpawnRarityFilter(val id: String, val displayName: String, val format
 enum class CobblemonBiomeFilter(
     val id: String,
     val icon: String,
-    val displayName: String,
+    val translationKey: String,
+    val defaultFallback: String,
     val tagKeywords: List<String>
 ) {
-    ALL("all", "🌐", "Tous les biomes", emptyList()),
-    OVERWORLD("overworld", "🌍", "Overworld (Global)", listOf("is_overworld")),
-    PLAINS("plains", "🌾", "Plaines & Prairies", listOf("is_plains", "plains", "meadow")),
-    FOREST("forest", "🌲", "Forêts & Bois", listOf("is_forest", "forest", "birch", "dark_forest")),
-    DESERT("desert", "🏜️", "Déserts", listOf("is_desert", "desert")),
-    JUNGLE("jungle", "🌴", "Jungle & Bambous", listOf("is_jungle", "jungle", "bamboo")),
-    SAVANNA("savanna", "🦁", "Savane", listOf("is_savanna", "savanna")),
-    TAIGA("taiga", "🌲", "Taïga & Pins", listOf("is_taiga", "taiga", "old_growth")),
-    MOUNTAIN("mountain", "🏔️", "Montagnes & Pics", listOf("is_mountain", "mountain", "peaks", "slopes", "jagged")),
-    OCEAN("ocean", "🌊", "Océans & Mers", listOf("is_ocean", "ocean")),
-    FRESHWATER("freshwater", "💧", "Rivières & Eau douce", listOf("is_freshwater", "river")),
-    SWAMP("swamp", "🌿", "Marais & Mangroves", listOf("is_swamp", "swamp", "mangrove")),
-    BEACH("beach", "🏖️", "Plages & Rivages", listOf("is_beach", "beach", "stony_shore")),
-    BADLANDS("badlands", "🏜️", "Badlands & Mesa", listOf("is_badlands", "badlands", "mesa")),
-    FREEZING("freezing", "❄️", "Grand froid & Neige", listOf("is_freezing", "is_snowy", "snowy", "ice", "frozen")),
-    CAVE("cave", "🕳️", "Grottes & Souterrain", listOf("is_cave", "is_underground", "cave")),
-    LUSH_CAVES("lush", "🌿", "Grottes luxuriantes", listOf("is_lush", "lush_caves")),
-    DRIPSTONE("dripstone", "🪨", "Spéléothèmes", listOf("is_dripstone", "dripstone_caves")),
-    DEEP_DARK("deep_dark", "👁️", "Tréfonds sombres", listOf("is_deep_dark", "deep_dark")),
-    NETHER("nether", "🔥", "Nether", listOf("is_nether", "nether")),
-    END("end", "🌌", "L'End", listOf("is_end", "end")),
-    VOLCANIC("volcanic", "🌋", "Volcanique & Basalte", listOf("is_volcanic", "volcanic", "basalt")),
-    SPOOKY("spooky", "👻", "Sinistre & Âmes", listOf("is_spooky", "soul_sand", "dark_forest")),
-    MAGICAL("magical", "✨", "Magique & Cerisiers", listOf("is_magical", "cherry_grove", "mushroom"))
+    ALL("all", "🌐", "gui.cobblemon_jei.filter.biome.all", "Tous les biomes", emptyList()),
+    OVERWORLD("overworld", "🌍", "gui.cobblemon_jei.filter.biome.overworld", "Overworld (Global)", listOf("is_overworld")),
+    PLAINS("plains", "🌾", "gui.cobblemon_jei.filter.biome.plains", "Plaines & Prairies", listOf("is_plains", "plains", "meadow")),
+    FOREST("forest", "🌲", "gui.cobblemon_jei.filter.biome.forest", "Forêts & Bois", listOf("is_forest", "forest", "birch", "dark_forest")),
+    DESERT("desert", "🏜️", "gui.cobblemon_jei.filter.biome.desert", "Déserts", listOf("is_desert", "desert")),
+    JUNGLE("jungle", "🌴", "gui.cobblemon_jei.filter.biome.jungle", "Jungle & Bambous", listOf("is_jungle", "jungle", "bamboo")),
+    SAVANNA("savanna", "🦁", "gui.cobblemon_jei.filter.biome.savanna", "Savane", listOf("is_savanna", "savanna")),
+    TAIGA("taiga", "🌲", "gui.cobblemon_jei.filter.biome.taiga", "Taïga & Pins", listOf("is_taiga", "taiga", "old_growth")),
+    MOUNTAIN("mountain", "🏔️", "gui.cobblemon_jei.filter.biome.mountain", "Montagnes & Pics", listOf("is_mountain", "mountain", "peaks", "slopes", "jagged")),
+    OCEAN("ocean", "🌊", "gui.cobblemon_jei.filter.biome.ocean", "Océans & Mers", listOf("is_ocean", "ocean")),
+    FRESHWATER("freshwater", "💧", "gui.cobblemon_jei.filter.biome.freshwater", "Rivières & Eau douce", listOf("is_freshwater", "river")),
+    SWAMP("swamp", "🌿", "gui.cobblemon_jei.filter.biome.swamp", "Marais & Mangroves", listOf("is_swamp", "swamp", "mangrove")),
+    BEACH("beach", "🏖️", "gui.cobblemon_jei.filter.biome.beach", "Plages & Rivages", listOf("is_beach", "beach", "stony_shore")),
+    BADLANDS("badlands", "🏜️", "gui.cobblemon_jei.filter.biome.badlands", "Badlands & Mesa", listOf("is_badlands", "badlands", "mesa")),
+    FREEZING("freezing", "❄️", "gui.cobblemon_jei.filter.biome.freezing", "Grand froid & Neige", listOf("is_freezing", "is_snowy", "snowy", "ice", "frozen")),
+    CAVE("cave", "🕳️", "gui.cobblemon_jei.filter.biome.cave", "Grottes & Souterrain", listOf("is_cave", "is_underground", "cave")),
+    LUSH_CAVES("lush", "🌿", "gui.cobblemon_jei.filter.biome.lush", "Grottes luxuriantes", listOf("is_lush", "lush_caves")),
+    DRIPSTONE("dripstone", "🪨", "gui.cobblemon_jei.filter.biome.dripstone", "Spéléothèmes", listOf("is_dripstone", "dripstone_caves")),
+    DEEP_DARK("deep_dark", "👁️", "gui.cobblemon_jei.filter.biome.deep_dark", "Tréfonds sombres", listOf("is_deep_dark", "deep_dark")),
+    NETHER("nether", "🔥", "gui.cobblemon_jei.filter.biome.nether", "Nether", listOf("is_nether", "nether")),
+    END("end", "🌌", "gui.cobblemon_jei.filter.biome.end", "L'End", listOf("is_end", "end")),
+    VOLCANIC("volcanic", "🌋", "gui.cobblemon_jei.filter.biome.volcanic", "Volcanique & Basalte", listOf("is_volcanic", "volcanic", "basalt")),
+    SPOOKY("spooky", "👻", "gui.cobblemon_jei.filter.biome.spooky", "Sinistre & Âmes", listOf("is_spooky", "soul_sand", "dark_forest")),
+    MAGICAL("magical", "✨", "gui.cobblemon_jei.filter.biome.magical", "Magique & Cerisiers", listOf("is_magical", "cherry_grove", "mushroom"));
+
+    val displayName: String
+        get() {
+            val trans = Component.translatable(translationKey).string
+            return if (trans == translationKey) defaultFallback else trans
+        }
 }
 
 /**
@@ -59,63 +79,94 @@ enum class CobblemonBiomeFilter(
  */
 enum class GenerationFilter(
     val id: String,
-    val displayName: String,
+    val translationKey: String,
+    val defaultFallback: String,
     val range: IntRange?
 ) {
-    ALL("all", "Toutes les générations", null),
-    GEN_1("gen1", "Gen 1 • Kanto", 1..151),
-    GEN_2("gen2", "Gen 2 • Johto", 152..251),
-    GEN_3("gen3", "Gen 3 • Hoenn", 252..386),
-    GEN_4("gen4", "Gen 4 • Sinnoh", 387..493),
-    GEN_5("gen5", "Gen 5 • Unys", 494..649),
-    GEN_6("gen6", "Gen 6 • Kalos", 650..721),
-    GEN_7("gen7", "Gen 7 • Alola", 722..809),
-    GEN_8("gen8", "Gen 8 • Galar & Hisui", 810..905),
-    GEN_9("gen9", "Gen 9 • Paldea", 906..2000)
+    ALL("all", "gui.cobblemon_jei.filter.gen.all", "Toutes les générations", null),
+    GEN_1("gen1", "gui.cobblemon_jei.filter.gen.1", "Gen 1 • Kanto", 1..151),
+    GEN_2("gen2", "gui.cobblemon_jei.filter.gen.2", "Gen 2 • Johto", 152..251),
+    GEN_3("gen3", "gui.cobblemon_jei.filter.gen.3", "Gen 3 • Hoenn", 252..386),
+    GEN_4("gen4", "gui.cobblemon_jei.filter.gen.4", "Gen 4 • Sinnoh", 387..493),
+    GEN_5("gen5", "gui.cobblemon_jei.filter.gen.5", "Gen 5 • Unys", 494..649),
+    GEN_6("gen6", "gui.cobblemon_jei.filter.gen.6", "Gen 6 • Kalos", 650..721),
+    GEN_7("gen7", "gui.cobblemon_jei.filter.gen.7", "Gen 7 • Alola", 722..809),
+    GEN_8("gen8", "gui.cobblemon_jei.filter.gen.8", "Gen 8 • Galar & Hisui", 810..905),
+    GEN_9("gen9", "gui.cobblemon_jei.filter.gen.9", "Gen 9 • Paldea", 906..2000);
+
+    val displayName: String
+        get() {
+            val trans = Component.translatable(translationKey).string
+            return if (trans == translationKey) defaultFallback else trans
+        }
 }
 
 /**
  * Modèle de filtrage par statut Pokédex.
  */
-enum class StatusFilter(val id: String, val displayName: String) {
-    ALL("all", "Tous les statuts"),
-    CAUGHT("caught", "Capturés uniquement"),
-    ENCOUNTERED("encountered", "Vus uniquement"),
-    MISSING("missing", "Manquants uniquement")
+enum class StatusFilter(val id: String, val translationKey: String, val defaultFallback: String) {
+    ALL("all", "gui.cobblemon_jei.filter.status.all", "Tous les statuts"),
+    CAUGHT("caught", "gui.cobblemon_jei.filter.status.caught", "Capturés uniquement"),
+    ENCOUNTERED("encountered", "gui.cobblemon_jei.filter.status.encountered", "Vus uniquement"),
+    MISSING("missing", "gui.cobblemon_jei.filter.status.missing", "Manquants uniquement");
+
+    val displayName: String
+        get() {
+            val trans = Component.translatable(translationKey).string
+            return if (trans == translationKey) defaultFallback else trans
+        }
 }
 
 /**
  * Modèle de filtrage par potentiel d'évolution.
  */
-enum class EvolutionFilter(val id: String, val displayName: String) {
-    ALL("all", "Tous les stades"),
-    CAN_EVOLVE("can_evolve", "Peut encore évoluer"),
-    FULLY_EVOLVED("fully_evolved", "Forme finale (Ne peut plus évoluer)"),
-    NO_EVOLUTION("no_evolution", "Sans évolution (Pokémon unique)")
+enum class EvolutionFilter(val id: String, val translationKey: String, val defaultFallback: String) {
+    ALL("all", "gui.cobblemon_jei.filter.evo.all", "Tous les stades"),
+    CAN_EVOLVE("can_evolve", "gui.cobblemon_jei.filter.evo.can_evolve", "Peut encore évoluer"),
+    FULLY_EVOLVED("fully_evolved", "gui.cobblemon_jei.filter.evo.fully_evolved", "Forme finale (Ne peut plus évoluer)"),
+    NO_EVOLUTION("no_evolution", "gui.cobblemon_jei.filter.evo.no_evolution", "Sans évolution (Pokémon unique)");
+
+    val displayName: String
+        get() {
+            val trans = Component.translatable(translationKey).string
+            return if (trans == translationKey) defaultFallback else trans
+        }
 }
 
 /**
  * Modèle d'ordre et de tri des résultats.
  */
-enum class PokedexSortOrder(val id: String, val displayName: String) {
-    DEX_ASC("dex_asc", "Numéro Pokédex (1 → 1025)"),
-    DEX_DESC("dex_desc", "Numéro Pokédex inversé (1025 → 1)"),
-    NAME_ASC("name_asc", "Nom alphabétique (A → Z)"),
-    NAME_DESC("name_desc", "Nom alphabétique (Z → A)"),
-    BST_DESC("bst_desc", "Total Stats de base (Fort → Faible)"),
-    BST_ASC("bst_asc", "Total Stats de base (Faible → Fort)")
+enum class PokedexSortOrder(val id: String, val translationKey: String, val defaultFallback: String) {
+    DEX_ASC("dex_asc", "gui.cobblemon_jei.filter.sort.dex_asc", "Numéro Pokédex (1 → 1025)"),
+    DEX_DESC("dex_desc", "gui.cobblemon_jei.filter.sort.dex_desc", "Numéro Pokédex inversé (1025 → 1)"),
+    NAME_ASC("name_asc", "gui.cobblemon_jei.filter.sort.name_asc", "Nom alphabétique (A → Z)"),
+    NAME_DESC("name_desc", "gui.cobblemon_jei.filter.sort.name_desc", "Nom alphabétique (Z → A)"),
+    BST_DESC("bst_desc", "gui.cobblemon_jei.filter.sort.bst_desc", "Total Stats de base (Fort → Faible)"),
+    BST_ASC("bst_asc", "gui.cobblemon_jei.filter.sort.bst_asc", "Total Stats de base (Faible → Fort)");
+
+    val displayName: String
+        get() {
+            val trans = Component.translatable(translationKey).string
+            return if (trans == translationKey) defaultFallback else trans
+        }
 }
 
 /**
  * Catégories d'onglets du panneau modal de filtrage.
  */
-enum class FilterCategory(val label: String, val icon: String) {
-    TYPE("Types", "⚡"),
-    RARITY("Rareté", "⭐"),
-    BIOME("Biomes", "🌍"),
-    GEN("Générations", "📜"),
-    STATUS("Statuts & Évo", "📊"),
-    SORT("Tri & Ordre", "⇅")
+enum class FilterCategory(val translationKey: String, val defaultFallback: String, val icon: String) {
+    TYPE("gui.cobblemon_jei.filter.category.type", "Types", "⚡"),
+    RARITY("gui.cobblemon_jei.filter.category.rarity", "Rareté", "⭐"),
+    BIOME("gui.cobblemon_jei.filter.category.biome", "Biomes", "🌍"),
+    GEN("gui.cobblemon_jei.filter.category.gen", "Générations", "📜"),
+    STATUS("gui.cobblemon_jei.filter.category.status", "Statuts & Évo", "📊"),
+    SORT("gui.cobblemon_jei.filter.category.sort", "Tri & Ordre", "⇅");
+
+    val label: String
+        get() {
+            val trans = Component.translatable(translationKey).string
+            return if (trans == translationKey) defaultFallback else trans
+        }
 }
 
 /**

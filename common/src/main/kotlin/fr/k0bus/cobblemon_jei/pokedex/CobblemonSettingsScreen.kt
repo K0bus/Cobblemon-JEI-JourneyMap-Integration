@@ -26,13 +26,19 @@ import kotlin.math.min
  */
 class CobblemonSettingsScreen(
     private val parentScreen: Screen? = null
-) : Screen(Component.literal("Paramètres & Diagnostic Cobblemon JEI")) {
+) : Screen(Component.translatable("gui.cobblemon_jei.settings.title")) {
 
-    enum class SettingsTab(val label: String, val iconRes: ResourceLocation) {
-        OPTIONS("Options & Radar", CobblemonPokedexScreen.SETTINGS_ICON),
-        WEB_SERVER("Écran 2 & Web", CobblemonPokedexScreen.TRACKER_ICON),
-        GLOBAL_SCAN("Cartographie & Scan", CobblemonPokedexScreen.EXPEDITION_ICON),
-        INFO("Statut & Info", CobblemonPokedexScreen.POKEDEX_ICON)
+    enum class SettingsTab(private val defaultLabel: String, val iconRes: ResourceLocation, val translationKey: String) {
+        OPTIONS("Options & Radar", CobblemonPokedexScreen.SETTINGS_ICON, "gui.cobblemon_jei.settings.tab.options"),
+        WEB_SERVER("Écran 2 & Web", CobblemonPokedexScreen.TRACKER_ICON, "gui.cobblemon_jei.settings.tab.web"),
+        GLOBAL_SCAN("Cartographie & Scan", CobblemonPokedexScreen.EXPEDITION_ICON, "gui.cobblemon_jei.settings.tab.scan"),
+        INFO("Statut & Info", CobblemonPokedexScreen.POKEDEX_ICON, "gui.cobblemon_jei.settings.tab.info");
+
+        val label: String
+            get() {
+                val trans = Component.translatable(translationKey).string
+                return if (trans == translationKey) defaultLabel else trans
+            }
     }
 
     private var currentTab: SettingsTab = SettingsTab.OPTIONS
@@ -80,7 +86,7 @@ class CobblemonSettingsScreen(
         val returnBtnX = modalX + (modalW - returnBtnW) / 2
         val returnBtnY = modalY + modalH - returnBtnH - 8
 
-        val returnBtn = CobblemonDarkButton(returnBtnX, returnBtnY, returnBtnW, returnBtnH, Component.literal("← Retour")) {
+        val returnBtn = CobblemonDarkButton(returnBtnX, returnBtnY, returnBtnW, returnBtnH, Component.translatable("gui.cobblemon_jei.settings.back")) {
             onClose()
         }
         addRenderableWidget(returnBtn)
@@ -101,21 +107,21 @@ class CobblemonSettingsScreen(
         var y = contentY + 95
 
         // Bouton Ouvrir dans le navigateur
-        val openBtn = CobblemonDarkButton(actionBtnX, y, actionBtnW, 22, Component.literal("§a🌐 Ouvrir sur l'Écran Secondaire")) {
+        val openBtn = CobblemonDarkButton(actionBtnX, y, actionBtnW, 22, Component.translatable("gui.cobblemon_jei.settings.open_web")) {
             try {
                 net.minecraft.Util.getPlatform().openUri(java.net.URI.create("http://localhost:${fr.k0bus.cobblemon_jei.web.WebServerService.activePort}"))
             } catch (e: Throwable) {
-                minecraft?.player?.displayClientMessage(Component.literal("§cErreur ouverture navigateur: ${e.message}"), true)
+                minecraft?.player?.displayClientMessage(Component.translatable("gui.cobblemon_jei.settings.open_web_error", e.message ?: ""), true)
             }
         }
-        openBtn.tooltip = Tooltip.create(Component.literal("Ouvre l'application web Modern Glasses sur votre second écran"))
+        openBtn.tooltip = Tooltip.create(Component.translatable("gui.cobblemon_jei.settings.open_web_tooltip"))
         addRenderableWidget(openBtn)
         y += 28
 
         // Bouton Activer / Désactiver le serveur
         val isRunning = fr.k0bus.cobblemon_jei.web.WebServerService.isRunning
-        val toggleText = if (isRunning) "§e⏸ Arrêter le Micro-Serveur" else "§a▶ Démarrer le Micro-Serveur"
-        val toggleBtn = CobblemonDarkButton(actionBtnX, y, actionBtnW, 20, Component.literal(toggleText)) {
+        val toggleComp = if (isRunning) Component.translatable("gui.cobblemon_jei.settings.stop_web") else Component.translatable("gui.cobblemon_jei.settings.start_web")
+        val toggleBtn = CobblemonDarkButton(actionBtnX, y, actionBtnW, 20, toggleComp) {
             if (isRunning) {
                 fr.k0bus.cobblemon_jei.web.WebServerService.stop()
             } else {
@@ -128,7 +134,7 @@ class CobblemonSettingsScreen(
 
         // Bouton Redémarrer
         if (isRunning) {
-            val restartBtn = CobblemonDarkButton(actionBtnX, y, actionBtnW, 20, Component.literal("§6🔄 Redémarrer le Serveur")) {
+            val restartBtn = CobblemonDarkButton(actionBtnX, y, actionBtnW, 20, Component.translatable("gui.cobblemon_jei.settings.restart_web")) {
                 fr.k0bus.cobblemon_jei.web.WebServerService.stop()
                 fr.k0bus.cobblemon_jei.web.WebServerService.start()
                 init()
@@ -144,9 +150,14 @@ class CobblemonSettingsScreen(
         val btnH = 18
         val btnX = modalX + modalW - btnW - 16
 
+        val enabledComp = Component.translatable("gui.cobblemon_jei.settings.enabled")
+        val disabledComp = Component.translatable("gui.cobblemon_jei.settings.disabled")
+        val yesComp = Component.translatable("gui.cobblemon_jei.settings.yes")
+        val noComp = Component.translatable("gui.cobblemon_jei.settings.no")
+
         // 1. Notifications HUD
         addRenderableWidget(
-            CobblemonDarkButton(btnX, y, btnW, btnH, Component.literal(if (CobblemonModConfig.hudNotificationsEnabled) "§aACTIVÉ" else "§7DÉSACTIVÉ")) {
+            CobblemonDarkButton(btnX, y, btnW, btnH, if (CobblemonModConfig.hudNotificationsEnabled) enabledComp else disabledComp) {
                 CobblemonModConfig.hudNotificationsEnabled = !CobblemonModConfig.hudNotificationsEnabled
                 PokemonTrackingManager.saveConfig()
                 init()
@@ -156,7 +167,7 @@ class CobblemonSettingsScreen(
 
         // 2. Son d'alerte HUD
         addRenderableWidget(
-            CobblemonDarkButton(btnX, y, btnW, btnH, Component.literal(if (CobblemonModConfig.hudSoundEnabled) "§aACTIVÉ" else "§7DÉSACTIVÉ")) {
+            CobblemonDarkButton(btnX, y, btnW, btnH, if (CobblemonModConfig.hudSoundEnabled) enabledComp else disabledComp) {
                 CobblemonModConfig.hudSoundEnabled = !CobblemonModConfig.hudSoundEnabled
                 PokemonTrackingManager.saveConfig()
                 init()
@@ -166,7 +177,7 @@ class CobblemonSettingsScreen(
 
         // 3. Halo lumineux in-world
         addRenderableWidget(
-            CobblemonDarkButton(btnX, y, btnW, btnH, Component.literal(if (CobblemonModConfig.inWorldGlowing) "§aACTIVÉ" else "§7DÉSACTIVÉ")) {
+            CobblemonDarkButton(btnX, y, btnW, btnH, if (CobblemonModConfig.inWorldGlowing) enabledComp else disabledComp) {
                 CobblemonModConfig.inWorldGlowing = !CobblemonModConfig.inWorldGlowing
                 init()
             }
@@ -175,7 +186,7 @@ class CobblemonSettingsScreen(
 
         // 4. Particules in-world
         addRenderableWidget(
-            CobblemonDarkButton(btnX, y, btnW, btnH, Component.literal(if (CobblemonModConfig.inWorldParticles) "§aACTIVÉ" else "§7DÉSACTIVÉ")) {
+            CobblemonDarkButton(btnX, y, btnW, btnH, if (CobblemonModConfig.inWorldParticles) enabledComp else disabledComp) {
                 CobblemonModConfig.inWorldParticles = !CobblemonModConfig.inWorldParticles
                 init()
             }
@@ -184,7 +195,7 @@ class CobblemonSettingsScreen(
 
         // 5. Talent Caché Uniquement
         addRenderableWidget(
-            CobblemonDarkButton(btnX, y, btnW, btnH, Component.literal(if (CobblemonModConfig.filterOnlyHiddenAbility) "§dOUI" else "§7NON")) {
+            CobblemonDarkButton(btnX, y, btnW, btnH, if (CobblemonModConfig.filterOnlyHiddenAbility) yesComp else noComp) {
                 CobblemonModConfig.filterOnlyHiddenAbility = !CobblemonModConfig.filterOnlyHiddenAbility
                 init()
             }
@@ -221,12 +232,12 @@ class CobblemonSettingsScreen(
         y += rowH
 
         // 8. Vider la Watchlist
-        val clearBtn = CobblemonDarkButton(btnX, y, btnW, btnH, Component.literal("🗑 Vider")) {
+        val clearBtn = CobblemonDarkButton(btnX, y, btnW, btnH, Component.translatable("gui.cobblemon_jei.settings.clear_watchlist")) {
             PokemonTrackingManager.clearWatchlist()
-            minecraft?.player?.displayClientMessage(Component.literal("§eWatchlist vidée."), true)
+            minecraft?.player?.displayClientMessage(Component.translatable("gui.cobblemon_jei.settings.clear_watchlist_msg"), true)
             init()
         }
-        clearBtn.tooltip = Tooltip.create(Component.literal("Retire tous les Pokémon de la liste personnalisée"))
+        clearBtn.tooltip = Tooltip.create(Component.translatable("gui.cobblemon_jei.settings.clear_watchlist_tooltip"))
         addRenderableWidget(clearBtn)
     }
 
@@ -236,23 +247,23 @@ class CobblemonSettingsScreen(
         val actionsStartY = contentY + 114
 
         // 1. Bouton de bascule Mode Approfondi / Incrémental
-        val deepBtnText = if (forceDeepScan) "§a✔ Scan Approfondi (Tous fichiers)" else "§7✕ Scan Incrémental (Nouveaux)"
-        val deepBtn = CobblemonDarkButton(actionBtnX, actionsStartY, actionBtnW, 20, Component.literal(deepBtnText)) {
+        val deepBtnComp = if (forceDeepScan) Component.translatable("gui.cobblemon_jei.settings.deep_scan_full") else Component.translatable("gui.cobblemon_jei.settings.deep_scan_inc")
+        val deepBtn = CobblemonDarkButton(actionBtnX, actionsStartY, actionBtnW, 20, deepBtnComp) {
             forceDeepScan = !forceDeepScan
             init()
         }
-        deepBtn.tooltip = Tooltip.create(Component.literal("Si activé, force l'analyse intégrale de tous les fichiers de région sur disque."))
+        deepBtn.tooltip = Tooltip.create(Component.translatable("gui.cobblemon_jei.settings.deep_scan_tooltip"))
         addRenderableWidget(deepBtn)
 
         // 2. Bouton Lancer Scan Global ou Interrompre
         if (GlobalScanService.isScanning) {
-            val cancelBtn = CobblemonDarkButton(actionBtnX, actionsStartY + 26, actionBtnW, 22, Component.literal("§c✕ Interrompre le Scan")) {
+            val cancelBtn = CobblemonDarkButton(actionBtnX, actionsStartY + 26, actionBtnW, 22, Component.translatable("gui.cobblemon_jei.settings.cancel_scan")) {
                 GlobalScanService.cancelScan()
                 init()
             }
             addRenderableWidget(cancelBtn)
         } else {
-            val scanBtn = CobblemonDarkButton(actionBtnX, actionsStartY + 26, actionBtnW, 22, Component.literal("§6🔄 Lancer un Scan Global")) {
+            val scanBtn = CobblemonDarkButton(actionBtnX, actionsStartY + 26, actionBtnW, 22, Component.translatable("gui.cobblemon_jei.settings.start_scan")) {
                 GlobalScanService.startScan(forceRefresh = forceDeepScan, onProgressUpdate = {
                     // Update live
                 }, onComplete = {
@@ -260,16 +271,16 @@ class CobblemonSettingsScreen(
                 })
                 init()
             }
-            scanBtn.tooltip = Tooltip.create(Component.literal("Scanne l'ensemble des chunks explorés pour répertorier tous les biomes de surface et sous-sols."))
+            scanBtn.tooltip = Tooltip.create(Component.translatable("gui.cobblemon_jei.settings.start_scan_tooltip"))
             addRenderableWidget(scanBtn)
 
             // 3. Bouton Vider le cache mémoire
-            val wipeBtn = CobblemonDarkButton(actionBtnX, actionsStartY + 54, actionBtnW, 20, Component.literal("§c🗑 Vider le Cache Mémoire")) {
+            val wipeBtn = CobblemonDarkButton(actionBtnX, actionsStartY + 54, actionBtnW, 20, Component.translatable("gui.cobblemon_jei.settings.clear_cache")) {
                 GlobalScanService.clearCache()
-                minecraft?.player?.displayClientMessage(Component.literal("§6Cache de biomes réinitialisé."), true)
+                minecraft?.player?.displayClientMessage(Component.translatable("gui.cobblemon_jei.settings.clear_cache_msg"), true)
                 init()
             }
-            wipeBtn.tooltip = Tooltip.create(Component.literal("Efface les données de biomes en mémoire pour forcer une réévaluation complète."))
+            wipeBtn.tooltip = Tooltip.create(Component.translatable("gui.cobblemon_jei.settings.clear_cache_tooltip"))
             addRenderableWidget(wipeBtn)
         }
     }
@@ -308,8 +319,8 @@ class CobblemonSettingsScreen(
         super.render(guiGraphics, mouseX, mouseY, partialTick)
 
         // 5. Rendu du texte et des informations par-dessus pour une netteté absolue
-        guiGraphics.drawString(font, "§6§lPARAMÈTRES & DIAGNOSTIC DU MOD§r", modalX + 10, modalY + 8, 0xFFFFAA00.toInt(), false)
-        val verText = "§7Cobblemon & JourneyMap • v1.7.0"
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.settings.header"), modalX + 10, modalY + 8, 0xFFFFAA00.toInt(), false)
+        val verText = Component.translatable("gui.cobblemon_jei.settings.version").string
         val verW = font.width(verText)
         guiGraphics.drawString(font, verText, modalX + modalW - verW - 30, modalY + 8, 0xFFAAAAAA.toInt(), false)
 
@@ -325,8 +336,8 @@ class CobblemonSettingsScreen(
 
     private fun renderWebServer(guiGraphics: GuiGraphics, modalX: Int, contentY: Int, modalW: Int) {
         val y = contentY + 4
-        guiGraphics.drawString(font, "§6§lMicro-Serveur Web Interne & Écran Secondaire§r", modalX + 14, y, 0xFFFFAA00.toInt(), false)
-        guiGraphics.drawString(font, "§7Diffuse toutes vos données en temps réel (Pokédex, Évolutions, PC, Équipe, Radar).", modalX + 14, y + 12, 0xFFCCCCCC.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.settings.web_header"), modalX + 14, y, 0xFFFFAA00.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.settings.web_desc"), modalX + 14, y + 12, 0xFFCCCCCC.toInt(), false)
 
         val cardX = modalX + 14
         val cardY = contentY + 30
@@ -340,13 +351,13 @@ class CobblemonSettingsScreen(
         guiGraphics.fill(cardX + cardW - 1, cardY, cardX + cardW, cardY + cardH, 0xFF282D3C.toInt())
 
         val isRunning = fr.k0bus.cobblemon_jei.web.WebServerService.isRunning
-        val statusText = if (isRunning) "§a✔ Actif et en écoute" else "§c✕ Serveur arrêté"
+        val statusText = if (isRunning) Component.translatable("gui.cobblemon_jei.settings.web_active").string else Component.translatable("gui.cobblemon_jei.settings.web_stopped").string
         val port = fr.k0bus.cobblemon_jei.web.WebServerService.activePort
         val url = if (isRunning) "http://localhost:$port" else "Désactivé"
 
-        guiGraphics.drawString(font, "§bStatut du serveur : §f$statusText", cardX + 10, cardY + 8, 0xFFFFFFFF.toInt(), false)
-        guiGraphics.drawString(font, "§6URL locale : §f§n$url§r", cardX + 10, cardY + 22, 0xFFFFFFFF.toInt(), false)
-        guiGraphics.drawString(font, "§7Protocole : §fHTTP/1.1 REST + Flux temps réel SSE (Server-Sent Events)", cardX + 10, cardY + 36, 0xFF888888.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.settings.web_status", statusText).string, cardX + 10, cardY + 8, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.settings.web_url", url).string, cardX + 10, cardY + 22, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.settings.web_proto"), cardX + 10, cardY + 36, 0xFF888888.toInt(), false)
     }
 
     private fun renderOptions(guiGraphics: GuiGraphics, modalX: Int, contentY: Int, modalW: Int) {
@@ -354,14 +365,14 @@ class CobblemonSettingsScreen(
         var y = contentY + 8
 
         val labels = listOf(
-            "Bandeau HUD de capture & scan" to "Affiche la notification dynamique en haut de l'écran",
-            "Effets sonores du bandeau HUD" to "Joue le jingle Pokédex lors des captures et scans",
-            "Surbrillance in-world des cibles" to "Entoure les Pokémon ciblés d'un halo lumineux",
-            "Particules in-world autour des cibles" to "Fait scintiller les Pokémon recherchés dans le monde",
-            "Radar : Talents Cachés uniquement" to "Filtre uniquement les spécimens avec leur talent rare",
-            "Radar : Seuil minimum d'IVs parfaits" to "Cible les Pokémon ayant au moins X statistiques à 31",
-            "Radar : Filtre de taille Cobblemon" to "Recherche spécifiquement les tailles rares, micro ou géant",
-            "Liste personnalisée (Watchlist)" to "${PokemonTrackingManager.customWatchlist.size} espèces actuellement enregistrées"
+            Component.translatable("gui.cobblemon_jei.settings.opt_hud_title").string to Component.translatable("gui.cobblemon_jei.settings.opt_hud_desc").string,
+            Component.translatable("gui.cobblemon_jei.settings.opt_sound_title").string to Component.translatable("gui.cobblemon_jei.settings.opt_sound_desc").string,
+            Component.translatable("gui.cobblemon_jei.settings.opt_glow_title").string to Component.translatable("gui.cobblemon_jei.settings.opt_glow_desc").string,
+            Component.translatable("gui.cobblemon_jei.settings.opt_particles_title").string to Component.translatable("gui.cobblemon_jei.settings.opt_particles_desc").string,
+            Component.translatable("gui.cobblemon_jei.settings.opt_ha_title").string to Component.translatable("gui.cobblemon_jei.settings.opt_ha_desc").string,
+            Component.translatable("gui.cobblemon_jei.settings.opt_iv_title").string to Component.translatable("gui.cobblemon_jei.settings.opt_iv_desc").string,
+            Component.translatable("gui.cobblemon_jei.settings.opt_size_title").string to Component.translatable("gui.cobblemon_jei.settings.opt_size_desc").string,
+            Component.translatable("gui.cobblemon_jei.settings.opt_watchlist_title").string to Component.translatable("gui.cobblemon_jei.settings.opt_watchlist_desc", PokemonTrackingManager.customWatchlist.size).string
         )
 
         for ((title, desc) in labels) {
@@ -373,8 +384,8 @@ class CobblemonSettingsScreen(
 
     private fun renderScan(guiGraphics: GuiGraphics, modalX: Int, contentY: Int, modalW: Int) {
         val y = contentY + 4
-        guiGraphics.drawString(font, "§6§lCartographie & Analyse des Fichiers Régions§r", modalX + 14, y, 0xFFFFAA00.toInt(), false)
-        guiGraphics.drawString(font, "§7Scanne les fichiers Anvil (.mca) et JourneyMap pour répertorier les biomes de surface et cavités.", modalX + 14, y + 12, 0xFFCCCCCC.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.settings.mapping_header"), modalX + 14, y, 0xFFFFAA00.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.settings.mapping_desc"), modalX + 14, y + 12, 0xFFCCCCCC.toInt(), false)
 
         // Compteurs de chunks en cache dans une carte dédiée DA sombre
         val mc = minecraft
@@ -394,10 +405,10 @@ class CobblemonSettingsScreen(
         guiGraphics.fill(statusBoxX, statusBoxY, statusBoxX + 1, statusBoxY + statusBoxH, 0xFF282D3C.toInt())
         guiGraphics.fill(statusBoxX + statusBoxW - 1, statusBoxY, statusBoxX + statusBoxW, statusBoxY + statusBoxH, 0xFF282D3C.toInt())
 
-        guiGraphics.drawString(font, "§b📍 Dimension : §f${dim.location()}", statusBoxX + 10, statusBoxY + 6, 0xFFFFFFFF.toInt(), false)
-        guiGraphics.drawString(font, "§a✔ Chunks surface en mémoire : §f$surfaceChunks", statusBoxX + 10, statusBoxY + 18, 0xFFFFFFFF.toInt(), false)
-        guiGraphics.drawString(font, "§6⛏ Chunks sous-sol (Lush, Deep Dark...) : §f$subCount", statusBoxX + 10, statusBoxY + 30, 0xFFFFFFFF.toInt(), false)
-        val scanMsg = "§7Statut du Scan : §e${GlobalScanService.statusMessage}"
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.settings.dimension_info", dim.location().toString()).string, statusBoxX + 10, statusBoxY + 6, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.settings.surface_chunks", surfaceChunks).string, statusBoxX + 10, statusBoxY + 18, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.settings.sub_chunks", subCount).string, statusBoxX + 10, statusBoxY + 30, 0xFFFFFFFF.toInt(), false)
+        val scanMsg = Component.translatable("gui.cobblemon_jei.settings.scan_status", GlobalScanService.statusMessage).string
         guiGraphics.drawString(font, scanMsg, statusBoxX + 10, statusBoxY + 42, 0xFFFFAA00.toInt(), false)
 
         // Barre de progression (située entre la boîte de statut et les boutons d'action)
@@ -433,16 +444,26 @@ class CobblemonSettingsScreen(
         guiGraphics.fill(cardX + cardW - 1, y - 2, cardX + cardW, y + cardH, 0xFF282D3C.toInt())
 
         y += 6
+        val jmStatus = if (jmConnected) {
+            "§a" + Component.translatable("gui.cobblemon_jei.settings.info.jm_connected").string
+        } else {
+            "§c" + Component.translatable("gui.cobblemon_jei.settings.info.jm_not_found").string
+        }
+        val cacheStatus = if (cacheFile.exists()) {
+            Component.translatable("gui.cobblemon_jei.settings.info.cache_stat", cacheFile.name, cacheFile.length() / 1024).string
+        } else {
+            "${cacheFile.name} (" + Component.translatable("gui.cobblemon_jei.settings.info.cache_not_created").string + ")"
+        }
         val infoItems = listOf(
-            "Identifiant du Mod" to "cobblemon_jei",
-            "Version" to "1.7.0 (Minecraft 1.21.1)",
-            "Auteur" to "K0bus",
-            "Intégration JourneyMap" to if (jmConnected) "§aConnectée (API v2 active)" else "§cNon détectée",
-            "Monde / Session active" to "§e$worldId",
-            "Dimension courante" to "${dim.location()}",
-            "Espèces Cobblemon chargées" to "${PokemonSpecies.species.size} espèces (${snapshot.allSpawns.size} règles de spawn)",
-            "Progression Pokédex" to "§a${stats.caughtCount} capturés§7 / §e${stats.encounteredCount} vus§7 sur §f${stats.totalSpecies}",
-            "Fichier de cache disque" to "${cacheFile.name} (${if (cacheFile.exists()) "${cacheFile.length() / 1024} Ko" else "non créé"})"
+            Component.translatable("gui.cobblemon_jei.settings.info.mod_id").string to "cobblemon_jei",
+            Component.translatable("gui.cobblemon_jei.settings.info.version").string to "1.7.0 (Minecraft 1.21.1)",
+            Component.translatable("gui.cobblemon_jei.settings.info.author").string to "K0bus",
+            Component.translatable("gui.cobblemon_jei.settings.info.jm_integration").string to jmStatus,
+            Component.translatable("gui.cobblemon_jei.settings.info.world_session").string to "§e$worldId",
+            Component.translatable("gui.cobblemon_jei.settings.info.current_dim").string to "${dim.location()}",
+            Component.translatable("gui.cobblemon_jei.settings.info.species_loaded").string to Component.translatable("gui.cobblemon_jei.settings.info.species_count", PokemonSpecies.species.size, snapshot.allSpawns.size).string,
+            Component.translatable("gui.cobblemon_jei.settings.info.pokedex_progress").string to Component.translatable("gui.cobblemon_jei.settings.info.pokedex_stat", stats.caughtCount, stats.encounteredCount, stats.totalSpecies).string,
+            Component.translatable("gui.cobblemon_jei.settings.info.cache_file").string to cacheStatus
         )
 
         for ((label, value) in infoItems) {

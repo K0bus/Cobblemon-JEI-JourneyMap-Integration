@@ -5,6 +5,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.renderer.Rect2i
+import net.minecraft.network.chat.Component
 
 /**
  * HUD dynamique affichant la boussole et l'indicateur de guidage en jeu (overlay temps réel).
@@ -69,17 +70,17 @@ object RadarCompassHud {
             // 2. Le joueur est déjà dans la zone de spawn
             guidance.isInZone -> {
                 if (guidance.canSpawnNow) {
-                    displayText = "§a✔ §fDans la zone de §e${guidance.targetName} §7• §aPeut apparaître maintenant !"
+                    displayText = Component.translatable("gui.cobblemon_jei.compass.in_zone_active", guidance.targetName).string
                     accentColor = 0xFF2ED573.toInt()
                 } else {
-                    val reason = guidance.waitingReason ?: "Conditions météo/heure"
-                    displayText = "§6⏳ §fDans la zone de §e${guidance.targetName} §7• §6En attente : §e$reason"
+                    val reason = guidance.waitingReason ?: Component.translatable("gui.cobblemon_jei.compass.reason_weather_time").string
+                    displayText = Component.translatable("gui.cobblemon_jei.compass.in_zone_waiting", guidance.targetName, reason).string
                     accentColor = 0xFFFFA502.toInt()
                 }
             }
             // 3. Le joueur est en route vers la zone
             else -> {
-                displayText = "§a✦ §e${guidance.arrowSymbol} §7Zone : §f${guidance.targetName} §7• §e${guidance.distanceBlocks}m"
+                displayText = Component.translatable("gui.cobblemon_jei.compass.heading_zone", guidance.arrowSymbol, guidance.targetName, guidance.distanceBlocks).string
                 accentColor = 0xFF2ED573.toInt()
             }
         }

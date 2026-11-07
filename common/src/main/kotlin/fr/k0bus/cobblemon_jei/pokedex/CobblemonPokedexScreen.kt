@@ -202,19 +202,19 @@ class CobblemonPokedexScreen(
         val btnH = 18
 
         // 1. Onglets principaux (Row 1)
-        mainPokedexBtn = CobblemonDarkButton(12, topY, 80, btnH, Component.literal("Pokédex"), PokedexIcons.POKEDEX_ICON, isTab = true, isSelected = { currentMainTab == MainTab.POKEDEX }) {
+        mainPokedexBtn = CobblemonDarkButton(12, topY, 80, btnH, Component.translatable("gui.cobblemon_jei.pokedex.tab.pokedex"), PokedexIcons.POKEDEX_ICON, isTab = true, isSelected = { currentMainTab == MainTab.POKEDEX }) {
             switchMainTab(MainTab.POKEDEX)
         }
         addRenderableWidget(mainPokedexBtn)
 
         val evoGoalsReady = allGoals.count { it.feasibility == EvolutionFeasibility.READY_TO_EVOLVE }
-        val evoLabel = if (evoGoalsReady > 0) "Évolution (§a$evoGoalsReady§r)" else "Évolution"
-        mainEvolutionsBtn = CobblemonDarkButton(96, topY, 130, btnH, Component.literal(evoLabel), PokedexIcons.EVOLUTION_ICON, isTab = true, isSelected = { currentMainTab == MainTab.EVOLUTIONS }) {
+        val evoLabel = if (evoGoalsReady > 0) Component.translatable("gui.cobblemon_jei.pokedex.subtab.evolutions", evoGoalsReady) else Component.translatable("gui.cobblemon_jei.category.pokemon_evolutions")
+        mainEvolutionsBtn = CobblemonDarkButton(96, topY, 130, btnH, evoLabel, PokedexIcons.EVOLUTION_ICON, isTab = true, isSelected = { currentMainTab == MainTab.EVOLUTIONS }) {
             switchMainTab(MainTab.EVOLUTIONS)
         }
         addRenderableWidget(mainEvolutionsBtn)
 
-        mainExpeditionsBtn = CobblemonDarkButton(230, topY, 105, btnH, Component.literal("Expéditions"), PokedexIcons.EXPEDITION_ICON, isTab = true, isSelected = { currentMainTab == MainTab.EXPEDITIONS }) {
+        mainExpeditionsBtn = CobblemonDarkButton(230, topY, 105, btnH, Component.translatable("gui.cobblemon_jei.pokedex.tab.expeditions"), PokedexIcons.EXPEDITION_ICON, isTab = true, isSelected = { currentMainTab == MainTab.EXPEDITIONS }) {
             switchMainTab(MainTab.EXPEDITIONS)
         }
         addRenderableWidget(mainExpeditionsBtn)
@@ -230,7 +230,7 @@ class CobblemonPokedexScreen(
         settingsBtn = CobblemonDarkButton(rightX, topY, 18, btnH, Component.empty(), PokedexIcons.SETTINGS_ICON) {
             minecraft?.setScreen(CobblemonSettingsScreen(this))
         }
-        settingsBtn.tooltip = Tooltip.create(Component.literal("Paramètres & Diagnostic du Mod"))
+        settingsBtn.tooltip = Tooltip.create(Component.translatable("gui.cobblemon_jei.pokedex.tooltip.settings"))
         addRenderableWidget(settingsBtn)
 
         if (CobblemonScoreboardService.isAvailable()) {
@@ -238,7 +238,7 @@ class CobblemonPokedexScreen(
             val lBtn = CobblemonDarkButton(rightX, topY, 18, btnH, Component.empty(), PokedexIcons.LEADERBOARD_ICON) {
                 minecraft?.setScreen(CobblemonLeaderboardScreen(this))
             }
-            lBtn.tooltip = Tooltip.create(Component.literal("Classement des Joueurs"))
+            lBtn.tooltip = Tooltip.create(Component.translatable("gui.cobblemon_jei.pokedex.tooltip.leaderboard"))
             addRenderableWidget(lBtn)
             leaderboardBtn = lBtn
         }
@@ -248,50 +248,50 @@ class CobblemonPokedexScreen(
             val rBtn = CobblemonDarkButton(rightX, topY, 18, btnH, Component.empty(), PokedexIcons.RCT_ICON) {
                 minecraft?.setScreen(CobblemonRctProgressionScreen(this))
             }
-            rBtn.tooltip = Tooltip.create(Component.literal("Arbre de Progression Radical Trainers"))
+            rBtn.tooltip = Tooltip.create(Component.translatable("gui.cobblemon_jei.pokedex.tooltip.rct"))
             addRenderableWidget(rBtn)
             rctBtn = rBtn
         }
 
         rightX -= 94
-        trackerBtn = CobblemonDarkButton(rightX, topY, 90, btnH, Component.literal(PokemonTrackingManager.getModeSummary()), PokedexIcons.TRACKER_ICON) {
+        trackerBtn = CobblemonDarkButton(rightX, topY, 90, btnH, PokemonTrackingManager.getModeSummaryComponent(), PokedexIcons.TRACKER_ICON) {
             openTrackerModal()
         }
-        trackerBtn.tooltip = Tooltip.create(Component.literal("Mode Radar & Tracker : ${PokemonTrackingManager.getModeSummary()} (Cliquer pour gérer)"))
+        trackerBtn.tooltip = Tooltip.create(Component.translatable("gui.cobblemon_jei.pokedex.tracker_mode_tooltip", PokemonTrackingManager.getModeSummaryComponent()))
         addRenderableWidget(trackerBtn)
 
         // 2. Sous-onglets (Row 2, y = 27, height = 17)
         val subY = 27
         val subH = 17
 
-        subPokedexAllBtn = CobblemonDarkButton(12, subY, 65, subH, Component.literal("Global"), isTab = true, isSelected = { currentMainTab == MainTab.POKEDEX && currentPokedexSubTab == PokedexSubTab.ALL }) {
+        subPokedexAllBtn = CobblemonDarkButton(12, subY, 65, subH, Component.translatable("gui.cobblemon_jei.pokedex.subtab.global"), isTab = true, isSelected = { currentMainTab == MainTab.POKEDEX && currentPokedexSubTab == PokedexSubTab.ALL }) {
             switchPokedexSubTab(PokedexSubTab.ALL)
         }
-        subPokedexMissingBtn = CobblemonDarkButton(81, subY, 85, subH, Component.literal("Manquants"), isTab = true, isSelected = { currentMainTab == MainTab.POKEDEX && currentPokedexSubTab == PokedexSubTab.MISSING }) {
+        subPokedexMissingBtn = CobblemonDarkButton(81, subY, 85, subH, Component.translatable("gui.cobblemon_jei.pokedex.subtab.missing"), isTab = true, isSelected = { currentMainTab == MainTab.POKEDEX && currentPokedexSubTab == PokedexSubTab.MISSING }) {
             switchPokedexSubTab(PokedexSubTab.MISSING)
         }
         addRenderableWidget(subPokedexAllBtn)
         addRenderableWidget(subPokedexMissingBtn)
 
-        subEvoPendingBtn = CobblemonDarkButton(12, subY, 95, subH, Component.literal("Évolutions (§a$evoGoalsReady§r)"), isTab = true, isSelected = { currentMainTab == MainTab.EVOLUTIONS && currentEvolutionSubTab == EvolutionSubTab.PENDING_EVOLUTIONS }) {
+        subEvoPendingBtn = CobblemonDarkButton(12, subY, 95, subH, Component.translatable("gui.cobblemon_jei.pokedex.subtab.evolutions", evoGoalsReady), isTab = true, isSelected = { currentMainTab == MainTab.EVOLUTIONS && currentEvolutionSubTab == EvolutionSubTab.PENDING_EVOLUTIONS }) {
             switchEvolutionSubTab(EvolutionSubTab.PENDING_EVOLUTIONS)
         }
         val itemsReady = allItemGoals.count { it.feasibility == EvolutionFeasibility.READY_TO_EVOLVE }
-        val itemsLabel = if (itemsReady > 0) "Pierres (§a$itemsReady§r)" else "Pierres & Objets"
-        subEvoItemsBtn = CobblemonDarkButton(110, subY, 105, subH, Component.literal(itemsLabel), isTab = true, isSelected = { currentMainTab == MainTab.EVOLUTIONS && currentEvolutionSubTab == EvolutionSubTab.ITEM_EVOLUTIONS }) {
+        val itemsLabel = Component.translatable("gui.cobblemon_jei.pokedex.subtab.items", itemsReady)
+        subEvoItemsBtn = CobblemonDarkButton(110, subY, 105, subH, itemsLabel, isTab = true, isSelected = { currentMainTab == MainTab.EVOLUTIONS && currentEvolutionSubTab == EvolutionSubTab.ITEM_EVOLUTIONS }) {
             switchEvolutionSubTab(EvolutionSubTab.ITEM_EVOLUTIONS)
         }
         val originsCount = allBreedingOrigins.count { it.isReadyToBreed }
-        val originsLabel = if (originsCount > 0) "Origines (§e$originsCount§r)" else "Origines & Repro"
-        subEvoOriginsBtn = CobblemonDarkButton(218, subY, 105, subH, Component.literal(originsLabel), isTab = true, isSelected = { currentMainTab == MainTab.EVOLUTIONS && currentEvolutionSubTab == EvolutionSubTab.MISSING_ORIGINS }) {
+        val originsLabel = Component.translatable("gui.cobblemon_jei.pokedex.subtab.origins", originsCount)
+        subEvoOriginsBtn = CobblemonDarkButton(218, subY, 105, subH, originsLabel, isTab = true, isSelected = { currentMainTab == MainTab.EVOLUTIONS && currentEvolutionSubTab == EvolutionSubTab.MISSING_ORIGINS }) {
             switchEvolutionSubTab(EvolutionSubTab.MISSING_ORIGINS)
         }
         val fossilsReady = allFossilGoals.count { it.isReadyToRevive }
-        val fossilsLabel = if (fossilsReady > 0) "Fossiles (§a$fossilsReady§r)" else "Fossiles"
-        subEvoFossilsBtn = CobblemonDarkButton(326, subY, 80, subH, Component.literal(fossilsLabel), isTab = true, isSelected = { currentMainTab == MainTab.EVOLUTIONS && currentEvolutionSubTab == EvolutionSubTab.FOSSILS }) {
+        val fossilsLabel = Component.translatable("gui.cobblemon_jei.pokedex.subtab.fossils", fossilsReady)
+        subEvoFossilsBtn = CobblemonDarkButton(326, subY, 80, subH, fossilsLabel, isTab = true, isSelected = { currentMainTab == MainTab.EVOLUTIONS && currentEvolutionSubTab == EvolutionSubTab.FOSSILS }) {
             switchEvolutionSubTab(EvolutionSubTab.FOSSILS)
         }
-        subEvoLegendariesBtn = CobblemonDarkButton(409, subY, 85, subH, Component.literal("Légendaires"), isTab = true, isSelected = { currentMainTab == MainTab.EVOLUTIONS && currentEvolutionSubTab == EvolutionSubTab.LEGENDARIES }) {
+        subEvoLegendariesBtn = CobblemonDarkButton(409, subY, 85, subH, Component.translatable("gui.cobblemon_jei.pokedex.subtab.legendaries"), isTab = true, isSelected = { currentMainTab == MainTab.EVOLUTIONS && currentEvolutionSubTab == EvolutionSubTab.LEGENDARIES }) {
             switchEvolutionSubTab(EvolutionSubTab.LEGENDARIES)
         }
         togglePcEvolutionsBtn = CobblemonDarkButton(497, subY, 120, subH, getTogglePcButtonText()) {
@@ -306,7 +306,7 @@ class CobblemonPokedexScreen(
         addRenderableWidget(subEvoLegendariesBtn)
         addRenderableWidget(togglePcEvolutionsBtn)
 
-        refreshExpeditionsBtn = CobblemonDarkButton(12, subY, 140, subH, Component.literal("↻ Actualiser l'analyse")) {
+        refreshExpeditionsBtn = CobblemonDarkButton(12, subY, 140, subH, Component.translatable("gui.cobblemon_jei.pokedex.refresh_analysis")) {
             triggerExpeditionCalculation()
         }
         addRenderableWidget(refreshExpeditionsBtn)
@@ -337,7 +337,7 @@ class CobblemonPokedexScreen(
             resetFilters()
         }
         quickResetFilterBtn.visible = filterState.isActive()
-        quickResetFilterBtn.setTooltip(Tooltip.create(Component.literal("Réinitialiser tous les filtres")))
+        quickResetFilterBtn.setTooltip(Tooltip.create(Component.translatable("gui.cobblemon_jei.pokedex.filter.reset_tooltip")))
         addRenderableWidget(quickResetFilterBtn)
 
         // Initialisation de la modale de filtres
@@ -420,24 +420,24 @@ class CobblemonPokedexScreen(
 
     fun updateTrackerButton() {
         if (::trackerBtn.isInitialized) {
-            trackerBtn.message = Component.literal(PokemonTrackingManager.getModeSummary())
-            trackerBtn.setTooltip(Tooltip.create(Component.literal("Mode Radar & Tracker : ${PokemonTrackingManager.getModeSummary()} (Cliquer pour gérer)")))
+            trackerBtn.message = PokemonTrackingManager.getModeSummaryComponent()
+            trackerBtn.setTooltip(Tooltip.create(Component.translatable("gui.cobblemon_jei.pokedex.tracker_mode_tooltip", PokemonTrackingManager.getModeSummaryComponent())))
         }
     }
 
     private fun getTogglePcButtonText(): Component {
         return if (onlyPcFeasibleEvolutions) {
-            Component.literal("⭐ Faisables PC : §aOUI§r")
+            Component.translatable("gui.cobblemon_jei.pokedex.filter.pc_feasible_yes")
         } else {
-            Component.literal("⭐ Faisables PC : §7Tous§r")
+            Component.translatable("gui.cobblemon_jei.pokedex.filter.pc_feasible_all")
         }
     }
 
     private fun getFilterButtonText(): Component {
         return if (filterState.isActive()) {
-            Component.literal("⚡ Filtres §a(${filterState.activeCount()})§r")
+            Component.translatable("gui.cobblemon_jei.pokedex.filter.active_count", filterState.activeCount())
         } else {
-            Component.literal("⚡ Filtres")
+            Component.translatable("gui.cobblemon_jei.pokedex.filter.inactive")
         }
     }
 
@@ -445,9 +445,9 @@ class CobblemonPokedexScreen(
         if (::filterBtn.isInitialized) {
             filterBtn.message = getFilterButtonText()
             filterBtn.setTooltip(if (filterState.isActive()) {
-                Tooltip.create(Component.literal("Filtres actifs : ${filterState.activeCount()} (Cliquer pour modifier)"))
+                Tooltip.create(Component.translatable("gui.cobblemon_jei.pokedex.filter.active_tooltip", filterState.activeCount()))
             } else {
-                Tooltip.create(Component.literal("Ouvrir le panneau de filtres avancés"))
+                Tooltip.create(Component.translatable("gui.cobblemon_jei.pokedex.filter.open_tooltip"))
             })
         }
         if (::quickResetFilterBtn.isInitialized) {

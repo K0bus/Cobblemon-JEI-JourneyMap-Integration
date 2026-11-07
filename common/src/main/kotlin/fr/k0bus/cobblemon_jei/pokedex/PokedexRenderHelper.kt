@@ -50,10 +50,10 @@ object PokedexRenderHelper {
             val isDexShinySeen = formRecord?.hasSeenShinyState(true) == true
 
             when {
-                ownedShinyCount > 0 -> FormStatusInfo("§6★ Possédé ($ownedShinyCount)§r", 0xFFF1C40F.toInt())
-                isDexShinyCaught -> FormStatusInfo("§6★ Capturé Shiny§r", 0xFFF1C40F.toInt())
-                isDexShinySeen -> FormStatusInfo("§e👁 Vu Shiny (Pokédex)§r", 0xFFE67E22.toInt())
-                else -> FormStatusInfo("§c✕ Non découvert Shiny§r", 0xFFE74C3C.toInt())
+                ownedShinyCount > 0 -> FormStatusInfo(net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.helper.shiny_owned", ownedShinyCount).string, 0xFFF1C40F.toInt())
+                isDexShinyCaught -> FormStatusInfo(net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.helper.shiny_caught").string, 0xFFF1C40F.toInt())
+                isDexShinySeen -> FormStatusInfo(net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.helper.shiny_seen").string, 0xFFE67E22.toInt())
+                else -> FormStatusInfo(net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.helper.shiny_undiscovered").string, 0xFFE74C3C.toInt())
             }
         } else {
             val ownedCount = currentTracked?.ownedInstances?.count { PokemonTrackerService.isFormMatch(it.pokemon, form, sp) } ?: 0
@@ -61,10 +61,10 @@ object PokedexRenderHelper {
             val isDexSeen = formRecord?.knowledge == PokedexEntryProgress.ENCOUNTERED
 
             when {
-                ownedCount > 0 -> FormStatusInfo("§a✔ Possédé ($ownedCount)§r", 0xFF2ECC71.toInt())
-                isDexCaught -> FormStatusInfo("§a✔ Capturé§r", 0xFF2ECC71.toInt())
-                isDexSeen -> FormStatusInfo("§6👁 Vu (Pokédex)§r", 0xFFE67E22.toInt())
-                else -> FormStatusInfo("§c✕ Non découvert§r", 0xFFE74C3C.toInt())
+                ownedCount > 0 -> FormStatusInfo(net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.helper.owned", ownedCount).string, 0xFF2ECC71.toInt())
+                isDexCaught -> FormStatusInfo(net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.helper.caught").string, 0xFF2ECC71.toInt())
+                isDexSeen -> FormStatusInfo(net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.helper.seen").string, 0xFFE67E22.toInt())
+                else -> FormStatusInfo(net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.helper.undiscovered").string, 0xFFE74C3C.toInt())
             }
         }
     }
@@ -192,12 +192,12 @@ object PokedexRenderHelper {
         // 4. Infobulle au survol
         if (mouseX >= barX && mouseX <= barX + barW && mouseY >= footerY && mouseY <= height) {
             val tooltip = listOf(
-                net.minecraft.network.chat.Component.literal("§e§lProgression globale du Pokédex§r"),
-                net.minecraft.network.chat.Component.literal("§a✔ Capturés : §f$caught §7(${String.format("%.1f", caughtPct)}%)§r"),
-                net.minecraft.network.chat.Component.literal("§6👁 Vus uniquement : §f$seenOnly §7(${String.format("%.1f", seenOnlyPct)}%)§r"),
-                net.minecraft.network.chat.Component.literal("§e👁+✔ Total vus (Vus + Capturés) : §f$totalSeen §7(${String.format("%.1f", totalSeenPct)}%)§r"),
-                net.minecraft.network.chat.Component.literal("§c✕ Non découverts : §f${stats.missingCount} §7(${String.format("%.1f", missingPct)}%)§r"),
-                net.minecraft.network.chat.Component.literal("§8Total d'espèces possibles : §f${stats.totalSpecies}§r")
+                net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.helper.progress_title"),
+                net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.helper.caught_stat", caught, String.format("%.1f", caughtPct)),
+                net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.helper.seen_stat", seenOnly, String.format("%.1f", seenOnlyPct)),
+                net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.helper.total_seen_stat", totalSeen, String.format("%.1f", totalSeenPct)),
+                net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.helper.missing_stat", stats.missingCount, String.format("%.1f", missingPct)),
+                net.minecraft.network.chat.Component.translatable("gui.cobblemon_jei.helper.total_species", stats.totalSpecies)
             )
             guiGraphics.renderComponentTooltip(font, tooltip, mouseX, mouseY)
         }

@@ -47,10 +47,10 @@ class CobblemonJourneyMapPlugin : IClientPlugin {
                 val structStatus = fr.k0bus.cobblemon_jei.journeymap.structure.StructureOverlayManager.getStatusSummary(active)
                 button.setTooltip(
                     "Cobblemon Spawns",
-                    "§ePokémon suivi : §f$speciesName",
-                    "§bRadar : $radarStatus",
-                    "§6Structures : §7$structStatus",
-                    "§7Cliquer pour changer ou désactiver"
+                    Component.translatable("gui.cobblemon_jm.plugin.tracked_pokemon", speciesName).string,
+                    Component.translatable("gui.cobblemon_jm.plugin.radar_status", radarStatus).string,
+                    Component.translatable("gui.cobblemon_jm.plugin.structures_status", structStatus).string,
+                    Component.translatable("gui.cobblemon_jm.plugin.change_or_disable").string
                 )
                 try {
                     button.button?.message = Component.translatable("journeymap.button.active", speciesName)
@@ -59,8 +59,8 @@ class CobblemonJourneyMapPlugin : IClientPlugin {
                 button.setLabels("Cobblemon Spawns", "Cobblemon Spawns")
                 button.setTooltip(
                     "Cobblemon Spawns",
-                    "§7Aucun Pokémon sélectionné",
-                    "§7Cliquer pour rechercher un Pokémon"
+                    Component.translatable("gui.cobblemon_jm.plugin.no_pokemon_selected").string,
+                    Component.translatable("gui.cobblemon_jm.plugin.search_pokemon").string
                 )
                 try {
                     button.button?.message = Component.translatable("journeymap.button.default")

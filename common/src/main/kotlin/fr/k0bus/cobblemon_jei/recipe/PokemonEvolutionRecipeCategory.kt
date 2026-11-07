@@ -201,13 +201,13 @@ class PokemonEvolutionRecipeCategory(
         if (mouseY >= 4 && mouseY <= 17 && mouseX >= 141 && mouseX <= 159) {
             val targetRes = recipe.targetSpecies.resourceIdentifier
             val isGoalActive = fr.k0bus.cobblemon_jei.application.goals.GoalService.isTargetActive(targetRes)
-            tooltips.add(Component.literal("§6🎯 Objectif d'Évolution").withStyle(ChatFormatting.BOLD))
+            tooltips.add(Component.translatable("gui.cobblemon_jei.goal.evolution_title"))
             if (isGoalActive) {
-                tooltips.add(Component.literal("§a✔ Objectif ACTIF").withStyle(ChatFormatting.GREEN))
-                tooltips.add(Component.literal("§7Cliquez pour retirer des objectifs"))
+                tooltips.add(Component.translatable("gui.cobblemon_jei.goal.active"))
+                tooltips.add(Component.translatable("gui.cobblemon_jei.goal.click_remove"))
             } else {
-                tooltips.add(Component.literal("§e+ Ajouter aux objectifs d'évolution").withStyle(ChatFormatting.YELLOW))
-                tooltips.add(Component.literal("§7Se validera automatiquement à l'évolution !"))
+                tooltips.add(Component.translatable("gui.cobblemon_jei.goal.add_evolution"))
+                tooltips.add(Component.translatable("gui.cobblemon_jei.goal.evolution_hint"))
             }
             return tooltips
         }
@@ -260,12 +260,12 @@ class PokemonEvolutionRecipeCategory(
                     )
                 } catch (_: Throwable) {}
                 val name = recipe.targetSpecies.translatedName.string
-                val msg = if (isNowActive) {
-                    "§6🎯 [Compagnon]§r §f$name §aajouté à vos objectifs d'évolution !"
+                val comp = if (isNowActive) {
+                    Component.translatable("chat.cobblemon_jm.goal.added_evolution", name)
                 } else {
-                    "§7🎯 [Compagnon]§r §f$name §7retiré de vos objectifs."
+                    Component.translatable("chat.cobblemon_jm.goal.removed_evolution", name)
                 }
-                Minecraft.getInstance().player?.displayClientMessage(Component.literal(msg), true)
+                Minecraft.getInstance().player?.displayClientMessage(comp, true)
                 return true
             }
         }

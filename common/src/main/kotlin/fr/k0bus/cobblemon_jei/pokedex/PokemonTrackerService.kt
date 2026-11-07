@@ -15,6 +15,7 @@ import net.minecraft.core.registries.BuiltInRegistries
 import fr.k0bus.cobblemon_jei.data.PokemonEvolutionDataLoader
 import fr.k0bus.cobblemon_jei.recipe.PokemonEvolutionRecipe
 import net.minecraft.client.Minecraft
+import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import org.slf4j.LoggerFactory
 
@@ -203,18 +204,15 @@ object PokemonTrackerService {
         val name = form.name.trim()
         val lower = name.lowercase()
         return when {
-            lower == "alola" || lower == "alolan" -> "Forme d'Alola"
-            lower == "galar" || lower == "galarian" -> "Forme de Galar"
-            lower == "hisui" || lower == "hisuian" -> "Forme de Hisui"
-            lower == "paldea" || lower == "paldean" -> "Forme de Paldea"
-            lower == "gmax" || lower == "gigantamax" || lower == "gigamax" -> "Forme Gigamax"
-            lower == "mega" -> "Méga-Évolution"
-            lower == "mega-x" || lower == "megax" -> "Méga-Évolution X"
-            lower == "mega-y" || lower == "megay" -> "Méga-Évolution Y"
-            lower.startsWith("a") || lower.startsWith("e") || lower.startsWith("i") || lower.startsWith("o") || lower.startsWith("u") || lower.startsWith("y") ->
-                "Forme d'${name.replaceFirstChar(Char::titlecase)}"
-            else ->
-                "Forme de ${name.replaceFirstChar(Char::titlecase)}"
+            lower == "alola" || lower == "alolan" -> Component.translatable("gui.cobblemon_jei.tracker.form_alola").string
+            lower == "galar" || lower == "galarian" -> Component.translatable("gui.cobblemon_jei.tracker.form_galar").string
+            lower == "hisui" || lower == "hisuian" -> Component.translatable("gui.cobblemon_jei.tracker.form_hisui").string
+            lower == "paldea" || lower == "paldean" -> Component.translatable("gui.cobblemon_jei.tracker.form_paldea").string
+            lower == "gmax" || lower == "gigantamax" || lower == "gigamax" -> Component.translatable("gui.cobblemon_jei.tracker.form_gmax").string
+            lower == "mega" -> Component.translatable("gui.cobblemon_jei.tracker.form_mega").string
+            lower == "mega-x" || lower == "megax" -> Component.translatable("gui.cobblemon_jei.tracker.form_mega_x").string
+            lower == "mega-y" || lower == "megay" -> Component.translatable("gui.cobblemon_jei.tracker.form_mega_y").string
+            else -> Component.translatable("gui.cobblemon_jei.tracker.form_named", name.replaceFirstChar(Char::titlecase)).string
         }
     }
 
@@ -232,7 +230,7 @@ object PokemonTrackerService {
                     val key = getSpeciesKey(pokemon.species)
                     val info = OwnedPokemonInfo(
                         pokemon = pokemon,
-                        location = "Équipe (Slot ${index + 1})",
+                        location = Component.translatable("gui.cobblemon_jei.tracker.party_slot", index + 1).string,
                         isParty = true
                     )
                     map.getOrPut(key) { mutableListOf() }.add(info)
@@ -246,13 +244,13 @@ object PokemonTrackerService {
         try {
             for (pc in CobblemonClient.storage.pcStores.values) {
                 for ((boxIdx, box) in pc.boxes.withIndex()) {
-                    val boxName = box.name?.string ?: "Boîte ${boxIdx + 1}"
+                    val boxName = box.name?.string ?: Component.translatable("gui.cobblemon_jei.tracker.box_name", boxIdx + 1).string
                     for (pokemon in box.slots) {
                         if (pokemon != null) {
                             val key = getSpeciesKey(pokemon.species)
                             val info = OwnedPokemonInfo(
                                 pokemon = pokemon,
-                                location = "PC : $boxName",
+                                location = Component.translatable("gui.cobblemon_jei.tracker.pc_box", boxName).string,
                                 isParty = false,
                                 boxIndex = boxIdx
                             )
@@ -275,13 +273,13 @@ object PokemonTrackerService {
                 if (serverPlayer != null) {
                     val pc = Cobblemon.storage.getPC(serverPlayer)
                     for ((boxIdx, box) in pc.boxes.withIndex()) {
-                        val boxName = box.name ?: "Boîte ${boxIdx + 1}"
+                        val boxName = box.name ?: Component.translatable("gui.cobblemon_jei.tracker.box_name", boxIdx + 1).string
                         for (pokemon in box) {
                             if (pokemon != null) {
                                 val key = getSpeciesKey(pokemon.species)
                                 val info = OwnedPokemonInfo(
                                     pokemon = pokemon,
-                                    location = "PC : $boxName",
+                                    location = Component.translatable("gui.cobblemon_jei.tracker.pc_box", boxName).string,
                                     isParty = false,
                                     boxIndex = boxIdx
                                 )
@@ -719,29 +717,29 @@ object PokemonTrackerService {
     private fun buildSpecialActionSummary(recipe: PokemonEvolutionRecipe): String? {
         val parts = mutableListOf<String>()
         if (recipe.stepsAmount != null) {
-            parts.add("Marcher ${recipe.stepsAmount} pas avec le Pokémon sorti")
+            parts.add(Component.translatable("gui.cobblemon_jei.tracker.evo_walk", recipe.stepsAmount).string)
         }
         if (recipe.useMoveCount != null && recipe.requiredMove != null) {
             val mvName = Moves.getByName(recipe.requiredMove)?.displayName?.string ?: recipe.requiredMove
-            parts.add("Utiliser $mvName ${recipe.useMoveCount} fois en combat")
+            parts.add(Component.translatable("gui.cobblemon_jei.tracker.evo_move", mvName, recipe.useMoveCount).string)
         }
         if (recipe.criticalHits != null) {
-            parts.add("Infliger ${recipe.criticalHits} coups critiques en 1 combat")
+            parts.add(Component.translatable("gui.cobblemon_jei.tracker.evo_crit", recipe.criticalHits).string)
         }
         if (recipe.damageTaken != null) {
-            parts.add("Subir ≥ ${recipe.damageTaken} dégâts sans tomber K.O.")
+            parts.add(Component.translatable("gui.cobblemon_jei.tracker.evo_damage", recipe.damageTaken).string)
         }
         if (recipe.recoilDamage != null) {
-            parts.add("Subir ≥ ${recipe.recoilDamage} dégâts de contrecoup")
+            parts.add(Component.translatable("gui.cobblemon_jei.tracker.evo_recoil", recipe.recoilDamage).string)
         }
         if (recipe.defeatAmount != null) {
-            parts.add("Vaincre ${recipe.defeatAmount} ${recipe.defeatTarget ?: "adversaires"}")
+            parts.add(Component.translatable("gui.cobblemon_jei.tracker.evo_defeat", recipe.defeatAmount, recipe.defeatTarget ?: "targets").string)
         }
         if (recipe.partyMember != null) {
-            parts.add("Avoir ${recipe.partyMember} dans l'équipe")
+            parts.add(Component.translatable("gui.cobblemon_jei.tracker.evo_party", recipe.partyMember).string)
         }
         if (recipe.moonPhase != null) {
-            parts.add("Phase lunaire : ${recipe.moonPhase}")
+            parts.add(Component.translatable("gui.cobblemon_jei.tracker.evo_moon", recipe.moonPhase).string)
         }
         return if (parts.isNotEmpty()) parts.joinToString(" • ") else null
     }

@@ -9,6 +9,7 @@ import com.cobblemon.mod.common.pokemon.Species
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import net.minecraft.client.Minecraft
+import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import org.slf4j.LoggerFactory
 import java.io.File
@@ -778,7 +779,7 @@ object PokemonSpawnDataLoader {
                         form = species.standardForm,
                         isNaturalSpawn = false,
                         bucket = "none",
-                        notes = "Ce Pokémon ne possède aucun point d'apparition naturel configuré."
+                        notes = Component.translatable("gui.cobblemon_jei.recipe.no_natural_spawns_note").string
                     )
                 )
             }

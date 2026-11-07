@@ -3,20 +3,24 @@ package fr.k0bus.cobblemon_jei.journeymap
 import fr.k0bus.cobblemon_jei.recipe.PokemonSpawnRecipe
 import com.cobblemon.mod.common.pokemon.Species
 import journeymap.api.v2.client.model.ShapeProperties
+import net.minecraft.network.chat.Component
 
 /**
  * Niveaux de rareté d'apparition pour Cobblemon avec métadonnées d'affichage.
  */
 enum class SpawnRarity(
     val id: String,
-    val displayName: String,
+    val translationKey: String,
     val formatCode: String,
     val rank: Int
 ) {
-    COMMON("common", "Commun", "§a", 1),
-    UNCOMMON("uncommon", "Peu commun", "§b", 2),
-    RARE("rare", "Rare", "§d", 3),
-    ULTRA_RARE("ultra-rare", "Ultra-Rare", "§6", 4);
+    COMMON("common", "cobblemon_jei.bucket.common", "§a", 1),
+    UNCOMMON("uncommon", "cobblemon_jei.bucket.uncommon", "§b", 2),
+    RARE("rare", "cobblemon_jei.bucket.rare", "§d", 3),
+    ULTRA_RARE("ultra-rare", "cobblemon_jei.bucket.ultra-rare", "§6", 4);
+
+    val displayName: String
+        get() = Component.translatable(translationKey).string
 
     companion object {
         fun fromBucketOrWeight(bucket: String?, weight: Float = 0f): SpawnRarity {
@@ -133,15 +137,15 @@ object RarityColorPalette {
 
         val rarityBadge = "${rarity.formatCode}● ${rarity.displayName}"
         val maxWeight = matchingRecipes.maxOfOrNull { it.weight } ?: 0f
-        lines.add("§f• Rareté : $rarityBadge §7(Poids max: ${String.format("%.1f", maxWeight)})")
+        lines.add(Component.translatable("gui.cobblemon_jm.tooltip.rarity", rarityBadge, String.format(java.util.Locale.ROOT, "%.1f", maxWeight)).string)
 
         val bestRecipe = matchingRecipes.maxByOrNull { it.weight } ?: matchingRecipes.firstOrNull()
         if (bestRecipe != null) {
-            lines.add("§f• Niveaux : §aLv. ${bestRecipe.levelMin} §7- §aLv. ${bestRecipe.levelMax}")
+            lines.add(Component.translatable("gui.cobblemon_jm.tooltip.levels", bestRecipe.levelMin, bestRecipe.levelMax).string)
             val timeStr = formatTime(bestRecipe.timeRange)
             val weatherStr = formatWeather(bestRecipe.weather)
             val ctxStr = formatContext(bestRecipe.context)
-            lines.add("§f• Conditions : §e$timeStr §7| §b$weatherStr §7| §d$ctxStr")
+            lines.add(Component.translatable("gui.cobblemon_jm.tooltip.conditions", timeStr, weatherStr, ctxStr).string)
 
             // Évaluation du statut temporel en direct
             if (level != null) {
@@ -153,30 +157,32 @@ object RarityColorPalette {
                 val isWeatherOk = fr.k0bus.cobblemon_jei.data.SpawnConditionEvaluator.matchesWeather(bestRecipe.weather, isRaining, isThundering)
 
                 if (isTimeOk && isWeatherOk) {
-                    lines.add("§f• Statut : §a✔ Actif maintenant ! (Conditions réunies)")
+                    lines.add(Component.translatable("gui.cobblemon_jm.tooltip.status_active").string)
                 } else if (!isTimeOk) {
                     val remaining = fr.k0bus.cobblemon_jei.data.SpawnConditionEvaluator.getRemainingTimeDescription(level.dayTime, bestRecipe.timeRange)
-                    val remainingStr = if (remaining != null) " dans ~$remaining" else ""
-                    lines.add("§f• Statut : §6⏳ En attente ($timeStr requis$remainingStr)")
+                    val remainingStr = if (remaining != null) Component.translatable("gui.cobblemon_jm.tooltip.time_in", remaining).string else ""
+                    lines.add(Component.translatable("gui.cobblemon_jm.tooltip.status_waiting_time", timeStr, remainingStr).string)
                 } else {
-                    lines.add("§f• Statut : §6⏳ En attente (Météo : $weatherStr requise)")
+                    lines.add(Component.translatable("gui.cobblemon_jm.tooltip.status_waiting_weather", weatherStr).string)
                 }
             }
         }
 
         if (chunkCount > 0) {
-            lines.add("§f• Chunks éligibles : §e$chunkCount chunks fusionnés")
+            lines.add(Component.translatable("gui.cobblemon_jm.tooltip.chunks_eligible", chunkCount).string)
         }
 
         val biomes = matchingRecipes.flatMap { it.biomes }.toSet()
         if (biomes.isNotEmpty()) {
             val sampleBiomes = biomes.take(3).joinToString(", ") { b ->
-                b.substringAfter(":").replace("_", " ").replaceFirstChar { it.uppercase() }
+                val clean = b.substringAfter(":")
+                Component.translatable("biome.minecraft.$clean").string.takeIf { !it.startsWith("biome.minecraft.") }
+                    ?: clean.replace("_", " ").replaceFirstChar { it.uppercase() }
             }
             val extra = if (biomes.size > 3) " +${biomes.size - 3}" else ""
-            lines.add("§f• Biomes : §3$sampleBiomes$extra §7(${biomes.size} configurés)")
+            lines.add(Component.translatable("gui.cobblemon_jm.tooltip.biomes", sampleBiomes, extra, biomes.size).string)
         } else {
-            lines.add("§f• Biomes : §7Tous biomes de la dimension")
+            lines.add(Component.translatable("gui.cobblemon_jm.tooltip.all_biomes").string)
         }
 
         return lines.joinToString("\n")
@@ -184,31 +190,31 @@ object RarityColorPalette {
 
     private fun formatContext(ctx: String): String {
         return when (ctx.lowercase()) {
-            "grounded" -> "Sol"
-            "submerged" -> "Sous l'eau"
-            "surface" -> "Surface eau"
-            "air" -> "Air / Vol"
-            "seafloor" -> "Fond marin"
+            "grounded" -> Component.translatable("cobblemon_jei.context.grounded").string
+            "submerged" -> Component.translatable("cobblemon_jei.context.submerged").string
+            "surface" -> Component.translatable("cobblemon_jei.context.surface").string
+            "air" -> Component.translatable("cobblemon_jei.context.air").string
+            "seafloor" -> Component.translatable("cobblemon_jei.context.seafloor").string
             else -> ctx.replaceFirstChar { it.uppercase() }
         }
     }
 
     private fun formatTime(time: String): String {
         return when (time.lowercase()) {
-            "day" -> "Jour"
-            "night" -> "Nuit"
-            "dawn" -> "Aube"
-            "dusk" -> "Crépuscule"
-            else -> "Tous"
+            "day" -> Component.translatable("cobblemon_jei.time.day").string
+            "night" -> Component.translatable("cobblemon_jei.time.night").string
+            "dawn" -> Component.translatable("cobblemon_jei.time.dawn").string
+            "dusk" -> Component.translatable("cobblemon_jei.time.dusk").string
+            else -> Component.translatable("cobblemon_jei.time.any").string
         }
     }
 
     private fun formatWeather(weather: String): String {
         return when (weather.lowercase()) {
-            "clear" -> "Dégagé"
-            "rain" -> "Pluie"
-            "thundering" -> "Orage"
-            else -> "Tous"
+            "clear" -> Component.translatable("cobblemon_jei.weather.clear").string
+            "rain" -> Component.translatable("cobblemon_jei.weather.rain").string
+            "thundering" -> Component.translatable("cobblemon_jei.weather.thundering").string
+            else -> Component.translatable("cobblemon_jei.weather.any").string
         }
     }
 }

@@ -98,7 +98,7 @@ object ExpeditionMapOverlay {
         }
 
         mc.player?.displayClientMessage(
-            Component.literal("§6🗺 [Expédition]§r §fZone §e${zone.name} §fbalisée sur la carte (${zone.sampleChunks.size} chunks)."),
+            Component.translatable("chat.cobblemon_jm.expedition.zone_marked", zone.name, zone.sampleChunks.size),
             true
         )
     }
@@ -111,18 +111,19 @@ object ExpeditionMapOverlay {
         val dimKey = ResourceKey.create(Registries.DIMENSION, zone.dimension)
 
         return try {
-            val waypointName = "[Expédition] ${zone.name}"
+            val waypointName = Component.translatable("gui.cobblemon_jei.expedition.waypoint_name", zone.name).string
+            val waypointCategory = Component.translatable("gui.cobblemon_jei.expedition.waypoint_category").string
             val waypoint = WaypointFactory.createClientWaypoint(
                 waypointName,
                 zone.centerPos,
-                "Expéditions",
+                waypointCategory,
                 dimKey,
                 true
             )
             api.addWaypoint(MOD_ID, waypoint)
             val coordStr = if (zone.isSubterranean) "[${zone.centerPos.x}, Y=${zone.centerPos.y}, ${zone.centerPos.z}]" else "[${zone.centerPos.x}, ${zone.centerPos.z}]"
             Minecraft.getInstance().player?.displayClientMessage(
-                Component.literal("§a📍 Repère d'expédition créé : §f$waypointName §7aux coordonnées $coordStr"),
+                Component.translatable("chat.cobblemon_jm.expedition.waypoint_created", waypointName, coordStr),
                 false
             )
             true

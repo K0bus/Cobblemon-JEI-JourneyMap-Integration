@@ -30,7 +30,7 @@ enum class SpawnEligibilityStatus(val badgeColor: Int, val icon: String, val tra
 data class SpawnEligibilityResult(
     val status: SpawnEligibilityStatus,
     val summary: Component,
-    val blockingReasons: List<String>,
+    val blockingReasons: List<Component>,
     val matchingRecipe: PokemonSpawnRecipe?
 )
 
@@ -106,7 +106,7 @@ object SpawnConditionEvaluator {
         if (player == null || level == null) {
             return SpawnEligibilityResult(
                 SpawnEligibilityStatus.UNAVAILABLE,
-                Component.literal("§7Information non disponible"),
+                Component.translatable("gui.cobblemon_jei.spawn_badge.info_unavailable"),
                 emptyList(),
                 null
             )
@@ -121,7 +121,7 @@ object SpawnConditionEvaluator {
             return SpawnEligibilityResult(
                 SpawnEligibilityStatus.UNAVAILABLE,
                 Component.translatable(SpawnEligibilityStatus.UNAVAILABLE.translationKey),
-                listOf("Dimension incompatible (${dim.location().path})"),
+                listOf(Component.translatable("gui.cobblemon_jei.spawn_badge.reason.dimension", dim.location().path)),
                 null
             )
         }
@@ -136,7 +136,7 @@ object SpawnConditionEvaluator {
             return SpawnEligibilityResult(
                 SpawnEligibilityStatus.UNAVAILABLE,
                 Component.translatable(SpawnEligibilityStatus.UNAVAILABLE.translationKey),
-                listOf("Biome incompatible (${profile.biomePath})"),
+                listOf(Component.translatable("gui.cobblemon_jei.spawn_badge.reason.biome", profile.biomePath)),
                 null
             )
         }
@@ -148,33 +148,33 @@ object SpawnConditionEvaluator {
         val canSeeSky = level.canSeeSky(pos)
         val playerY = pos.y
 
-        val blockingReasons = mutableListOf<String>()
+        val blockingReasons = mutableListOf<Component>()
 
         for (recipe in biomeMatchingRecipes) {
-            val reasons = mutableListOf<String>()
+            val reasons = mutableListOf<Component>()
 
             // Heure
             if (!matchesTime(recipe.timeRange, currentTime)) {
-                reasons.add("Heure requise : ${recipe.timeRange} (actuel : $currentTime)")
+                reasons.add(Component.translatable("gui.cobblemon_jei.spawn_badge.reason.time", recipe.timeRange, currentTime))
             }
 
             // Météo
             if (!matchesWeather(recipe.weather, isRaining, isThundering)) {
-                reasons.add("Météo requise : ${recipe.weather}")
+                reasons.add(Component.translatable("gui.cobblemon_jei.spawn_badge.reason.weather", recipe.weather))
             }
 
             // Ciel ouvert
             if (recipe.canSeeSky != null && recipe.canSeeSky != canSeeSky) {
-                if (recipe.canSeeSky) reasons.add("Exige le ciel découvert")
-                else reasons.add("Exige d'être abrité / sous terre")
+                if (recipe.canSeeSky) reasons.add(Component.translatable("gui.cobblemon_jei.spawn_badge.reason.sky_open"))
+                else reasons.add(Component.translatable("gui.cobblemon_jei.spawn_badge.reason.sky_covered"))
             }
 
             // Altitude Y
             if (recipe.minY != null && playerY < recipe.minY) {
-                reasons.add("Altitude trop basse (min Y=${recipe.minY}, actuel Y=$playerY)")
+                reasons.add(Component.translatable("gui.cobblemon_jei.spawn_badge.reason.altitude_low", recipe.minY, playerY))
             }
             if (recipe.maxY != null && playerY > recipe.maxY) {
-                reasons.add("Altitude trop haute (max Y=${recipe.maxY}, actuel Y=$playerY)")
+                reasons.add(Component.translatable("gui.cobblemon_jei.spawn_badge.reason.altitude_high", recipe.maxY, playerY))
             }
 
             // Si toutes les conditions sont validées pour cette recette

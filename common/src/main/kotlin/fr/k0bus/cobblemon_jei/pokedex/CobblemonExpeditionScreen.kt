@@ -34,7 +34,7 @@ import kotlin.math.min
  */
 class CobblemonExpeditionScreen(
     private val parentScreen: Screen? = null
-) : Screen(Component.literal("Expéditions Cobblemon")) {
+) : Screen(Component.translatable("gui.cobblemon_jei.expedition.title")) {
 
     private val logger = LoggerFactory.getLogger("CobblemonJEI/ExpeditionScreen")
 
@@ -84,13 +84,13 @@ class CobblemonExpeditionScreen(
         val settingsBtn = CobblemonDarkButton(settingsBtnX, settingsBtnY, settingsBtnW, settingsBtnH, Component.empty(), CobblemonPokedexScreen.SETTINGS_ICON) {
             minecraft?.setScreen(CobblemonSettingsScreen(this))
         }
-        settingsBtn.tooltip = Tooltip.create(Component.literal("Paramètres & Diagnostic du Mod"))
+        settingsBtn.tooltip = Tooltip.create(Component.translatable("gui.cobblemon_jei.settings.title"))
         addRenderableWidget(settingsBtn)
 
         val btnW = 120
         val btnH = 20
         addRenderableWidget(
-            CobblemonDarkButton(width / 2 - btnW / 2, height - 26, btnW, btnH, Component.literal("Fermer")) {
+            CobblemonDarkButton(width / 2 - btnW / 2, height - 26, btnW, btnH, Component.translatable("gui.cobblemon_jei.expedition.close")) {
                 onClose()
             }
         )
@@ -134,7 +134,7 @@ class CobblemonExpeditionScreen(
         // Barre de titre
         guiGraphics.fill(modalX, modalY, modalX + modalW, modalY + 24, 0xFF1B2030.toInt())
         guiGraphics.fill(modalX, modalY + 23, modalX + modalW, modalY + 24, 0xFF2B334C.toInt())
-        val titleText = "§6§lCOMPAGNON D'EXPLORATION : 5 EXPÉDITIONS SUGGÉRÉES§r §7(Opportunités Pokédex)"
+        val titleText = Component.translatable("gui.cobblemon_jei.expedition.header_title").string
         guiGraphics.drawString(font, titleText, modalX + 10, modalY + 8, 0xFFFFFFFF.toInt(), false)
 
         val viewportY = modalY + 28
@@ -142,11 +142,11 @@ class CobblemonExpeditionScreen(
 
         if (isLoading) {
             guiGraphics.fill(modalX + 8, viewportY, modalX + modalW - 8, viewportY + viewportH, 0xFF191C28.toInt())
-            guiGraphics.drawCenteredString(font, "§e⏳ Analyse des biomes et calcul des 5 expéditions...", modalX + modalW / 2, viewportY + viewportH / 2 - 8, 0xFFFFFFFF.toInt())
-            guiGraphics.drawCenteredString(font, "§7Calcul asynchrone pour préserver les FPS...", modalX + modalW / 2, viewportY + viewportH / 2 + 6, 0xFFAAAAAA.toInt())
+            guiGraphics.drawCenteredString(font, Component.translatable("gui.cobblemon_jei.left.expeditions_analyzing").string, modalX + modalW / 2, viewportY + viewportH / 2 - 8, 0xFFFFFFFF.toInt())
+            guiGraphics.drawCenteredString(font, Component.translatable("gui.cobblemon_jei.expedition.async_hint").string, modalX + modalW / 2, viewportY + viewportH / 2 + 6, 0xFFAAAAAA.toInt())
         } else if (suggestions.isEmpty()) {
             guiGraphics.fill(modalX + 8, viewportY, modalX + modalW - 8, viewportY + viewportH, 0xFF191C28.toInt())
-            guiGraphics.drawString(font, "§7Aucune opportunité pour le moment. Explorez plus de territoires sur JourneyMap !", modalX + 16, viewportY + viewportH / 2 - 4, 0xFF888888.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.expedition.empty").string, modalX + 16, viewportY + viewportH / 2 - 4, 0xFF888888.toInt(), false)
         } else {
             val totalContentH = suggestions.size * (cardHeight + cardGap)
             maxScroll = max(0.0, (totalContentH - viewportH).toDouble())
@@ -201,11 +201,11 @@ class CobblemonExpeditionScreen(
         val zone = suggestion.primaryZone
 
         // 1. Titre & Badge
-        val badge = if (suggestion.isConditionActiveNow) " §e⚡ ACTIF MAINTENANT" else ""
+        val badge = if (suggestion.isConditionActiveNow) Component.translatable("gui.cobblemon_jei.expedition.active_now").string else ""
         guiGraphics.drawString(font, "§6§l${suggestion.title}§r$badge", x + 8, y + 5, 0xFFFFFFFF.toInt(), false)
 
         // Badge Score
-        val scoreText = "Score : ${zone.score.toInt()} pts"
+        val scoreText = Component.translatable("gui.cobblemon_jei.expedition.score", zone.score.toInt()).string
         val scoreW = font.width(scoreText) + 8
         val scoreX = x + w - scoreW - 156
         guiGraphics.fill(scoreX, y + 4, scoreX + scoreW, y + 16, 0xFF2E220D.toInt())
@@ -215,14 +215,14 @@ class CobblemonExpeditionScreen(
         // 2. Région de recherche & Coordonnées
         val distText = if (zone.distanceToPlayer > 0) " (${zone.distanceToPlayer.toInt()}m)" else ""
         val coordStr = if (zone.isSubterranean) "[${zone.centerPos.x}, Y=${zone.centerPos.y}, ${zone.centerPos.z}] §6⛏" else "[${zone.centerPos.x}, ${zone.centerPos.z}]"
-        guiGraphics.drawString(font, "§b📍 Région : §f${zone.name} §7• Coord: $coordStr§e$distText", x + 8, y + 18, 0xFFE0E0E0.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.expedition.region_label", zone.name, coordStr, distText).string, x + 8, y + 18, 0xFFE0E0E0.toInt(), false)
 
         // 3. Liste des Pokémon cibles avec noms traduits
         val targetNames = suggestion.targets.take(5).joinToString(", ") {
             PokemonTrackerService.getSpeciesTranslatedName(it.speciesId)
         }
         val moreCount = if (suggestion.targets.size > 5) " +${suggestion.targets.size - 5}" else ""
-        guiGraphics.drawString(font, "§d🎯 Cibles (${suggestion.targets.size}) : §f$targetNames$moreCount", x + 8, y + 31, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.expedition.targets_label", suggestion.targets.size, targetNames, moreCount).string, x + 8, y + 31, 0xFFFFFFFF.toInt(), false)
 
         // 4. Description concise
         guiGraphics.drawString(font, "§8ℹ ${suggestion.description}", x + 8, y + 45, 0xFFAAAAAA.toInt(), false)
@@ -236,7 +236,7 @@ class CobblemonExpeditionScreen(
         val isPartHovered = mouseX >= partBtnX && mouseX <= partBtnX + partBtnW && mouseY >= partBtnY && mouseY <= partBtnY + partBtnH
         val partBg = if (isPartHovered) 0xFF27AE60.toInt() else 0xFF2ECC71.toInt()
         guiGraphics.fill(partBtnX, partBtnY, partBtnX + partBtnW, partBtnY + partBtnH, partBg)
-        guiGraphics.drawCenteredString(font, "▶ Partir", partBtnX + partBtnW / 2, partBtnY + 5, 0xFFFFFFFF.toInt())
+        guiGraphics.drawCenteredString(font, Component.translatable("gui.cobblemon_jei.expedition.start").string, partBtnX + partBtnW / 2, partBtnY + 5, 0xFFFFFFFF.toInt())
 
         val markBtnW = 60
         val markBtnH = 16
@@ -246,7 +246,7 @@ class CobblemonExpeditionScreen(
         val isMarkHovered = mouseX >= markBtnX && mouseX <= markBtnX + markBtnW && mouseY >= markBtnY && mouseY <= markBtnY + markBtnH
         val markBg = if (isMarkHovered) 0xFFD35400.toInt() else 0xFFE67E22.toInt()
         guiGraphics.fill(markBtnX, markBtnY, markBtnX + markBtnW, markBtnY + markBtnH, markBg)
-        guiGraphics.drawCenteredString(font, "📍 Repère", markBtnX + markBtnW / 2, markBtnY + 4, 0xFFFFFFFF.toInt())
+        guiGraphics.drawCenteredString(font, Component.translatable("gui.cobblemon_jei.expedition.waypoint").string, markBtnX + markBtnW / 2, markBtnY + 4, 0xFFFFFFFF.toInt())
 
         val targetBtnW = 60
         val targetBtnH = 16
@@ -256,7 +256,7 @@ class CobblemonExpeditionScreen(
         val isTargetHovered = mouseX >= targetBtnX && mouseX <= targetBtnX + targetBtnW && mouseY >= targetBtnY && mouseY <= targetBtnY + targetBtnH
         val targetBg = if (isTargetHovered) 0xFF2980B9.toInt() else 0xFF3498DB.toInt()
         guiGraphics.fill(targetBtnX, targetBtnY, targetBtnX + targetBtnW, targetBtnY + targetBtnH, targetBg)
-        guiGraphics.drawCenteredString(font, "🔍 Cibles", targetBtnX + targetBtnW / 2, targetBtnY + 4, 0xFFFFFFFF.toInt())
+        guiGraphics.drawCenteredString(font, Component.translatable("gui.cobblemon_jei.expedition.targets_btn").string, targetBtnX + targetBtnW / 2, targetBtnY + 4, 0xFFFFFFFF.toInt())
     }
 
     fun openTargetsDetailModal(title: String, subtitle: String, targets: List<PokemonTarget>) {

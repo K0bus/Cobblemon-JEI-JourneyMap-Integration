@@ -639,7 +639,7 @@ object PokemonRadarService {
                     fr.k0bus.cobblemon_jei.pokedex.TrackingMode.CUSTOM_LIST ->
                         Component.translatable("chat.cobblemon_jm.radar.nearby_list", species.translatedName)
                     fr.k0bus.cobblemon_jei.pokedex.TrackingMode.GOALS ->
-                        Component.literal("§6§l[Objectif Détecté !]§r §f${species.translatedName.string} §7est à proximité !")
+                        Component.translatable("chat.cobblemon_jm.radar.nearby_goal", species.translatedName)
                     else ->
                         Component.translatable("chat.cobblemon_jm.radar.nearby", species.translatedName)
                 }

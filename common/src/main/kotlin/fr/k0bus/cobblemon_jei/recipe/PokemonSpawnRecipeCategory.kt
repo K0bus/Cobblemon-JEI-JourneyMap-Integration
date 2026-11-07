@@ -290,11 +290,11 @@ class PokemonSpawnRecipeCategory(
         val discovered = fr.k0bus.cobblemon_jei.journeymap.structure.StructureOverlayManager.getDiscoveredMonumentForSpecies(recipe.species.name)
         if (discovered != null) {
             val p = discovered.pedestalPos ?: discovered.pos
-            guiGraphics.drawString(font, "§a✔ Découvert à [${p.x}, ${p.y}, ${p.z}]", 12, startY + 55, 0xFF2ED573.toInt(), false)
-            guiGraphics.drawString(font, "§6★ Waypoint actif sur la minimap", 12, startY + 67, 0xFFFFD700.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.recipe.monument.discovered", p.x, p.y, p.z).string, 12, startY + 55, 0xFF2ED573.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.recipe.monument.waypoint_active").string, 12, startY + 67, 0xFFFFD700.toInt(), false)
         } else {
-            guiGraphics.drawString(font, "§7Statut : §cNon localisé dans ce monde", 12, startY + 55, 0xFFAAAAAA.toInt(), false)
-            guiGraphics.drawString(font, "§8(Explorez les chunks pour le cartographier)", 12, startY + 67, 0xFF888888.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.recipe.monument.unlocated").string, 12, startY + 55, 0xFFAAAAAA.toInt(), false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.recipe.monument.explore_hint").string, 12, startY + 67, 0xFF888888.toInt(), false)
         }
     }
 
@@ -339,13 +339,13 @@ class PokemonSpawnRecipeCategory(
         val goalBtnY = 6
         if (mouseY >= goalBtnY && mouseY <= goalBtnY + 12 && mouseX >= goalBtnX && mouseX <= goalBtnX + 14) {
             val isGoalActive = fr.k0bus.cobblemon_jei.application.goals.GoalService.isTargetActive(recipe.species.resourceIdentifier)
-            tooltips.add(Component.literal("§6🎯 Objectif d'Exploration").withStyle(ChatFormatting.BOLD))
+            tooltips.add(Component.translatable("gui.cobblemon_jei.goal.exploration_title"))
             if (isGoalActive) {
-                tooltips.add(Component.literal("§a✔ Objectif ACTIF").withStyle(ChatFormatting.GREEN))
-                tooltips.add(Component.literal("§7Cliquez pour retirer des objectifs"))
+                tooltips.add(Component.translatable("gui.cobblemon_jei.goal.active"))
+                tooltips.add(Component.translatable("gui.cobblemon_jei.goal.click_remove"))
             } else {
-                tooltips.add(Component.literal("§e+ Ajouter aux objectifs").withStyle(ChatFormatting.YELLOW))
-                tooltips.add(Component.literal("§7Suivi au radar et dans les expéditions"))
+                tooltips.add(Component.translatable("gui.cobblemon_jei.goal.add_exploration"))
+                tooltips.add(Component.translatable("gui.cobblemon_jei.goal.exploration_hint"))
             }
             return tooltips
         }
@@ -356,23 +356,23 @@ class PokemonSpawnRecipeCategory(
         if (mouseY >= confBtnY && mouseY <= confBtnY + 12 && mouseX >= confBtnX && mouseX <= confBtnX + 14) {
             val snapshot = fr.k0bus.cobblemon_jei.data.repository.PokemonDataRepository.getSnapshot()
             val confidence = snapshot.getSpawnConfidence(recipe.species.name)
-            tooltips.add(Component.literal("§bIndice de Confiance").withStyle(ChatFormatting.BOLD))
+            tooltips.add(Component.translatable("gui.cobblemon_jei.confidence.title"))
             when (confidence) {
                 fr.k0bus.cobblemon_jei.domain.model.SpawnDataConfidence.EXACT_DATA -> {
-                    tooltips.add(Component.literal("§a✓ Données Exactes").withStyle(ChatFormatting.GREEN))
-                    tooltips.add(Component.literal("§7Conditions de spawn confirmées par les données du jeu."))
+                    tooltips.add(Component.translatable("gui.cobblemon_jei.confidence.exact"))
+                    tooltips.add(Component.translatable("gui.cobblemon_jei.confidence.exact_desc"))
                 }
                 fr.k0bus.cobblemon_jei.domain.model.SpawnDataConfidence.PARTIALLY_SUPPORTED -> {
-                    tooltips.add(Component.literal("§e~ Données Partiellement Supportées").withStyle(ChatFormatting.YELLOW))
-                    tooltips.add(Component.literal("§7Certaines conditions avancées peuvent être approximées."))
+                    tooltips.add(Component.translatable("gui.cobblemon_jei.confidence.partial"))
+                    tooltips.add(Component.translatable("gui.cobblemon_jei.confidence.partial_desc"))
                 }
                 fr.k0bus.cobblemon_jei.domain.model.SpawnDataConfidence.FALLBACK_SCANNED -> {
-                    tooltips.add(Component.literal("§b• Données Extraites du Disque").withStyle(ChatFormatting.BLUE))
-                    tooltips.add(Component.literal("§7Conditions dérivées du scan de fichiers."))
+                    tooltips.add(Component.translatable("gui.cobblemon_jei.confidence.scanned"))
+                    tooltips.add(Component.translatable("gui.cobblemon_jei.confidence.scanned_desc"))
                 }
                 fr.k0bus.cobblemon_jei.domain.model.SpawnDataConfidence.UNKNOWN -> {
-                    tooltips.add(Component.literal("§7? Données Incomplètes").withStyle(ChatFormatting.GRAY))
-                    tooltips.add(Component.literal("§7Conditions de spawn non documentées."))
+                    tooltips.add(Component.translatable("gui.cobblemon_jei.confidence.unknown"))
+                    tooltips.add(Component.translatable("gui.cobblemon_jei.confidence.unknown_desc"))
                 }
             }
             return tooltips
@@ -380,19 +380,20 @@ class PokemonSpawnRecipeCategory(
 
         // Tooltip dédié pour les monuments légendaires
         if (recipe.isMonumentSpawn) {
-            tooltips.add(Component.literal("★ Monument Légendaire").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
+            tooltips.add(Component.translatable("gui.cobblemon_jei.monument.title").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
             val info = fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat.KNOWN_MONUMENTS[recipe.species.name.lowercase()]
-            tooltips.add(Component.literal("Structure : ${info?.structureDisplayName ?: "Sanctuaire d'invocation"}").withStyle(ChatFormatting.YELLOW))
+            val sName = info?.structureDisplayName ?: Component.translatable("gui.cobblemon_jei.monument.sanctuary_default").string
+            tooltips.add(Component.translatable("gui.cobblemon_jei.monument.structure", sName).withStyle(ChatFormatting.YELLOW))
             if (recipe.monumentPedestalBlock != null) {
-                tooltips.add(Component.literal("Bloc rituel : ${recipe.monumentPedestalBlock}").withStyle(ChatFormatting.AQUA))
+                tooltips.add(Component.translatable("gui.cobblemon_jei.monument.pedestal_block", recipe.monumentPedestalBlock).withStyle(ChatFormatting.AQUA))
             }
             val discovered = fr.k0bus.cobblemon_jei.journeymap.structure.StructureOverlayManager.getDiscoveredMonumentForSpecies(recipe.species.name)
             if (discovered != null) {
                 val p = discovered.pedestalPos ?: discovered.pos
-                tooltips.add(Component.literal("Position connue : [${p.x}, ${p.y}, ${p.z}]").withStyle(ChatFormatting.GREEN))
-                tooltips.add(Component.literal("Waypoint JourneyMap : Groupe 'Legendary Monument'").withStyle(ChatFormatting.GOLD))
+                tooltips.add(Component.translatable("gui.cobblemon_jei.monument.discovered_at", p.x, p.y, p.z).withStyle(ChatFormatting.GREEN))
+                tooltips.add(Component.translatable("gui.cobblemon_jei.monument.waypoint_active").withStyle(ChatFormatting.GOLD))
             } else {
-                tooltips.add(Component.literal("Non localisé : Détection automatique au chargement du chunk").withStyle(ChatFormatting.GRAY))
+                tooltips.add(Component.translatable("gui.cobblemon_jei.monument.not_located").withStyle(ChatFormatting.GRAY))
             }
             return tooltips
         }
@@ -529,12 +530,12 @@ class PokemonSpawnRecipeCategory(
                     )
                 } catch (_: Throwable) {}
                 val name = recipe.species.translatedName.string
-                val msg = if (isNowActive) {
-                    "§6🎯 [Compagnon]§r §f$name §aajouté à vos objectifs d'exploration !"
+                val comp = if (isNowActive) {
+                    Component.translatable("chat.cobblemon_jm.goal.added_exploration", name)
                 } else {
-                    "§7🎯 [Compagnon]§r §f$name §7retiré de vos objectifs."
+                    Component.translatable("chat.cobblemon_jm.goal.removed_exploration", name)
                 }
-                Minecraft.getInstance().player?.displayClientMessage(Component.literal(msg), true)
+                Minecraft.getInstance().player?.displayClientMessage(comp, true)
                 return true
             }
         }

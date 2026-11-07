@@ -140,7 +140,7 @@ class CobblemonJourneyMapSearchScreen(
 
         // Bouton Pokédex Tracker
         addRenderableWidget(
-            Button.builder(Component.literal("📖 Pokédex")) {
+            Button.builder(Component.translatable("gui.cobblemon_jm.search.button_pokedex")) {
                 minecraft?.setScreen(fr.k0bus.cobblemon_jei.pokedex.CobblemonPokedexScreen(this))
             }.bounds(width - 130, 8, 95, 20).build()
         )
@@ -274,7 +274,7 @@ class CobblemonJourneyMapSearchScreen(
 
         if (currentDimensionFilter is DimensionFilter.Current && currentDim != null) {
             val dimName = getReadableDimensionName(currentDim)
-            tooltipLines.add(Component.literal("• ID : ${currentDim.location()} ($dimName)").withStyle(ChatFormatting.GRAY))
+            tooltipLines.add(Component.translatable("gui.cobblemon_jm.search.dim_id", currentDim.location(), dimName).withStyle(ChatFormatting.GRAY))
         }
 
         tooltipLines.add(Component.empty())
@@ -395,7 +395,7 @@ class CobblemonJourneyMapSearchScreen(
 
         val active = CobblemonOverlayManager.activeSpecies
         if (CobblemonOverlayManager.isOverlayActive && active != null) {
-            val activeText = "§7Actif sur la carte : §e${active.translatedName.string}§r"
+            val activeText = Component.translatable("gui.cobblemon_jm.search.active_on_map", active.translatedName.string).string
             guiGraphics.drawCenteredString(font, activeText, width / 2, 20, 0xFFE0E0E0.toInt())
         }
 

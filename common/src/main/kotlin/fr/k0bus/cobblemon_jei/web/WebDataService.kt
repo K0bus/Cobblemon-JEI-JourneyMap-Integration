@@ -462,13 +462,14 @@ object WebDataService {
             for ((boxIdx, pc) in CobblemonClient.storage.pcStores.values.withIndex()) {
                 for ((innerIdx, box) in pc.boxes.withIndex()) {
                     val actualIdx = boxIdx * 30 + innerIdx
-                    val name = box.name?.string ?: "Boîte ${actualIdx + 1}"
+                    val name = box.name?.string ?: Component.translatable("gui.cobblemon_jei.tracker.box_name", actualIdx + 1).string
                     val pokes = mutableListOf<OwnedPokemonDto?>()
                     var occupied = 0
                     for ((slotIdx, p) in box.slots.withIndex()) {
                         if (p != null) {
                             occupied++
-                            pokes.add(mapOwnedPokemonToDto(p, "PC : $name", false, actualIdx, slotIdx))
+                            val loc = Component.translatable("gui.cobblemon_jei.tracker.pc_box", name).string
+                            pokes.add(mapOwnedPokemonToDto(p, loc, false, actualIdx, slotIdx))
                         } else {
                             pokes.add(null)
                         }

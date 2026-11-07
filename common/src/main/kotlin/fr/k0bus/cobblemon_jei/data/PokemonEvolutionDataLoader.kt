@@ -19,6 +19,7 @@ import net.minecraft.core.registries.Registries
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.tags.TagKey
 import net.minecraft.world.item.ItemStack
+import net.minecraft.network.chat.Component
 import fr.k0bus.cobblemon_jei.domain.session.SessionLifecycleListener
 import fr.k0bus.cobblemon_jei.domain.session.WorldSessionManager
 import net.minecraft.resources.ResourceKey
@@ -318,10 +319,10 @@ object PokemonEvolutionDataLoader {
 
         val variant = if (evoObj.has("variant")) evoObj.get("variant").asString.lowercase() else "level_up"
         val variantLabel = when (variant) {
-            "item_interact" -> "Utilisation d'un objet"
-            "trade" -> "Échange"
-            "level_up" -> "Montée de niveau"
-            else -> "Évolution"
+            "item_interact" -> Component.translatable("gui.cobblemon_jei.evo.variant.item").string
+            "trade" -> Component.translatable("gui.cobblemon_jei.evo.variant.trade").string
+            "level_up" -> Component.translatable("gui.cobblemon_jei.evo.variant.level_up").string
+            else -> Component.translatable("gui.cobblemon_jei.evo.variant.evolution").string
         }
 
         val requiredItems = mutableListOf<ItemStack>()
@@ -350,7 +351,7 @@ object PokemonEvolutionDataLoader {
             if (itemStr != null) {
                 val partnerSpecies = findSpeciesByName(itemStr)
                 if (partnerSpecies != null) {
-                    conditions.add("Échange contre ${partnerSpecies.translatedName.string}")
+                    conditions.add(Component.translatable("gui.cobblemon_jei.evo.trade_partner", partnerSpecies.translatedName.string).string)
                 } else {
                     resolveItemString(itemStr, requiredItems)
                 }
@@ -371,36 +372,36 @@ object PokemonEvolutionDataLoader {
                         "friendship" -> {
                             val amt = if (reqObj.has("amount")) reqObj.get("amount").asInt else 160
                             minFriendship = amt
-                            conditions.add("Bonheur ≥ $amt")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.friendship", amt).string)
                         }
                         "properties" -> {
                             val target = if (reqObj.has("target")) reqObj.get("target").asString else ""
                             if (target.contains("gender=female", ignoreCase = true)) {
                                 requiredGender = Gender.FEMALE
-                                conditions.add("Sexe requis : Femelle ♀")
+                                conditions.add(Component.translatable("gui.cobblemon_jei.evo.gender_female").string)
                             } else if (target.contains("gender=male", ignoreCase = true)) {
                                 requiredGender = Gender.MALE
-                                conditions.add("Sexe requis : Mâle ♂")
+                                conditions.add(Component.translatable("gui.cobblemon_jei.evo.gender_male").string)
                             } else if (target.contains("nature=", ignoreCase = true)) {
                                 val nat = target.substringAfter("nature=").substringBefore(" ")
-                                conditions.add("Nature : $nat")
+                                conditions.add(Component.translatable("gui.cobblemon_jei.evo.nature", nat).string)
                             } else if (target.contains("gimmighoul_coins=", ignoreCase = true)) {
                                 val coins = target.substringAfter("gimmighoul_coins=").substringBefore(" ")
-                                conditions.add("Pièces Gimmighoul : $coins")
+                                conditions.add(Component.translatable("gui.cobblemon_jei.evo.gimmighoul_coins", coins).string)
                             } else {
-                                conditions.add("Propriété : $target")
+                                conditions.add(Component.translatable("gui.cobblemon_jei.evo.property", target).string)
                             }
                         }
                         "has_move" -> {
                             val mv = reqObj.get("move")?.asString?.lowercase() ?: ""
                             requiredMove = mv
                             val moveName = Moves.getByName(mv)?.displayName?.string ?: mv.replace("_", " ").replaceFirstChar { it.uppercase() }
-                            conditions.add("Capacité connue : $moveName")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.known_move", moveName).string)
                         }
                         "has_move_type" -> {
                             val type = reqObj.get("type")?.asString?.lowercase() ?: ""
                             requiredMoveType = type
-                            conditions.add("Capacité de type : ${type.replaceFirstChar { it.uppercase() }}")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.move_type", type.replaceFirstChar { it.uppercase() }).string)
                         }
                         "use_move" -> {
                             val mv = reqObj.get("move")?.asString?.lowercase() ?: ""
@@ -408,39 +409,39 @@ object PokemonEvolutionDataLoader {
                             requiredMove = mv
                             useMoveCount = count
                             val moveName = Moves.getByName(mv)?.displayName?.string ?: mv.replace("_", " ").replaceFirstChar { it.uppercase() }
-                            conditions.add("Utiliser $moveName $count fois")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.use_move", moveName, count).string)
                         }
                         "blocks_traveled" -> {
                             val steps = if (reqObj.has("amount")) reqObj.get("amount").asInt else 1000
                             stepsAmount = steps
-                            conditions.add("Marcher $steps pas")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.walk_steps", steps).string)
                         }
                         "battle_critical_hits" -> {
                             val hits = if (reqObj.has("amount")) reqObj.get("amount").asInt else 3
                             criticalHits = hits
-                            conditions.add("Infliger $hits coups critiques en 1 combat")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.crit_hits", hits).string)
                         }
                         "damage_taken" -> {
                             val dmg = if (reqObj.has("amount")) reqObj.get("amount").asInt else 49
                             damageTaken = dmg
-                            conditions.add("Subir ≥ $dmg dégâts sans tomber K.O.")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.damage_taken", dmg).string)
                         }
                         "recoil" -> {
                             val rec = if (reqObj.has("amount")) reqObj.get("amount").asInt else 294
                             recoilDamage = rec
-                            conditions.add("Subir ≥ $rec dégâts de recul")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.recoil", rec).string)
                         }
                         "defeat" -> {
                             val amt = if (reqObj.has("amount")) reqObj.get("amount").asInt else 3
                             val target = if (reqObj.has("target")) reqObj.get("target").asString else "Adversaires"
                             defeatAmount = amt
                             defeatTarget = target
-                            conditions.add("Vaincre $amt $target")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.defeat", amt, target).string)
                         }
                         "party_member" -> {
                             val target = if (reqObj.has("target")) reqObj.get("target").asString else ""
                             partyMember = target
-                            conditions.add("Dans l'équipe : $target")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.in_party", target).string)
                         }
                         "held_item" -> {
                             if (reqObj.has("itemCondition")) {
@@ -450,47 +451,47 @@ object PokemonEvolutionDataLoader {
                                     resolveItemString(itemStr, requiredItems)
                                 }
                             }
-                            conditions.add("Objet tenu requis")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.held_item").string)
                         }
                         "time_range" -> {
                             val range = if (reqObj.has("range")) reqObj.get("range").asString else ""
                             val timeDesc = when (range.lowercase()) {
-                                "day" -> "Jour"
-                                "night" -> "Nuit"
-                                "dawn" -> "Aube"
-                                "dusk" -> "Crépuscule"
+                                "day" -> Component.translatable("gui.cobblemon_jei.evo.time_day").string
+                                "night" -> Component.translatable("gui.cobblemon_jei.evo.time_night").string
+                                "dawn" -> Component.translatable("gui.cobblemon_jei.evo.time_dawn").string
+                                "dusk" -> Component.translatable("gui.cobblemon_jei.evo.time_dusk").string
                                 else -> range
                             }
-                            conditions.add("Période : $timeDesc")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.time", timeDesc).string)
                         }
                         "weather" -> {
                             val isThunder = reqObj.get("isThundering")?.asBoolean == true
                             val isRain = reqObj.get("isRaining")?.asBoolean == true
-                            val wDesc = if (isThunder) "Orage" else if (isRain) "Pluie" else "Météo spécifique"
-                            conditions.add("Météo : $wDesc")
+                            val wDesc = if (isThunder) Component.translatable("gui.cobblemon_jei.evo.weather_thunder").string else if (isRain) Component.translatable("gui.cobblemon_jei.evo.weather_rain").string else Component.translatable("gui.cobblemon_jei.evo.weather_specific").string
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.weather", wDesc).string)
                         }
                         "biome" -> {
-                            conditions.add("Lieu / Biome spécifique")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.specific_biome").string)
                         }
                         "structure" -> {
-                            conditions.add("Structure spécifique")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.specific_structure").string)
                         }
                         "moon_phase" -> {
                             val phase = if (reqObj.has("moonPhase")) reqObj.get("moonPhase").asString else ""
                             moonPhase = phase
-                            conditions.add("Phase de lune : $phase")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.moon_phase", phase).string)
                         }
                         "stat_compare" -> {
                             val high = if (reqObj.has("highStat")) reqObj.get("highStat").asString else ""
                             val low = if (reqObj.has("lowStat")) reqObj.get("lowStat").asString else ""
                             statCompare = "$high > $low"
-                            conditions.add("Statistique : $high > $low")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.stat_compare", "$high > $low").string)
                         }
                         "stat_equal" -> {
                             val s1 = if (reqObj.has("statOne")) reqObj.get("statOne").asString else ""
                             val s2 = if (reqObj.has("statTwo")) reqObj.get("statTwo").asString else ""
                             statCompare = "$s1 = $s2"
-                            conditions.add("Statistique : $s1 = $s2")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.stat_equal", "$s1 = $s2").string)
                         }
                         else -> {}
                     }
@@ -501,7 +502,7 @@ object PokemonEvolutionDataLoader {
         // Cas échange : câble de liaison ou échange de joueur
         if (variant == "trade") {
             if (conditions.none { it.startsWith("Échange") }) {
-                conditions.add("Échange ou Câble de liaison")
+                conditions.add(Component.translatable("gui.cobblemon_jei.evo.trade_or_cable").string)
             }
             if (requiredItems.isEmpty() && conditions.none { it.startsWith("Échange contre") }) {
                 try {
@@ -513,10 +514,10 @@ object PokemonEvolutionDataLoader {
         // Résumé textuel principal
         val summaryParts = mutableListOf<String>()
         if (requiredGender != null) {
-            summaryParts.add(if (requiredGender == Gender.FEMALE) "Femelle ♀" else "Mâle ♂")
+            summaryParts.add(if (requiredGender == Gender.FEMALE) Component.translatable("gui.cobblemon_jei.evo.gender_female").string else Component.translatable("gui.cobblemon_jei.evo.gender_male").string)
         }
         if (minLevel != null && minLevel > 1) {
-            summaryParts.add("Niveau ≥ $minLevel")
+            summaryParts.add(Component.translatable("gui.cobblemon_jei.evo.level", minLevel).string)
         }
         val distinctItems = requiredItems.distinctBy { it.item }
         if (distinctItems.isNotEmpty()) {
@@ -524,7 +525,7 @@ object PokemonEvolutionDataLoader {
             summaryParts.add(itemNames.joinToString(", "))
         }
         if (stepsAmount != null) {
-            summaryParts.add("$stepsAmount pas")
+            summaryParts.add(Component.translatable("gui.cobblemon_jei.evo.walk_steps", stepsAmount).string)
         }
         if (useMoveCount != null && requiredMove != null) {
             val mvName = Moves.getByName(requiredMove)?.displayName?.string ?: requiredMove
@@ -666,7 +667,7 @@ object PokemonEvolutionDataLoader {
             }
             is TradeEvolution -> {
                 variantLabel = "Échange"
-                conditions.add("Échange ou Câble de liaison")
+                conditions.add(Component.translatable("gui.cobblemon_jei.evo.trade_or_cable").string)
                 if (requiredItems.isEmpty()) {
                     try {
                         requiredItems.add(ItemStack(CobblemonItems.LINK_CABLE))
@@ -674,10 +675,10 @@ object PokemonEvolutionDataLoader {
                 }
             }
             is LevelUpEvolution -> {
-                variantLabel = "Montée de niveau"
+                variantLabel = Component.translatable("gui.cobblemon_jei.evo.variant.level_up").string
             }
             else -> {
-                variantLabel = "Spécial"
+                variantLabel = Component.translatable("gui.cobblemon_jei.evo.variant.special").string
             }
         }
 
@@ -688,26 +689,26 @@ object PokemonEvolutionDataLoader {
                 }
                 is FriendshipRequirement -> {
                     minFriendship = req.amount
-                    conditions.add("Bonheur ≥ ${req.amount}")
+                    conditions.add(Component.translatable("gui.cobblemon_jei.evo.friendship", req.amount).string)
                 }
                 is PokemonPropertiesRequirement -> {
                     val targetProps = req.target
                     val g = targetProps.gender
                     if (g != null) {
                         requiredGender = g
-                        conditions.add(if (g == Gender.FEMALE) "Sexe requis : Femelle ♀" else "Sexe requis : Mâle ♂")
+                        conditions.add(if (g == Gender.FEMALE) Component.translatable("gui.cobblemon_jei.evo.gender_female").string else Component.translatable("gui.cobblemon_jei.evo.gender_male").string)
                     }
                     val orig = targetProps.originalString
                     if (!orig.isNullOrBlank()) {
                         if (orig.contains("gender=female", true)) {
                             requiredGender = Gender.FEMALE
-                            if (conditions.none { it.contains("Femelle") }) conditions.add("Sexe requis : Femelle ♀")
+                            if (conditions.none { it.contains("Femelle") }) conditions.add(Component.translatable("gui.cobblemon_jei.evo.gender_female").string)
                         } else if (orig.contains("gender=male", true)) {
                             requiredGender = Gender.MALE
-                            if (conditions.none { it.contains("Mâle") }) conditions.add("Sexe requis : Mâle ♂")
+                            if (conditions.none { it.contains("Mâle") }) conditions.add(Component.translatable("gui.cobblemon_jei.evo.gender_male").string)
                         } else if (orig.contains("nature=", true)) {
                             val nat = orig.substringAfter("nature=").substringBefore(" ")
-                            conditions.add("Nature : $nat")
+                            conditions.add(Component.translatable("gui.cobblemon_jei.evo.nature", nat).string)
                         }
                     }
                 }
@@ -715,12 +716,12 @@ object PokemonEvolutionDataLoader {
                     val mv = req.move
                     requiredMove = mv.name.lowercase()
                     val moveName = mv.displayName.string
-                    conditions.add("Capacité connue : $moveName")
+                    conditions.add(Component.translatable("gui.cobblemon_jei.evo.known_move", moveName).string)
                 }
                 is MoveTypeRequirement -> {
                     val t = req.type.name.lowercase()
                     requiredMoveType = t
-                    conditions.add("Capacité de type : ${t.replaceFirstChar { it.uppercase() }}")
+                    conditions.add(Component.translatable("gui.cobblemon_jei.evo.move_type", t.replaceFirstChar { it.uppercase() }).string)
                 }
                 is UseMoveRequirement -> {
                     val mv = req.move
@@ -728,52 +729,52 @@ object PokemonEvolutionDataLoader {
                     requiredMove = mv.name.lowercase()
                     useMoveCount = count
                     val moveName = mv.displayName.string
-                    conditions.add("Utiliser $moveName $count fois")
+                    conditions.add(Component.translatable("gui.cobblemon_jei.evo.use_move", moveName, count).string)
                 }
                 is BlocksTraveledRequirement -> {
                     val steps = req.amount
                     stepsAmount = steps
-                    conditions.add("Marcher $steps pas")
+                    conditions.add(Component.translatable("gui.cobblemon_jei.evo.walk_steps", steps).string)
                 }
                 is BattleCriticalHitsRequirement -> {
                     val hits = req.amount
                     criticalHits = hits
-                    conditions.add("Infliger $hits coups critiques en 1 combat")
+                    conditions.add(Component.translatable("gui.cobblemon_jei.evo.crit_hits", hits).string)
                 }
                 is DamageTakenRequirement -> {
                     val dmg = req.amount
                     damageTaken = dmg
-                    conditions.add("Subir ≥ $dmg dégâts sans tomber K.O.")
+                    conditions.add(Component.translatable("gui.cobblemon_jei.evo.damage_taken", dmg).string)
                 }
                 is RecoilRequirement -> {
                     val rec = req.amount
                     recoilDamage = rec
-                    conditions.add("Subir ≥ $rec dégâts de recul")
+                    conditions.add(Component.translatable("gui.cobblemon_jei.evo.recoil", rec).string)
                 }
                 is DefeatRequirement -> {
                     val amt = req.amount
                     val target = req.target.originalString
                     defeatAmount = amt
                     defeatTarget = target
-                    conditions.add("Vaincre $amt $target")
+                    conditions.add(Component.translatable("gui.cobblemon_jei.evo.defeat", amt, target).string)
                 }
                 is PartyMemberRequirement -> {
                     val target = req.target.originalString
                     partyMember = target
-                    conditions.add("Dans l'équipe : $target")
+                    conditions.add(Component.translatable("gui.cobblemon_jei.evo.in_party", target).string)
                 }
                 is StatCompareRequirement -> {
-                    statCompare = "Statistiques comparées"
-                    conditions.add("Comparaison de statistiques")
+                    statCompare = Component.translatable("gui.cobblemon_jei.evo.stat_compare", "").string
+                    conditions.add(Component.translatable("gui.cobblemon_jei.evo.stat_compare", "").string)
                 }
                 is StatEqualRequirement -> {
-                    statCompare = "Statistiques égales"
-                    conditions.add("Statistiques égales")
+                    statCompare = Component.translatable("gui.cobblemon_jei.evo.stat_equal", "").string
+                    conditions.add(Component.translatable("gui.cobblemon_jei.evo.stat_equal", "").string)
                 }
                 is MoonPhaseRequirement -> {
                     val phase = req.moonPhase.name
                     moonPhase = phase
-                    conditions.add("Phase de lune : $phase")
+                    conditions.add(Component.translatable("gui.cobblemon_jei.evo.moon_phase", phase).string)
                 }
                 is HeldItemRequirement -> {
                     val heldOpt = req.itemCondition?.items()
@@ -790,7 +791,7 @@ object PokemonEvolutionDataLoader {
                             }
                         }
                     }
-                    conditions.add("Objet tenu requis")
+                    conditions.add(Component.translatable("gui.cobblemon_jei.evo.held_item").string)
                 }
                 is TimeRangeRequirement -> {
                     val rawStr = req.range?.toString()?.lowercase() ?: ""
@@ -801,7 +802,7 @@ object PokemonEvolutionDataLoader {
                         rawStr.contains("dusk") -> "Crépuscule"
                         else -> "Période spécifique"
                     }
-                    conditions.add("Période : $timeDesc")
+                    conditions.add(Component.translatable("gui.cobblemon_jei.evo.time", timeDesc).string)
                 }
                 is WeatherRequirement -> {
                     val wName = when {
@@ -812,7 +813,7 @@ object PokemonEvolutionDataLoader {
                     conditions.add("Météo : $wName")
                 }
                 is BiomeRequirement -> {
-                    conditions.add("Lieu / Biome spécifique")
+                    conditions.add(Component.translatable("gui.cobblemon_jei.evo.specific_biome").string)
                 }
                 else -> {}
             }
@@ -820,10 +821,10 @@ object PokemonEvolutionDataLoader {
 
         val summaryParts = mutableListOf<String>()
         if (requiredGender != null) {
-            summaryParts.add(if (requiredGender == Gender.FEMALE) "Femelle ♀" else "Mâle ♂")
+            summaryParts.add(if (requiredGender == Gender.FEMALE) Component.translatable("gui.cobblemon_jei.evo.gender_female").string else Component.translatable("gui.cobblemon_jei.evo.gender_male").string)
         }
         if (minLevel != null && minLevel > 1) {
-            summaryParts.add("Niveau ≥ $minLevel")
+            summaryParts.add(Component.translatable("gui.cobblemon_jei.evo.level", minLevel).string)
         }
 
         val distinctItems = requiredItems.distinctBy { it.item }
@@ -832,7 +833,7 @@ object PokemonEvolutionDataLoader {
             summaryParts.add(itemNames.joinToString(", "))
         }
         if (stepsAmount != null) {
-            summaryParts.add("$stepsAmount pas")
+            summaryParts.add(Component.translatable("gui.cobblemon_jei.evo.walk_steps", stepsAmount).string)
         }
         if (useMoveCount != null && requiredMove != null) {
             val mvName = Moves.getByName(requiredMove)?.displayName?.string ?: requiredMove

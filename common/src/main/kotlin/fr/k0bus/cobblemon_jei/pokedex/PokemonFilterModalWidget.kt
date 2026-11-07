@@ -38,8 +38,8 @@ class PokemonFilterModalWidget(
     private var biomeSearchBox: EditBox? = null
 
     fun initSearchBox(font: Font) {
-        val box = EditBox(font, 0, 0, 100, 16, Component.literal("Recherche de biome..."))
-        box.setHint(Component.literal("§8Rechercher un biome...§r"))
+        val box = EditBox(font, 0, 0, 100, 16, Component.translatable("gui.cobblemon_jei.pokedex.filter.biome_search"))
+        box.setHint(Component.translatable("gui.cobblemon_jei.pokedex.filter.biome_search"))
         box.setResponder {
             biomeScrollOffset = 0.0
         }
@@ -102,13 +102,13 @@ class PokemonFilterModalWidget(
         guiGraphics.fill(modalX, modalY, modalX + modalW, modalY + 22, 0xFF1A1F2C.toInt())
         guiGraphics.fill(modalX, modalY + 21, modalX + modalW, modalY + 22, 0xFF2A3144.toInt())
 
-        val title = "§6§lFILTRES DU POKÉDEX§r"
-        guiGraphics.drawString(font, title, modalX + 8, modalY + 7, 0xFFFFFFFF.toInt(), false)
+        val title = Component.translatable("gui.cobblemon_jei.filter.title_modal").string
+        guiGraphics.drawString(font, "§6§l$title§r", modalX + 8, modalY + 7, 0xFFFFFFFF.toInt(), false)
 
         val activeCount = filterState.activeCount()
         if (filterState.isActive()) {
-            val badge = "§a($activeCount actif${if (activeCount > 1) "s" else ""})§r"
-            guiGraphics.drawString(font, badge, modalX + 8 + font.width("FILTRES DU POKÉDEX ") + 4, modalY + 7, 0xFFFFFFFF.toInt(), false)
+            val badge = Component.translatable("gui.cobblemon_jei.pokedex.filter.active_count", activeCount).string
+            guiGraphics.drawString(font, badge, modalX + 8 + font.width(title) + 6, modalY + 7, 0xFFFFFFFF.toInt(), false)
         }
 
         // Bouton Fermer [✕] en haut à droite
@@ -239,7 +239,7 @@ class PokemonFilterModalWidget(
             val clearBtnY = y + 4
             val isClearHov = mouseX >= clearBtnX && mouseX <= clearBtnX + 52 && mouseY >= clearBtnY && mouseY <= clearBtnY + 12
             val clearCol = if (isClearHov) 0xFFFF5555.toInt() else 0xFFAAAAAA.toInt()
-            guiGraphics.drawString(font, "§c[✕ Effacer]§r", clearBtnX, clearBtnY + 2, clearCol, false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.filter.clear_btn").string, clearBtnX, clearBtnY + 2, clearCol, false)
         }
 
         val allTypes = PokedexFilterManager.ALL_TYPES
@@ -273,7 +273,7 @@ class PokemonFilterModalWidget(
     }
 
     private fun renderRarityFilterPane(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, x: Int, y: Int, w: Int, h: Int, font: Font) {
-        guiGraphics.drawString(font, "§7Niveau de rareté d'apparition sauvage Cobblemon :§r", x + 6, y + 6, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.filter.rarity_desc").string, x + 6, y + 6, 0xFFFFFFFF.toInt(), false)
 
         val rarities = SpawnRarityFilter.values()
         val rowH = 20
@@ -308,8 +308,8 @@ class PokemonFilterModalWidget(
             if (isHov) {
                 activeModalTooltip = listOf(
                     Component.literal("${opt.formatCode}${opt.displayName}"),
-                    Component.literal("§7Total : §f${counts.total} §7Pokémon"),
-                    Component.literal(if (counts.missing > 0) "§cManquants : §f${counts.missing} §7à capturer" else "§a✔ Tous capturés (0 manquant)")
+                    Component.translatable("gui.cobblemon_jei.filter.total_pokemon", counts.total),
+                    if (counts.missing > 0) Component.translatable("gui.cobblemon_jei.filter.missing_to_catch", counts.missing) else Component.translatable("gui.cobblemon_jei.filter.all_caught")
                 )
             }
         }
@@ -317,14 +317,14 @@ class PokemonFilterModalWidget(
 
     private fun renderBiomeFilterPane(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, x: Int, y: Int, w: Int, h: Int, font: Font) {
         val selectedName = filterState.selectedBiome.displayName
-        guiGraphics.drawString(font, "§7Biome actif : §e$selectedName§r", x + 6, y + 6, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.filter.active_biome", selectedName).string, x + 6, y + 6, 0xFFFFFFFF.toInt(), false)
 
         if (filterState.selectedBiome != CobblemonBiomeFilter.ALL) {
             val clearBtnX = x + w - 64
             val clearBtnY = y + 4
             val isClearHov = mouseX >= clearBtnX && mouseX <= clearBtnX + 58 && mouseY >= clearBtnY && mouseY <= clearBtnY + 12
             val clearCol = if (isClearHov) 0xFFFF5555.toInt() else 0xFFAAAAAA.toInt()
-            guiGraphics.drawString(font, "§c[✕ Réinit]§r", clearBtnX, clearBtnY + 2, clearCol, false)
+            guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.filter.reset_btn").string, clearBtnX, clearBtnY + 2, clearCol, false)
         }
 
         // Barre de recherche de biome
@@ -405,8 +405,8 @@ class PokemonFilterModalWidget(
             if (isHov) {
                 activeModalTooltip = listOf(
                     Component.literal("§e${opt.displayName}"),
-                    Component.literal("§7Total : §f${counts.total} §7Pokémon"),
-                    Component.literal(if (counts.missing > 0) "§cManquants : §f${counts.missing} §7à capturer" else "§a✔ Tous capturés (0 manquant)")
+                    Component.translatable("gui.cobblemon_jei.filter.total_pokemon", counts.total),
+                    if (counts.missing > 0) Component.translatable("gui.cobblemon_jei.filter.missing_to_catch", counts.missing) else Component.translatable("gui.cobblemon_jei.filter.all_caught")
                 )
             }
         }
@@ -427,7 +427,7 @@ class PokemonFilterModalWidget(
     }
 
     private fun renderGenFilterPane(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, x: Int, y: Int, w: Int, h: Int, font: Font) {
-        guiGraphics.drawString(font, "§7Génération et région d'origine du Pokémon :§r", x + 6, y + 6, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.filter.gen_desc").string, x + 6, y + 6, 0xFFFFFFFF.toInt(), false)
 
         val gens = GenerationFilter.values()
         val genCounts = getGenCounts()
@@ -467,15 +467,15 @@ class PokemonFilterModalWidget(
             if (isHov) {
                 activeModalTooltip = listOf(
                     Component.literal("§e${gen.displayName}"),
-                    Component.literal("§7Total : §f${counts.total} §7Pokémon"),
-                    Component.literal(if (counts.missing > 0) "§cManquants : §f${counts.missing} §7à capturer" else "§a✔ Tous capturés (0 manquant)")
+                    Component.translatable("gui.cobblemon_jei.filter.total_pokemon", counts.total),
+                    if (counts.missing > 0) Component.translatable("gui.cobblemon_jei.filter.missing_to_catch", counts.missing) else Component.translatable("gui.cobblemon_jei.filter.all_caught")
                 )
             }
         }
     }
 
     private fun renderStatusFilterPane(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, x: Int, y: Int, w: Int, h: Int, font: Font) {
-        guiGraphics.drawString(font, "§e§l1. Statut dans le Pokédex :§r", x + 6, y + 6, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.filter.status_title").string, x + 6, y + 6, 0xFFFFFFFF.toInt(), false)
 
         val statuses = StatusFilter.values()
         val sColW = (w - 20) / 4
@@ -501,7 +501,7 @@ class PokemonFilterModalWidget(
             guiGraphics.drawCenteredString(font, label, sx + sColW / 2, sY + 6, 0xFFFFFFFF.toInt())
         }
 
-        guiGraphics.drawString(font, "§e§l2. Potentiel d'évolution :§r", x + 6, y + 46, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.filter.evo_title").string, x + 6, y + 46, 0xFFFFFFFF.toInt(), false)
 
         val evos = EvolutionFilter.values()
         val eRowH = 18
@@ -528,7 +528,7 @@ class PokemonFilterModalWidget(
     }
 
     private fun renderSortFilterPane(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, x: Int, y: Int, w: Int, h: Int, font: Font) {
-        guiGraphics.drawString(font, "§7Ordre et critère de tri des Pokémon affichés :§r", x + 6, y + 6, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, Component.translatable("gui.cobblemon_jei.filter.sort_desc").string, x + 6, y + 6, 0xFFFFFFFF.toInt(), false)
 
         val orders = PokedexSortOrder.values()
         val rowH = 20

@@ -61,9 +61,9 @@ object ExpeditionSuggestionEngine {
         suggestions.add(
             ExpeditionSuggestion(
                 id = "sugg_1_major_${topZone.id}",
-                title = "🌟 Grand Foyer de Découverte : ${topZone.name}",
-                subtitle = "${targets1.size} espèces non capturées réunies",
-                description = "Concentration maximale d'espèces manquantes dans ce secteur.",
+                title = Component.translatable("gui.cobblemon_jei.expedition.sugg.major_title", topZone.name).string,
+                subtitle = Component.translatable("gui.cobblemon_jei.expedition.sugg.major_subtitle", targets1.size).string,
+                description = Component.translatable("gui.cobblemon_jei.expedition.sugg.major_desc").string,
                 type = SuggestionType.POKEDEX_OPPORTUNITY,
                 targets = targets1,
                 primaryZone = topZone,
@@ -80,9 +80,9 @@ object ExpeditionSuggestionEngine {
         suggestions.add(
             ExpeditionSuggestion(
                 id = "sugg_2_rare_${rareZone.id}",
-                title = "💎 Piste aux Espèces Rares : ${rareZone.name}",
-                subtitle = "Spécimens inhabituels et précieux à débusquer",
-                description = "Ce biotope abrite des espèces à faible taux d'apparition.",
+                title = Component.translatable("gui.cobblemon_jei.expedition.sugg.rare_title", rareZone.name).string,
+                subtitle = Component.translatable("gui.cobblemon_jei.expedition.sugg.rare_subtitle").string,
+                description = Component.translatable("gui.cobblemon_jei.expedition.sugg.rare_desc").string,
                 type = SuggestionType.POKEDEX_OPPORTUNITY,
                 targets = targets2,
                 primaryZone = rareZone,
@@ -100,9 +100,9 @@ object ExpeditionSuggestionEngine {
         suggestions.add(
             ExpeditionSuggestion(
                 id = "sugg_3_close_${closeZone.id}",
-                title = "🚶 Exploration Rapide : ${closeZone.name}",
-                subtitle = "Proche de vous (${closeZone.distanceToPlayer.toInt()}m)",
-                description = "Secteur directement accessible pour une session de capture express.",
+                title = Component.translatable("gui.cobblemon_jei.expedition.sugg.close_title", closeZone.name).string,
+                subtitle = Component.translatable("gui.cobblemon_jei.expedition.sugg.close_subtitle", closeZone.distanceToPlayer.toInt()).string,
+                description = Component.translatable("gui.cobblemon_jei.expedition.sugg.close_desc").string,
                 type = SuggestionType.THEMATIC,
                 targets = targets3,
                 primaryZone = closeZone,
@@ -120,9 +120,21 @@ object ExpeditionSuggestionEngine {
         usedZoneIds.add(altZone.id)
         val targets4 = if (altZone.matchingTargets.size > 3) altZone.matchingTargets.map { it.target }.shuffled().take(4) else altZone.matchingTargets.map { it.target }
 
-        val habitatTitle = if (altZone.isSubterranean) "⛏ Exploration Souterraine : ${altZone.name}" else "🌿 Expédition d'Habitat : ${altZone.name}"
-        val habitatSubtitle = if (altZone.isSubterranean) "Cavités, spéléologie et Pokémon des profondeurs" else "Faune endémique de l'environnement"
-        val habitatDesc = if (altZone.isSubterranean) "Explorez ces cavités profondes pour débusquer les espèces cavernicoles." else "Explorez cet écosystème singulier pour capturer ses résidents."
+        val habitatTitle = if (altZone.isSubterranean) {
+            Component.translatable("gui.cobblemon_jei.expedition.sugg.cave_title", altZone.name).string
+        } else {
+            Component.translatable("gui.cobblemon_jei.expedition.sugg.habitat_title", altZone.name).string
+        }
+        val habitatSubtitle = if (altZone.isSubterranean) {
+            Component.translatable("gui.cobblemon_jei.expedition.sugg.cave_subtitle").string
+        } else {
+            Component.translatable("gui.cobblemon_jei.expedition.sugg.habitat_subtitle").string
+        }
+        val habitatDesc = if (altZone.isSubterranean) {
+            Component.translatable("gui.cobblemon_jei.expedition.sugg.cave_desc").string
+        } else {
+            Component.translatable("gui.cobblemon_jei.expedition.sugg.habitat_desc").string
+        }
 
         suggestions.add(
             ExpeditionSuggestion(
@@ -143,16 +155,16 @@ object ExpeditionSuggestionEngine {
             ?: topZone
         val isCondActive = isRaining || isThundering || isNight || isDuskOrDawn
         val condTitle = when {
-            isRaining || isThundering -> "⚡ Alerte Météo : Averse Favorable !"
-            isNight -> "🌙 Expédition Nocturne"
-            isDuskOrDawn -> "🌅 Crépuscule & Aube : Spécimens Clés"
-            else -> "☀️ Observation Diurne Approfondie"
+            isRaining || isThundering -> Component.translatable("gui.cobblemon_jei.expedition.sugg.rain_title").string
+            isNight -> Component.translatable("gui.cobblemon_jei.expedition.sugg.night_title").string
+            isDuskOrDawn -> Component.translatable("gui.cobblemon_jei.expedition.sugg.dusk_title").string
+            else -> Component.translatable("gui.cobblemon_jei.expedition.sugg.day_title").string
         }
         val condSub = when {
-            isRaining || isThundering -> "Spawns exclusifs activés sous la pluie"
-            isNight -> "Créatures actives au clair de lune"
-            isDuskOrDawn -> "Tranche horaire privilégiée pour certaines espèces"
-            else -> "Conditions favorables pour le Pokédex"
+            isRaining || isThundering -> Component.translatable("gui.cobblemon_jei.expedition.sugg.rain_sub").string
+            isNight -> Component.translatable("gui.cobblemon_jei.expedition.sugg.night_sub").string
+            isDuskOrDawn -> Component.translatable("gui.cobblemon_jei.expedition.sugg.dusk_sub").string
+            else -> Component.translatable("gui.cobblemon_jei.expedition.sugg.day_sub").string
         }
         val targets5 = condZone.matchingTargets.map { it.target }.takeLast(4)
         suggestions.add(
@@ -160,7 +172,7 @@ object ExpeditionSuggestionEngine {
                 id = "sugg_5_cond_${condZone.id}",
                 title = "$condTitle : ${condZone.name}",
                 subtitle = condSub,
-                description = "Conditions environnementales idéales pour compléter votre collection.",
+                description = Component.translatable("gui.cobblemon_jei.expedition.sugg.day_sub").string,
                 type = if (isRaining || isThundering) SuggestionType.WEATHER_TRIGGER else SuggestionType.TIME_TRIGGER,
                 targets = targets5,
                 primaryZone = condZone,
@@ -196,7 +208,7 @@ object ExpeditionSuggestionEngine {
         try {
             val player = Minecraft.getInstance()?.player
             if (player != null) {
-                val msg = Component.literal("§6§l[Expédition Lancée !]§r §a${suggestion.title} §7($addedCount objectifs suivis au radar)")
+                val msg = Component.translatable("chat.cobblemon_jm.expedition_started", suggestion.title, addedCount)
                 player.displayClientMessage(msg, false)
             }
         } catch (_: Throwable) {
