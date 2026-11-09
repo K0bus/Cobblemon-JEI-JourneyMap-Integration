@@ -1048,5 +1048,12 @@
   "gui.cobblemon_jm.search.active_on_map": "§7マップ上でアクティブ: §e%s§r",
   "gui.cobblemon_jei.recipe.no_natural_spawns_note": "このポケモンには野生の自然出現ポイントが設定されていません。",
   "gui.cobblemon_jei.detail.monument_tracker_disabled": "§c⛔ トラッカー: 無効 (クリックで有効化)§r",
-  "gui.cobblemon_jei.detail.monument_tracker_active": "§a🏛 トラッカー: %s (有効)§r"
+  "gui.cobblemon_jei.detail.monument_tracker_active": "§a🏛 トラッカー: %s (有効)§r",
+  "gui.cobblemon_jei.settings.opt_legendary_title": "伝説ポケモンの発見",
+  "gui.cobblemon_jei.settings.opt_legendary_desc": "マップ上の遺跡、祭壇、足跡をフィルタリング",
+  "gui.cobblemon_jei.settings.legendary_mode_tooltip": "伝説ポケモンの追跡モード: %s",
+  "gui.cobblemon_jei.settings.legendary_short.all": "すべて",
+  "gui.cobblemon_jei.settings.legendary_short.major": "主要遺跡",
+  "gui.cobblemon_jei.settings.legendary_short.footprints": "足跡のみ",
+  "gui.cobblemon_jei.settings.legendary_short.disabled": "無効"
 }

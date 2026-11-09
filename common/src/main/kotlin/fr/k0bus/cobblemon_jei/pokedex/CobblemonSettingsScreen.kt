@@ -2,6 +2,7 @@ package fr.k0bus.cobblemon_jei.pokedex
 
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
 import fr.k0bus.cobblemon_jei.application.scan.GlobalScanService
+import fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat
 import fr.k0bus.cobblemon_jei.config.CobblemonModConfig
 import fr.k0bus.cobblemon_jei.data.repository.PokemonDataRepository
 import fr.k0bus.cobblemon_jei.domain.session.WorldSessionManager
@@ -231,7 +232,28 @@ class CobblemonSettingsScreen(
         )
         y += rowH
 
-        // 8. Vider la Watchlist
+        // 8. Découverte des Légendaires & Monuments
+        val legMode = CobblemonModConfig.legendaryTrackingMode
+        val legText = when (legMode) {
+            LegendaryMonumentsCompat.MonumentTrackingMode.ALL -> Component.translatable("gui.cobblemon_jei.settings.legendary_short.all")
+            LegendaryMonumentsCompat.MonumentTrackingMode.MAJOR_ONLY -> Component.translatable("gui.cobblemon_jei.settings.legendary_short.major")
+            LegendaryMonumentsCompat.MonumentTrackingMode.FOOTPRINTS_ONLY -> Component.translatable("gui.cobblemon_jei.settings.legendary_short.footprints")
+            LegendaryMonumentsCompat.MonumentTrackingMode.DISABLED -> Component.translatable("gui.cobblemon_jei.settings.legendary_short.disabled")
+        }
+        val legBtn = CobblemonDarkButton(btnX, y, btnW, btnH, legText) {
+            CobblemonModConfig.legendaryTrackingMode = CobblemonModConfig.legendaryTrackingMode.next()
+            init()
+        }
+        legBtn.tooltip = Tooltip.create(
+            Component.translatable(
+                "gui.cobblemon_jei.settings.legendary_mode_tooltip",
+                Component.translatable(legMode.translationKey)
+            )
+        )
+        addRenderableWidget(legBtn)
+        y += rowH
+
+        // 9. Vider la Watchlist
         val clearBtn = CobblemonDarkButton(btnX, y, btnW, btnH, Component.translatable("gui.cobblemon_jei.settings.clear_watchlist")) {
             PokemonTrackingManager.clearWatchlist()
             minecraft?.player?.displayClientMessage(Component.translatable("gui.cobblemon_jei.settings.clear_watchlist_msg"), true)
@@ -372,6 +394,7 @@ class CobblemonSettingsScreen(
             Component.translatable("gui.cobblemon_jei.settings.opt_ha_title").string to Component.translatable("gui.cobblemon_jei.settings.opt_ha_desc").string,
             Component.translatable("gui.cobblemon_jei.settings.opt_iv_title").string to Component.translatable("gui.cobblemon_jei.settings.opt_iv_desc").string,
             Component.translatable("gui.cobblemon_jei.settings.opt_size_title").string to Component.translatable("gui.cobblemon_jei.settings.opt_size_desc").string,
+            Component.translatable("gui.cobblemon_jei.settings.opt_legendary_title").string to Component.translatable("gui.cobblemon_jei.settings.opt_legendary_desc").string,
             Component.translatable("gui.cobblemon_jei.settings.opt_watchlist_title").string to Component.translatable("gui.cobblemon_jei.settings.opt_watchlist_desc", PokemonTrackingManager.customWatchlist.size).string
         )
 

@@ -1048,5 +1048,12 @@
   "gui.cobblemon_jm.search.active_on_map": "§7Ativo no mapa: §e%s§r",
   "gui.cobblemon_jei.recipe.no_natural_spawns_note": "Este Pokémon não possui pontos de spawn selvagem natural configurados.",
   "gui.cobblemon_jei.detail.monument_tracker_disabled": "§c⛔ Rastreador: Desativado (Clique para ativar)§r",
-  "gui.cobblemon_jei.detail.monument_tracker_active": "§a🏛 Rastreador: %s (Ativo)§r"
+  "gui.cobblemon_jei.detail.monument_tracker_active": "§a🏛 Rastreador: %s (Ativo)§r",
+  "gui.cobblemon_jei.settings.opt_legendary_title": "Descoberta de Lendários",
+  "gui.cobblemon_jei.settings.opt_legendary_desc": "Filtra monumentos, santuários e pegadas no mapa",
+  "gui.cobblemon_jei.settings.legendary_mode_tooltip": "Modo de rastreamento de Lendários: %s",
+  "gui.cobblemon_jei.settings.legendary_short.all": "Todos",
+  "gui.cobblemon_jei.settings.legendary_short.major": "Monumentos",
+  "gui.cobblemon_jei.settings.legendary_short.footprints": "Pegadas",
+  "gui.cobblemon_jei.settings.legendary_short.disabled": "Desativado"
 }

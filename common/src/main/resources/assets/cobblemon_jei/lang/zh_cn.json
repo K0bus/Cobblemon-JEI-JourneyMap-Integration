@@ -1048,5 +1048,12 @@
   "gui.cobblemon_jm.search.active_on_map": "§7地图上已激活: §e%s§r",
   "gui.cobblemon_jei.recipe.no_natural_spawns_note": "该宝可梦未配置任何自然野生生成点。",
   "gui.cobblemon_jei.detail.monument_tracker_disabled": "§c⛔ 追踪器: 已禁用 (点击激活)§r",
-  "gui.cobblemon_jei.detail.monument_tracker_active": "§a🏛 追踪器: %s (已激活)§r"
+  "gui.cobblemon_jei.detail.monument_tracker_active": "§a🏛 追踪器: %s (已激活)§r",
+  "gui.cobblemon_jei.settings.opt_legendary_title": "传说宝可梦发现",
+  "gui.cobblemon_jei.settings.opt_legendary_desc": "过滤地图上的遗迹、神龛与脚印",
+  "gui.cobblemon_jei.settings.legendary_mode_tooltip": "传说宝可梦追踪模式：%s",
+  "gui.cobblemon_jei.settings.legendary_short.all": "全部",
+  "gui.cobblemon_jei.settings.legendary_short.major": "主要遗迹",
+  "gui.cobblemon_jei.settings.legendary_short.footprints": "仅脚印",
+  "gui.cobblemon_jei.settings.legendary_short.disabled": "已禁用"
 }

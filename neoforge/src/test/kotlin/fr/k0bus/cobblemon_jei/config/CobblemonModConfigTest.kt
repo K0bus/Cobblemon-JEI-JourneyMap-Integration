@@ -1,6 +1,8 @@
 package fr.k0bus.cobblemon_jei.config
 
 import fr.k0bus.cobblemon_jei.application.scan.GlobalScanService
+import fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat
+import fr.k0bus.cobblemon_jei.journeymap.structure.StructureOverlayManager
 import fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager
 import fr.k0bus.cobblemon_jei.pokedex.SizeFilter
 import org.junit.jupiter.api.Assertions.*
@@ -33,6 +35,14 @@ class CobblemonModConfigTest {
 
         CobblemonModConfig.filterSize = SizeFilter.ONLY_GIGANTIC
         assertEquals(SizeFilter.ONLY_GIGANTIC, PokemonTrackingManager.advancedFilter.sizeFilter)
+
+        CobblemonModConfig.legendaryTrackingMode = LegendaryMonumentsCompat.MonumentTrackingMode.DISABLED
+        assertEquals(LegendaryMonumentsCompat.MonumentTrackingMode.DISABLED, StructureOverlayManager.trackingMode)
+        assertEquals(LegendaryMonumentsCompat.MonumentTrackingMode.DISABLED, CobblemonModConfig.legendaryTrackingMode)
+
+        CobblemonModConfig.legendaryTrackingMode = LegendaryMonumentsCompat.MonumentTrackingMode.ALL
+        assertEquals(LegendaryMonumentsCompat.MonumentTrackingMode.ALL, StructureOverlayManager.trackingMode)
+        assertEquals(LegendaryMonumentsCompat.MonumentTrackingMode.ALL, CobblemonModConfig.legendaryTrackingMode)
     }
 
     @Test

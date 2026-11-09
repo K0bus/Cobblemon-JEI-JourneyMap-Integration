@@ -1,5 +1,7 @@
 package fr.k0bus.cobblemon_jei.config
 
+import fr.k0bus.cobblemon_jei.compat.legendarymonuments.LegendaryMonumentsCompat
+import fr.k0bus.cobblemon_jei.journeymap.structure.StructureOverlayManager
 import fr.k0bus.cobblemon_jei.pokedex.PokemonTrackingManager
 import fr.k0bus.cobblemon_jei.pokedex.SizeFilter
 
@@ -54,5 +56,15 @@ object CobblemonModConfig {
         set(value) {
             PokemonTrackingManager.advancedFilter.sizeFilter = value
             PokemonTrackingManager.saveConfig()
+        }
+
+    // Découverte des Légendaires & Monuments
+    var legendaryTrackingMode: LegendaryMonumentsCompat.MonumentTrackingMode
+        get() {
+            StructureOverlayManager.ensureConfigLoaded()
+            return StructureOverlayManager.trackingMode
+        }
+        set(value) {
+            StructureOverlayManager.setTrackingMode(value)
         }
 }
